@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
+import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 
 /** Áreas das Funções de uma pessoa, para saber de quais Categorias ela cria Eventos. */
@@ -68,6 +69,10 @@ export type EventoListado = {
   status: Status;
   categoria: { nome: string; cor: string };
   responsavel: string | null;
+  categoriaId: string;
+  area: string;
+  /** Ids do Responsável, do Professor e do Auxiliar, para o filtro "meus eventos". */
+  envolvidos: string[];
 };
 
 type EventoDoBanco = {
@@ -78,7 +83,9 @@ type EventoDoBanco = {
   dia_inteiro: boolean;
   local: string;
   status: Status;
-  categorias: { nome: string; cor: string };
+  responsavel_id: string | null;
+  campos: Evento["campos"];
+  categorias: { id: string; nome: string; cor: string; areas: { nome: string }; campos_das_categorias: { id: string; nome: string; tipo: string }[] };
   responsavel: { nome: string; ativo: boolean } | null;
 };
 
@@ -91,7 +98,9 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
   let consulta = supabase
     .from("eventos")
     .select(
-      "id, titulo, inicio, fim, dia_inteiro, local, status, categorias(nome, cor), responsavel:perfis!eventos_responsavel_id_fkey(nome, ativo)",
+      `id, titulo, inicio, fim, dia_inteiro, local, status, responsavel_id, campos,
+      categorias(id, nome, cor, areas(nome), campos_das_categorias(id, nome, tipo)),
+      responsavel:perfis!eventos_responsavel_id_fkey(nome, ativo)`,
     );
   if (periodo) {
     const inicio = periodo.inicio.toISOString();
@@ -107,8 +116,11 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
       ...periodo,
       local: e.local,
       status: statusNoMomento({ ...periodo, status: e.status }, agora),
-      categoria: e.categorias,
+      categoria: { nome: e.categorias.nome, cor: e.categorias.cor },
       responsavel: semResponsavel({ ...periodo, responsavel: e.responsavel }, agora) ? null : e.responsavel!.nome,
+      categoriaId: e.categorias.id,
+      area: e.categorias.areas.nome,
+      envolvidos: envolvidosDoEvento(e.responsavel_id, e.campos, e.categorias.campos_das_categorias),
     };
   });
 }

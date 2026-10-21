@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
+import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
 import { diaDe } from "@/dominio/eventos";
+import { filtrar, lerFiltros, parametrosDosFiltros, type Filtros } from "@/dominio/filtros";
 import { FUSO } from "@/dominio/fuso";
 import { exigirLideranca } from "@/lib/contas/perfil";
-import { eventos } from "@/lib/eventos/consultas";
+import { categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { ListaDeEventos } from "../lista-de-eventos";
 import { GradeDaSemana, GradeDoMes } from "./grade";
@@ -15,8 +17,9 @@ export const metadata: Metadata = { title: "Calendário" };
 
 const NOMES_DAS_VISOES: Record<Visao, string> = { lista: "Lista", mes: "Mês", semana: "Semana" };
 
-const endereco = (visao: Visao | null, dia?: string) => {
-  const parametros = new URLSearchParams();
+/** O endereço de uma posição do calendário; os filtros ligados acompanham a navegação. */
+const endereco = (filtros: Filtros, visao: Visao | null, dia?: string) => {
+  const parametros = new URLSearchParams(parametrosDosFiltros(filtros));
   if (visao) parametros.set("visao", visao);
   if (dia) parametros.set("dia", dia);
   const busca = parametros.toString();
@@ -55,16 +58,20 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
   const eu = await exigirLideranca();
   const agora = new Date();
   const hoje = diaDe(agora);
-  const { visao, dia } = lerPosicao(await props.searchParams, agora);
+  const parametros = await props.searchParams;
+  const { visao, dia } = lerPosicao(parametros, agora);
+  const filtros = lerFiltros(parametros);
 
   // Sem visão, a lista e o mês andam juntos, de mês em mês.
   const navegacao: Visao = visao ?? "mes";
   const mostra = (v: Visao) => (visao ? visao === v : v !== "semana");
   const periodos = { lista: periodoDaVisao("lista", dia), mes: periodoDaVisao("mes", dia), semana: periodoDaVisao("semana", dia) };
   const supabase = await supabaseDoServidor();
-  const [daLista, doMes, daSemana] = await Promise.all(
-    (["lista", "mes", "semana"] as const).map((v) => (mostra(v) ? eventos(supabase, periodos[v]) : Promise.resolve([]))),
-  );
+  const [doCatalogo, ...periodosLidos] = await Promise.all([
+    categorias(supabase),
+    ...(["lista", "mes", "semana"] as const).map((v) => (mostra(v) ? eventos(supabase, periodos[v]) : Promise.resolve([]))),
+  ]);
+  const [daLista, doMes, daSemana] = periodosLidos.map((lidos) => filtrar(lidos, filtros, { eu: eu.id, agora }));
 
   return (
     <>
@@ -82,17 +89,17 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <nav aria-label="Período" className="flex items-center gap-2">
             <Link
-              href={endereco(visao, navegar(navegacao, dia, -1))}
+              href={endereco(filtros, visao, navegar(navegacao, dia, -1))}
               aria-label={navegacao === "semana" ? "Semana anterior" : "Mês anterior"}
               className="rounded-lg border border-borda bg-superficie px-3 py-1.5"
             >
               ‹
             </Link>
-            <Link href={endereco(visao)} className="rounded-lg border border-borda bg-superficie px-3 py-1.5 text-sm">
+            <Link href={endereco(filtros, visao)} className="rounded-lg border border-borda bg-superficie px-3 py-1.5 text-sm">
               Hoje
             </Link>
             <Link
-              href={endereco(visao, navegar(navegacao, dia, 1))}
+              href={endereco(filtros, visao, navegar(navegacao, dia, 1))}
               aria-label={navegacao === "semana" ? "Próxima semana" : "Próximo mês"}
               className="rounded-lg border border-borda bg-superficie px-3 py-1.5"
             >
@@ -103,7 +110,7 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
             {(["lista", "mes", "semana"] as const).map((v) => (
               <Link
                 key={v}
-                href={endereco(v, dia === hoje ? undefined : dia)}
+                href={endereco(filtros, v, dia === hoje ? undefined : dia)}
                 aria-current={visao === v ? "page" : undefined}
                 className={`rounded-md px-3 py-1 ${classeDaAba(v, visao)}`}
               >
@@ -113,12 +120,22 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
           </nav>
         </div>
 
+        <div className="mt-4">
+          <FiltrosDeEventos
+            caminho="/calendario"
+            filtros={filtros}
+            categorias={doCatalogo}
+            ocultos={{ ...(visao ? { visao } : {}), ...(dia === hoje ? {} : { dia }) }}
+          />
+        </div>
+
         <div className="mt-6">
           {mostra("lista") && (
             <section aria-label="Lista" className={visivel("lista", visao)}>
               <ListaDeEventos
                 eventos={daLista}
                 dias={periodos.lista.semanas[0].map((d) => d.dia)}
+                eu={eu.id}
                 vazio="Nenhum Evento neste mês."
               />
             </section>

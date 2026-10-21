@@ -56,6 +56,10 @@ export function navegar(visao: Visao, dia: string, passo: 1 | -1): string {
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Se o texto é uma data civil `AAAA-MM-DD` que existe. */
+export const diaValido = (dia: unknown): dia is string =>
+  typeof dia === "string" && DIA.test(dia) && !Number.isNaN(civil(dia).getTime()) && texto(civil(dia)) === dia;
+
 /**
  * A visão e o dia de referência pedidos na URL. Sem dia (ou com um que não existe), é hoje no fuso do Mural.
  * Sem visão, ela fica em aberto: a tela mostra a lista no celular e o mês em telas maiores.
@@ -66,14 +70,13 @@ export function lerPosicao(
 ): { visao: Visao | null; dia: string } {
   const visao = VISOES.find((v) => v === parametros.visao) ?? null;
   const { dia } = parametros;
-  const existe = typeof dia === "string" && DIA.test(dia) && !Number.isNaN(civil(dia).getTime()) && texto(civil(dia)) === dia;
-  return { visao, dia: existe ? dia : diaDe(agora) };
+  return { visao, dia: diaValido(dia) ? dia : diaDe(agora) };
 }
 
 type NoCalendario = { inicio: Date; fim: Date | null; diaInteiro: boolean };
 
 /** O último dia que um Evento ocupa: o do fim, ou o anterior quando um Evento com hora acaba à meia-noite. */
-function ultimoDia(evento: NoCalendario): string {
+export function ultimoDia(evento: NoCalendario): string {
   const primeiro = diaDe(evento.inicio);
   if (!evento.fim) return primeiro;
   const ultimo = diaDe(evento.diaInteiro ? evento.fim : new Date(evento.fim.getTime() - 1));

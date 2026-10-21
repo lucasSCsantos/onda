@@ -27,10 +27,13 @@ function quando(evento: EventoListado): string {
 export function ListaDeEventos({
   eventos,
   dias,
+  eu,
   vazio = "Nenhum Evento ainda.",
 }: {
   eventos: EventoListado[];
   dias?: string[];
+  /** Id de quem olha: os Eventos dele ganham destaque. */
+  eu?: string;
   vazio?: string;
 }) {
   const grupos = dias ? diasComEventos(eventos, dias) : agruparPorDia(eventos);
@@ -43,33 +46,40 @@ export function ListaDeEventos({
           <h2 className="text-sm font-semibold text-texto-suave first-letter:uppercase">{dataPorExtenso(dia)}</h2>
           <ul className="flex flex-col gap-2">
             {doDia.map((evento) => (
-              <li
-                key={evento.id}
-                className={`relative flex gap-3 rounded-2xl border bg-superficie p-4 hover:border-marca ${visualDoStatus(evento.status).borda}`}
-              >
-                <span aria-hidden className="mt-1.5 size-3 shrink-0 rounded-full" style={{ backgroundColor: evento.categoria.cor }} />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  {/* O cartão inteiro abre o Evento. */}
-                  <Link
-                    href={`/eventos/${evento.id}`}
-                    className={`font-semibold break-words after:absolute after:inset-0 ${visualDoStatus(evento.status).titulo}`}
-                  >
-                    {evento.titulo}
-                  </Link>
-                  <p className="text-sm text-texto-suave">
-                    {quando(evento)} · {evento.categoria.nome}
-                    {evento.local && ` · ${evento.local}`}
-                  </p>
-                  <p className="text-sm text-texto-suave">
-                    {evento.responsavel ? `Responsável: ${evento.responsavel}` : "Sem Responsável"}
-                  </p>
-                </div>
-                <SeloDoStatus status={evento.status} />
-              </li>
+              <CartaoDeEvento key={evento.id} evento={evento} eu={eu} />
             ))}
           </ul>
         </li>
       ))}
     </ol>
+  );
+}
+
+/** O cartão de um Evento; o cartão inteiro abre o Evento. Os de `eu` (Responsável, Professor ou Auxiliar) ganham destaque. */
+export function CartaoDeEvento({ evento, eu }: { evento: EventoListado; eu?: string }) {
+  const meu = eu !== undefined && evento.envolvidos.includes(eu);
+  return (
+    <li
+      className={`relative flex gap-3 rounded-2xl border bg-superficie p-4 hover:border-marca ${visualDoStatus(evento.status).borda} ${meu ? "ring-2 ring-marca" : ""}`}
+    >
+      <span aria-hidden className="mt-1.5 size-3 shrink-0 rounded-full" style={{ backgroundColor: evento.categoria.cor }} />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <Link
+          href={`/eventos/${evento.id}`}
+          className={`font-semibold break-words after:absolute after:inset-0 ${visualDoStatus(evento.status).titulo}`}
+        >
+          {evento.titulo}
+        </Link>
+        <p className="text-sm text-texto-suave">
+          {quando(evento)} · {evento.categoria.nome}
+          {evento.local && ` · ${evento.local}`}
+        </p>
+        <p className="text-sm text-texto-suave">{evento.responsavel ? `Responsável: ${evento.responsavel}` : "Sem Responsável"}</p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <SeloDoStatus status={evento.status} />
+        {meu && <span className="text-xs font-semibold text-marca">Meu</span>}
+      </div>
+    </li>
   );
 }
