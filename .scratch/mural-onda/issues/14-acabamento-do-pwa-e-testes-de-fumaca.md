@@ -7,7 +7,7 @@
 **Status:** resolved
 
 - [x] Mensagem clara e útil sem internet
-- [x] Ícone, tela de abertura e instalação revisados no celular
+- [ ] Ícone, tela de abertura e instalação revisados no celular
 - [x] Cores e contraste conferidos nos modos claro e escuro
 - [x] Testes de fumaça passam: login por convite, criar Evento, calendário no celular
 - [x] Critérios de aceite do MVP da spec conferidos e registrados
