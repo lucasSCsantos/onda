@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Paleta a partir das logos do ONDA: azul claro #459ac8 e azul escuro #284995. */
+:root {
+  --fundo: #f6f8fb;
+  --superficie: #ffffff;
+  --texto: #14213d;
+  --texto-suave: #4b5872;
+  --borda: #d6deea;
+  --marca: #284995;
+  --marca-texto: #ffffff;
+  --destaque: #459ac8;
+  --erro: #b42318;
+  --sucesso: #1f7a4d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --fundo: #0b1220;
+    --superficie: #131c2e;
+    --texto: #e7edf7;
+    --texto-suave: #a7b3c9;
+    --borda: #26324a;
+    --marca: #6fb3dc;
+    --marca-texto: #0b1220;
+    --destaque: #459ac8;
+    --erro: #f97066;
+    --sucesso: #47cd89;
+    color-scheme: dark;
+  }
+}
+
+:root[data-tema="escuro"] {
+  --fundo: #0b1220;
+  --superficie: #131c2e;
+  --texto: #e7edf7;
+  --texto-suave: #a7b3c9;
+  --borda: #26324a;
+  --marca: #6fb3dc;
+  --marca-texto: #0b1220;
+  --destaque: #459ac8;
+  --erro: #f97066;
+  --sucesso: #47cd89;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-borda: var(--borda);
+  --color-marca: var(--marca);
+  --color-marca-texto: var(--marca-texto);
+  --color-destaque: var(--destaque);
+  --color-erro: var(--erro);
+  --color-sucesso: var(--sucesso);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--fundo);
+  color: var(--texto);
+}
