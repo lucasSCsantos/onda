@@ -25,6 +25,7 @@ export async function salvarAdolescente(id: string | null, _: EstadoFormulario, 
 /** Inativar tira da lista sem apagar nada; reativar traz de volta. */
 export async function definirAtivo(id: string, ativo: boolean) {
   const supabase = await supabaseDoServidor();
-  await supabase.from("adolescentes").update({ ativo }).eq("id", id);
+  const { data, error } = await supabase.from("adolescentes").update({ ativo }).eq("id", id).select("id");
+  if (error || !data?.length) throw new Error("Não foi possível mudar a situação do Adolescente.");
   revalidatePath("/adolescentes");
 }
