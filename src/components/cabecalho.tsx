@@ -31,6 +31,9 @@ export function Cabecalho({ admin = false, lideranca = admin }: { admin?: boolea
             <Link href="/admin/catalogo" className="text-texto-suave hover:text-texto">
               Catálogo
             </Link>
+            <Link href="/admin/exportar" className="text-texto-suave hover:text-texto">
+              Exportar
+            </Link>
           </>
         )}
         <form action={sair}>
