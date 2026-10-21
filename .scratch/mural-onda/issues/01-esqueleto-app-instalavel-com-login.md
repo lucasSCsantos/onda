@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [x] O app instala como PWA no celular, com ícone e tela de abertura do ONDA
+- [ ] O app instala como PWA no celular, com ícone e tela de abertura do ONDA
 - [x] Login, logout e recuperação de senha funcionam, em pt-BR
 - [x] Tema claro e escuro seguem a paleta das logos (`#459ac8`, `#284995`), com a logo do ONDA e a da igreja no rodapé
 - [ ] Deploy automático a partir do GitHub funciona
