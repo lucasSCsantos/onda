@@ -1,0 +1,72 @@
+# Mural ONDA
+
+Aplicativo web onde a liderança do ONDA, o ministério de adolescentes da igreja, vê, cria e acompanha as atividades do ministério, cada uma com responsável e status.
+
+## Language
+
+### Calendário
+
+**Evento**:
+Qualquer item do calendário (uma EBD, uma gincana, uma postagem), com categoria, responsável e status.
+_Avoid_: Atividade, compromisso
+
+**Série**:
+O molde recorrente que gera Ocorrências (a "EBD semanal"); editar "esta e as seguintes" ou "toda a série" altera as Ocorrências afetadas sem dividir a Série nem tirá-las dela.
+_Avoid_: Recorrência, evento recorrente
+
+**Ocorrência**:
+Um Evento que nasceu de uma Série e pode ser editado ou cancelado individualmente (inclusive o professor); continua na Série, marcada como editada, e uma edição "toda a série" não a sobrescreve. Ocorrências Realizadas ou Canceladas ficam congeladas diante de edições de série.
+_Avoid_: Instância, repetição
+
+**Categoria**:
+O tipo de um Evento (EBD, pequeno grupo, culto, ensaio de louvor, reunião de liderança, postagem, evento extra, acampamento, serviço); define os campos específicos do Evento.
+_Avoid_: Tipo
+
+**Área**:
+Uma frente de trabalho do ministério (Geral, Ensino, Programação, Comunicação, Louvor, Acampamento) que agrupa Categorias e Funções e concede a permissão de criar Eventos; Geral é a liderança geral do ministério e cria todas as Categorias.
+_Avoid_: Departamento, setor
+
+**Responsável**:
+A pessoa da Liderança encarregada de um Evento, qualquer uma delas; obrigatório para o Evento sair de Rascunho. Cada Ocorrência tem o seu.
+_Avoid_: Dono, encarregado
+
+**Status**:
+O estágio de um Evento: Rascunho, Planejado, Confirmado, Realizado, Cancelado ou Adiado. Um Evento Confirmado passa sozinho a Realizado depois do horário de fim (ou no dia seguinte, se não houver fim). Planejado ou Rascunho que passam da data ficam parados com alerta até o Responsável decidir.
+
+**Postagem**:
+Categoria de Evento cuja data é a data de publicação.
+
+**Reunião de liderança**:
+Categoria que pertence à Área Geral; só quem tem Função Geral (ou o Admin) cria.
+
+### Pessoas e acesso
+
+**Liderança**:
+O conjunto de pessoas com nível de acesso Admin ou Líder.
+_Avoid_: Equipe, time
+
+**Nível de acesso**:
+O que a pessoa é no sistema: Admin, Líder, Professor ou Pendente.
+
+**Admin**:
+Nível de acesso com controle total; hoje só Lucas.
+
+**Líder**:
+Nível de acesso da liderança aprovada. Sempre se refere ao nível, nunca a uma Função.
+
+**Pendente**:
+Nível de acesso de quem criou conta sem convite e aguarda aprovação; não vê nenhum dado.
+
+**Função**:
+O papel de uma pessoa no ministério (ex.: "Líder do louvor", "Co-líder do ministério"); pertence a uma Área, e a pessoa cria Eventos de todas as Categorias dessa Área. Uma pessoa pode ter várias Funções. A Área Geral cria todas as Categorias.
+
+**Professor**:
+Pessoa cadastrada que dá aulas de EBD; é escolhido por Ocorrência e, ao entrar no app, vê no calendário apenas as aulas em que foi colocado, podendo editar só as observações delas. Uma aula tem até dois: o Professor e o Auxiliar. Quem é Líder ou Admin também pode ser escolhido, sem outro cadastro; o nível de acesso Professor existe só para quem não é da Liderança.
+
+**Auxiliar**:
+O segundo Professor de uma aula, em apoio ao Professor principal.
+_Avoid_: Docente, instrutor
+
+**Adolescente**:
+Pessoa atendida pelo ministério, existente só como cadastro (nome, data de nascimento, ativo/inativo); sem login.
+_Avoid_: Membro, jovem
