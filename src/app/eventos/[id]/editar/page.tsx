@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Cabecalho } from "@/components/cabecalho";
 import type { Opcao } from "@/components/formulario";
 import { podeGerenciarContas } from "@/dominio/acesso";
+import { podeCriarEvento } from "@/dominio/catalogo";
+import { escoposDeEdicao } from "@/dominio/series";
 import { entradaDoEvento, podeEditarEvento, rotuloDaData, statusDaEdicao, statusNoMomento } from "@/dominio/eventos";
 import { nomeDoCampoEspecifico } from "@/lib/campos";
 import { exigirLideranca } from "@/lib/contas/perfil";
@@ -63,6 +65,7 @@ export default async function PaginaEditarEvento(props: PageProps<"/eventos/[id]
           status={statusDaEdicao(eu, evento, agora)}
           iniciais={iniciais}
           rotuloDaData={rotuloDaData(evento.categoria)}
+          escopos={evento.serieId ? escoposDeEdicao(podeCriarEvento(eu, areas, evento.categoria)) : undefined}
           botao={{ texto: "Salvar", pendente: "Salvando…" }}
         />
       </main>

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Cabecalho } from "@/components/cabecalho";
 import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
 import { podeGerenciarContas } from "@/dominio/acesso";
-import type { CampoCadastrado } from "@/dominio/catalogo";
+import { podeCriarEvento, type CampoCadastrado } from "@/dominio/catalogo";
 import {
   camposDaCriacao,
   diaDe,
@@ -16,10 +16,12 @@ import {
   statusNoMomento,
 } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
+import { descreverRegra, formatarDia } from "@/dominio/series";
 import { exigirLideranca } from "@/lib/contas/perfil";
-import { areasDaPessoa, evento as buscarEvento, pessoas, type EventoCompleto } from "@/lib/eventos/consultas";
+import { areasDaPessoa, evento as buscarEvento, pessoas, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { BotaoExcluir } from "./botao-excluir";
+import { PainelDaSerie } from "./painel-da-serie";
 
 export const metadata: Metadata = { title: "Evento" };
 
@@ -46,6 +48,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const supabase = await supabaseDoServidor();
   const [evento, areas] = await Promise.all([buscarEvento(supabase, id), areasDaPessoa(supabase, eu.id)]);
   if (!evento) notFound();
+  const serie = evento.serieId ? await buscarSerie(supabase, evento.serieId) : null;
 
   const agora = new Date();
   const status = statusNoMomento(evento, agora);
@@ -105,6 +108,13 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
             <span className="first-letter:uppercase">{quando(evento)}</span>
           </Item>
           <Item rotulo="Categoria">{evento.categoria.nome}</Item>
+          {serie && (
+            <Item rotulo="Série">
+              {descreverRegra(serie.regra)}, {serie.ocorrencias.length} Ocorrências
+              {serie.encerradaEm && `, encerrada em ${formatarDia(serie.encerradaEm)}`}
+              {evento.editada && ". Esta Ocorrência foi editada à parte: as edições de série não a sobrescrevem"}
+            </Item>
+          )}
           {evento.local && <Item rotulo="Local">{evento.local}</Item>}
           <Item rotulo="Responsável">
             {semResponsavel({ ...evento, responsavel }, agora)
@@ -141,6 +151,15 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
           )}
           {podeExcluirEvento(eu) && <BotaoExcluir id={evento.id} />}
         </div>
+
+        {serie && (
+          <PainelDaSerie
+            eventoId={evento.id}
+            serieId={serie.id}
+            pode={podeCriarEvento(eu, areas, evento.categoria)}
+            podeExcluir={podeExcluirEvento(eu)}
+          />
+        )}
       </main>
     </>
   );

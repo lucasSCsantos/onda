@@ -43,6 +43,7 @@ export default async function PaginaNovoEventoDaCategoria(props: PageProps<"/eve
           status={STATUS_INICIAIS}
           iniciais={{ responsavel: eu.id, status: "planejado" }}
           rotuloDaData={rotuloDaData(categoria)}
+          repete
           botao={{ texto: "Criar Evento", pendente: "Criando…" }}
         />
       </main>

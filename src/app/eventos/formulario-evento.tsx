@@ -4,9 +4,11 @@ import { useActionState } from "react";
 import { BotaoEnviar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import type { CampoCadastrado } from "@/dominio/catalogo";
 import { camposDaCriacao, NOMES_DOS_STATUS, type Status } from "@/dominio/eventos";
+import { NOMES_DOS_ESCOPOS, type EscopoDeEdicao } from "@/dominio/series";
 import { nomeDoCampoEspecifico } from "@/lib/campos";
 import type { EstadoDoEvento } from "@/lib/eventos/acoes";
 import type { CategoriaComArea } from "@/lib/eventos/consultas";
+import { Repeticao } from "./repeticao";
 
 /**
  * Campos comuns e os específicos da Categoria, para criar e para editar. `iniciais` vai do nome do campo no
@@ -20,6 +22,8 @@ export function FormularioEvento({
   iniciais,
   rotuloDaData,
   botao,
+  repete = false,
+  escopos,
 }: {
   acao: (anterior: EstadoDoEvento, dados: FormData) => Promise<EstadoDoEvento>;
   categoria: CategoriaComArea;
@@ -28,6 +32,10 @@ export function FormularioEvento({
   iniciais: Record<string, string>;
   rotuloDaData: string;
   botao: { texto: string; pendente: string };
+  /** Um Evento novo pode repetir, virando uma Série. */
+  repete?: boolean;
+  /** Ao editar uma Ocorrência, os escopos que quem edita pode escolher; "só esta" é o primeiro. */
+  escopos?: EscopoDeEdicao[];
 }) {
   const [estado, acao] = useActionState<EstadoDoEvento, FormData>(enviar, {});
   // Depois de um erro, o formulário volta com o que foi digitado.
@@ -35,6 +43,8 @@ export function FormularioEvento({
 
   return (
     <form key={estado.tentativa ?? 0} action={acao} className="flex flex-col gap-4">
+      {escopos && <EscopoDaEdicao escopos={escopos} valor={valor("escopo")} />}
+
       <Campo rotulo="Título" name="titulo" defaultValue={valor("titulo")} required />
 
       <fieldset className="grid grid-cols-2 gap-3">
@@ -44,6 +54,8 @@ export function FormularioEvento({
         <Campo rotulo="Fim (data)" name="data_fim" type="date" defaultValue={valor("data_fim")} />
         <Campo rotulo="Fim (hora)" name="hora_fim" type="time" defaultValue={valor("hora_fim")} />
       </fieldset>
+
+      {repete && <Repeticao valor={valor} />}
 
       <Campo rotulo="Local" name="local" defaultValue={valor("local")} />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -73,6 +85,28 @@ export function FormularioEvento({
       <Mensagens estado={estado} />
       <BotaoEnviar pendente={botao.pendente}>{botao.texto}</BotaoEnviar>
     </form>
+  );
+}
+
+/** O que a edição de uma Ocorrência altera: só ela, as daqui em diante ou todas as que ainda podem mudar. */
+function EscopoDaEdicao({ escopos, valor }: { escopos: EscopoDeEdicao[]; valor: string }) {
+  const escolhido = escopos.find((e) => e === valor) ?? "esta";
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-borda p-3">
+      <legend className="px-1 text-sm font-medium">Este Evento é uma Ocorrência de uma Série. Alterar</legend>
+      {escopos.map((escopo) => (
+        <label key={escopo} className="flex items-center gap-2 text-sm">
+          <input type="radio" name="escopo" value={escopo} defaultChecked={escopo === escolhido} className="size-4 accent-marca" />
+          {NOMES_DOS_ESCOPOS[escopo]}
+        </label>
+      ))}
+      {escopos.length > 1 && (
+        <p className="text-sm text-texto-suave">
+          Para as seguintes ou toda a série, valem o horário e os campos que você mudou, não a data nem o Status. Ocorrências editadas à
+          parte, Realizadas e Canceladas não são tocadas.
+        </p>
+      )}
+    </fieldset>
   );
 }
 

@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
+import { podeCriarEvento } from "@/dominio/catalogo";
 import { lerEdicao, lerEvento, podeEditarEvento, type CategoriaDoEvento, type EntradaDeEvento, type Evento } from "@/dominio/eventos";
+import { editarSerie, escoposDeEdicao, lerSerie, type EntradaDeRegra, type EscopoDeEdicao } from "@/dominio/series";
 import { campoTexto, nomeDoCampoEspecifico } from "@/lib/campos";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
-import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, opcoesDaLideranca } from "./consultas";
+import { colunas, linhaDaAlteracao } from "./colunas";
+import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, opcoesDaLideranca, serie as buscarSerie } from "./consultas";
 
 /** Em caso de erro, devolve o que foi digitado para o formulário não perder nada. */
 export type EstadoDoEvento = EstadoFormulario & { valores?: Record<string, string>; tentativa?: number };
@@ -33,22 +36,35 @@ function entradaDoFormulario(dados: FormData, categoria: CategoriaDoEvento): Ent
   };
 }
 
-/** As colunas de `public.eventos` que a criação e a edição gravam. */
-const colunas = (evento: Evento) => ({
-  titulo: evento.titulo,
-  inicio: evento.inicio.toISOString(),
-  fim: evento.fim?.toISOString() ?? null,
-  dia_inteiro: evento.diaInteiro,
-  local: evento.local,
-  responsavel_id: evento.responsavel,
-  status: evento.status,
-  observacoes: evento.observacoes,
-  link: evento.link,
-  campos: evento.campos,
+function entradaDaRegra(dados: FormData): EntradaDeRegra {
+  return {
+    frequencia: campoTexto(dados, "repeticao"),
+    dias: dados.getAll("repete_dias").map(String),
+    posicao: campoTexto(dados, "repete_posicao"),
+    diaDaSemana: campoTexto(dados, "repete_dia_da_semana"),
+    terminoPor: campoTexto(dados, "termino_por"),
+    terminoData: campoTexto(dados, "termino_data"),
+    terminoOcorrencias: campoTexto(dados, "termino_ocorrencias"),
+  };
+}
+
+/** Só o Evento: o que o módulo de domínio compara, sem o que a consulta acrescenta. */
+const soOEvento = (e: Evento): Evento => ({
+  titulo: e.titulo,
+  inicio: e.inicio,
+  fim: e.fim,
+  diaInteiro: e.diaInteiro,
+  local: e.local,
+  responsavel: e.responsavel,
+  status: e.status,
+  observacoes: e.observacoes,
+  link: e.link,
+  campos: e.campos,
 });
 
 export async function criarEvento(categoriaId: string, anterior: EstadoDoEvento, dados: FormData): Promise<EstadoDoEvento> {
-  const valores = valoresDigitados(dados);
+  // Os dias da regra vêm em várias caixas de marcar com o mesmo nome; o formulário os recebe de volta numa lista.
+  const valores = { ...valoresDigitados(dados), repete_dias: dados.getAll("repete_dias").join(",") };
   const falhou = (erro: string): EstadoDoEvento => ({ erro, valores, tentativa: (anterior.tentativa ?? 0) + 1 });
 
   const supabase = await supabaseDoServidor();
@@ -58,12 +74,29 @@ export async function criarEvento(categoriaId: string, anterior: EstadoDoEvento,
   const lido = lerEvento(entradaDoFormulario(dados, categoria), categoria, lideranca.map((p) => p.valor));
   if ("erro" in lido) return falhou(lido.erro);
 
-  const { error } = await supabase.from("eventos").insert({ ...colunas(lido.evento), categoria_id: categoria.id });
+  // Com repetição, o Evento do formulário é o modelo de uma Série, criada com todas as Ocorrências de uma vez.
+  const { error } = campoTexto(dados, "repeticao")
+    ? await criarSerie(supabase, categoria.id, lido.evento, dados)
+    : await supabase.from("eventos").insert({ ...colunas(lido.evento), categoria_id: categoria.id });
+  if (error && "erro" in error) return falhou(error.erro);
   if (error?.code === SEM_PERMISSAO) return falhou("Você não tem Função na Área desta Categoria.");
   if (error) return falhou("Não foi possível criar o Evento.");
 
   revalidatePath("/");
   redirect("/");
+}
+
+type Supabase = Awaited<ReturnType<typeof supabaseDoServidor>>;
+
+async function criarSerie(supabase: Supabase, categoria: string, modelo: Evento, dados: FormData) {
+  const serie = lerSerie(modelo, entradaDaRegra(dados));
+  if ("erro" in serie) return { error: serie };
+  return supabase.rpc("criar_serie", {
+    categoria,
+    regra: serie.regra,
+    primeiro_dia: serie.primeiroDia,
+    ocorrencias: serie.ocorrencias.map(colunas),
+  });
 }
 
 export async function editarEvento(id: string, anterior: EstadoDoEvento, dados: FormData): Promise<EstadoDoEvento> {
@@ -88,9 +121,32 @@ export async function editarEvento(id: string, anterior: EstadoDoEvento, dados: 
   });
   if ("erro" in lido) return falhou(lido.erro);
 
-  const { data, error } = await supabase.from("eventos").update(colunas(lido.evento)).eq("id", id).select("id");
-  if (error?.code === SEM_PERMISSAO || data?.length === 0) return falhou("Você não pode fazer esta alteração.");
-  if (error) return falhou("Não foi possível salvar o Evento.");
+  if (gravado.serieId) {
+    // Uma Ocorrência: o escopo diz quais outras da Série levam a mudança. Só quem edita a Categoria escolhe além de "só esta".
+    const escopos = escoposDeEdicao(podeCriarEvento(eu, areas, gravado.categoria));
+    const escopo = escopos.find((e: EscopoDeEdicao) => e === campoTexto(dados, "escopo")) ?? "esta";
+    const serie = await buscarSerie(supabase, gravado.serieId);
+    if (!serie) return falhou("Série não encontrada.");
+
+    const edicao = editarSerie({
+      ocorrencias: serie.ocorrencias,
+      alvo: id,
+      escopo,
+      anterior: soOEvento(gravado),
+      novo: lido.evento,
+      quem: eu,
+      agora: new Date(),
+    });
+    if ("erro" in edicao) return falhou(edicao.erro);
+
+    const { error } = await supabase.rpc("editar_eventos", { alteracoes: edicao.alteracoes.map(linhaDaAlteracao) });
+    if (error?.code === SEM_PERMISSAO) return falhou("Você não pode alterar todas essas Ocorrências.");
+    if (error) return falhou("Não foi possível salvar o Evento.");
+  } else {
+    const { data, error } = await supabase.from("eventos").update(colunas(lido.evento)).eq("id", id).select("id");
+    if (error?.code === SEM_PERMISSAO || data?.length === 0) return falhou("Você não pode fazer esta alteração.");
+    if (error) return falhou("Não foi possível salvar o Evento.");
+  }
 
   revalidatePath("/", "layout");
   redirect(`/eventos/${id}`);

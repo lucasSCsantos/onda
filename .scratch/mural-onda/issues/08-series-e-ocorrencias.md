@@ -4,13 +4,13 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Criar Série semanal, quinzenal e mensal com término por data ou por contagem
-- [ ] Mensal pelo N-ésimo dia da semana, incluindo o último do mês
-- [ ] Cancelar uma única Ocorrência não afeta as demais
-- [ ] "Esta e as seguintes" e "toda a série" não sobrescrevem Ocorrências editadas nem mexem em Realizadas ou Canceladas
-- [ ] Ocorrência editada continua na Série, marcada como editada
-- [ ] Encerrar Série e cancelar todas as futuras funcionam
-- [ ] Só o Admin exclui Série
-- [ ] Testes no módulo de domínio para expansão e para os três escopos de edição
+- [x] Criar Série semanal, quinzenal e mensal com término por data ou por contagem
+- [x] Mensal pelo N-ésimo dia da semana, incluindo o último do mês
+- [x] Cancelar uma única Ocorrência não afeta as demais
+- [x] "Esta e as seguintes" e "toda a série" não sobrescrevem Ocorrências editadas nem mexem em Realizadas ou Canceladas
+- [x] Ocorrência editada continua na Série, marcada como editada
+- [x] Encerrar Série e cancelar todas as futuras funcionam
+- [x] Só o Admin exclui Série
+- [x] Testes no módulo de domínio para expansão e para os três escopos de edição

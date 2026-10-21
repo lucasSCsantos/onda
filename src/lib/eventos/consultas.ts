@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
+import type { OcorrenciaGravada, RegraDaSerie } from "@/dominio/series";
 
 /** Áreas das Funções de uma pessoa, para saber de quais Categorias ela cria Eventos. */
 export async function areasDaPessoa(supabase: SupabaseClient, pessoa: string): Promise<string[]> {
@@ -132,6 +133,9 @@ export type EventoCompleto = Evento & {
   categoria: CategoriaComArea;
   /** O Responsável gravado, mesmo desativado; `semResponsavel` decide se ele ainda conta. */
   pessoaResponsavel: PessoaGravada | null;
+  /** A Série de que o Evento é Ocorrência, e se foi editado individualmente. */
+  serieId: string | null;
+  editada: boolean;
   criadoPor: string;
   criadoEm: Date;
   editadoPor: string | null;
@@ -145,6 +149,8 @@ type EventoCompletoDoBanco = Omit<EventoDoBanco, "categorias" | "responsavel"> &
   campos: Evento["campos"];
   criado_em: string;
   editado_em: string | null;
+  serie_id: string | null;
+  editada: boolean;
   categorias: CategoriaDoBanco;
   responsavel: PessoaGravada | null;
   criador: { nome: string };
@@ -156,7 +162,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
   const { data: e } = await supabase
     .from("eventos")
     .select(
-      `id, titulo, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em,
+      `id, titulo, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada,
       categorias(${SELECAO_DA_CATEGORIA}),
       responsavel:perfis!eventos_responsavel_id_fkey(id, nome, ativo),
       criador:perfis!eventos_criado_por_fkey(nome),
@@ -180,6 +186,8 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
     link: e.link,
     campos: e.campos,
     categoria: comArea(e.categorias),
+    serieId: e.serie_id,
+    editada: e.editada,
     pessoaResponsavel: e.responsavel,
     criadoPor: e.criador.nome,
     criadoEm: new Date(e.criado_em),
@@ -193,4 +201,56 @@ export async function pessoas(supabase: SupabaseClient, ids: string[]): Promise<
   if (ids.length === 0) return new Map();
   const { data } = await supabase.from("perfis").select("id, nome, ativo").in("id", ids).overrideTypes<PessoaGravada[], { merge: false }>();
   return new Map((data ?? []).map((p) => [p.id, p]));
+}
+
+export type SerieCompleta = {
+  id: string;
+  regra: RegraDaSerie;
+  /** Dia em que a Série foi encerrada, `AAAA-MM-DD`. */
+  encerradaEm: string | null;
+  ocorrencias: OcorrenciaGravada[];
+};
+
+type OcorrenciaDoBanco = Omit<EventoCompletoDoBanco, "categorias" | "responsavel" | "criador" | "editor" | "criado_em" | "editado_em"> & {
+  responsavel_id: string | null;
+};
+
+/** Uma Série com todas as Ocorrências, em ordem cronológica, para a edição em série. */
+export async function serie(supabase: SupabaseClient, id: string): Promise<SerieCompleta | null> {
+  const { data: s } = await supabase
+    .from("series")
+    .select("id, regra, encerrada_em")
+    .eq("id", id)
+    .maybeSingle()
+    .overrideTypes<{ id: string; regra: RegraDaSerie; encerrada_em: string | null }, { merge: false }>();
+  if (!s) return null;
+
+  const { data } = await supabase
+    .from("eventos")
+    .select("id, titulo, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, editada")
+    .eq("serie_id", id)
+    .order("inicio")
+    .overrideTypes<OcorrenciaDoBanco[], { merge: false }>();
+
+  return {
+    id: s.id,
+    regra: s.regra,
+    encerradaEm: s.encerrada_em,
+    ocorrencias: (data ?? []).map((e) => ({
+      id: e.id,
+      editada: e.editada,
+      evento: {
+        titulo: e.titulo,
+        inicio: new Date(e.inicio),
+        fim: e.fim ? new Date(e.fim) : null,
+        diaInteiro: e.dia_inteiro,
+        local: e.local,
+        responsavel: e.responsavel_id,
+        status: e.status,
+        observacoes: e.observacoes,
+        link: e.link,
+        campos: e.campos,
+      },
+    })),
+  };
 }
