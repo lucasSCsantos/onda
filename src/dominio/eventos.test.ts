@@ -168,7 +168,7 @@ describe("campos específicos da Categoria", () => {
     expect(erro(comCampos({ tema: "Davi", professor: "desconhecido" }))).toBe("Escolha uma pessoa da Liderança em “professor”.");
   });
 
-  it("checklist ainda não é preenchido na criação (ticket 12)", () => {
+  it("o checklist não é preenchido no formulário", () => {
     const acampamento = { nome: "Acampamento", campos: [campo("tarefas", "checklist")] };
     expect(evento(comCampos({ tarefas: "Reservar ônibus" }, acampamento)).campos).toEqual({});
   });

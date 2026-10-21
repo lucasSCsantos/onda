@@ -185,3 +185,39 @@ describe("erroNaFuncao", () => {
     expect(erroNaFuncao({ nome: "Líder do som", area: "Louvor" })).toBeNull();
   });
 });
+
+describe("Acampamento e Evento extra", () => {
+  const categoria = (nome: string) => CATALOGO_INICIAL.categorias.find((c) => c.nome === nome)!;
+  const campos = (nome: string) => categoria(nome).campos.map((c) => [c.nome, c.tipo]);
+
+  it("o Acampamento tem os campos da spec, com o checklist; local e período vêm do Evento", () => {
+    expect(campos("Acampamento")).toEqual([
+      ["Tema", "texto_curto"],
+      ["Valor", "valor"],
+      ["Link de inscrição", "link"],
+      ["Link da autorização dos pais", "link"],
+      ["Itens a levar", "lista"],
+      ["Checklist", "checklist"],
+      ["Anotações", "texto_longo"],
+      ["Link dos materiais", "link"],
+    ]);
+  });
+
+  it("o Evento extra tem tipo, parceiro, valor, link de inscrição e o que levar", () => {
+    expect(campos("Evento extra")).toEqual([
+      ["Tipo", "escolha"],
+      ["Parceiro", "texto_curto"],
+      ["Valor", "valor"],
+      ["Link de inscrição", "link"],
+      ["O que levar", "lista"],
+    ]);
+    expect(categoria("Evento extra").campos[0].opcoes).toEqual(["Gincana", "Intercâmbio", "Campeonato", "Outro"]);
+  });
+
+  it("o checklist pode ser acrescentado a qualquer Categoria pela configuração", () => {
+    for (const { campos: existentes } of CATALOGO_INICIAL.categorias) {
+      const comChecklist = [...existentes, { nome: "Providências", tipo: "checklist" as const, obrigatorio: false, opcoes: [] }];
+      expect(erroNosCampos(comChecklist)).toBeNull();
+    }
+  });
+});

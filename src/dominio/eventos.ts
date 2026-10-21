@@ -1,4 +1,5 @@
 import type { Pessoa } from "./acesso";
+import type { ItemDoChecklist } from "./checklist";
 import { podeCriarEvento, type CampoCadastrado, type CampoDaCategoria } from "./catalogo";
 import { dataLocal, horaLocal, meiaNoite, somarDias } from "./fuso";
 
@@ -55,16 +56,20 @@ export type Evento = {
 /**
  * Como cada tipo de campo é guardado: textos, links, escolhas e pessoas (o id) como texto; o valor em reais
  * em centavos; a data como `AAAA-MM-DD` e a data e hora como `AAAA-MM-DDTHH:MM`, no fuso do Mural; a lista
- * como lista de textos. O checklist só ganha comportamento no ticket 12.
+ * como lista de textos; o checklist como lista de tarefas (`checklist.ts`).
  */
-export type ValorDeCampo = string | number | string[];
+export type ValorDeCampo = string | number | string[] | ItemDoChecklist[];
 
 export type CategoriaDoEvento = { nome: string; campos: CampoCadastrado[] };
 
-/** Os campos específicos preenchidos ao criar um Evento: todos, menos o checklist, que só ganha comportamento no ticket 12. */
+/** Os campos específicos do formulário: todos, menos o checklist, que quem edita o Evento mexe na página dele (`checklist.ts`). */
 export function camposDaCriacao(categoria: CategoriaDoEvento): CampoCadastrado[] {
   return categoria.campos.filter((campo) => campo.tipo !== "checklist");
 }
+
+/** Os campos checklist da Categoria. */
+export const camposChecklist = (categoria: CategoriaDoEvento): CampoCadastrado[] =>
+  categoria.campos.filter((campo) => campo.tipo === "checklist");
 
 /**
  * Confere e converte o que veio do formulário num Evento pronto para gravar, ou diz o que impede.
@@ -84,7 +89,7 @@ export type ContextoDaEdicao = { anterior: Evento; quem: Pessoa; agora: Date };
 /**
  * Confere e converte a edição de um Evento, como `lerEvento`, com o que muda numa edição: qualquer Status, com o
  * Realizado manual só para quem pode marcá-lo, e nunca antes do fim; o Responsável e as pessoas dos campos já gravados podem ficar mesmo
- * se foram desativados; o checklist fica como estava; e remarcar um Adiado (mudar início ou fim) o volta a Planejado.
+ * se foram desativados; o checklist fica como estava (só muda na página do Evento); e remarcar um Adiado (mudar início ou fim) o volta a Planejado.
  * Quem pode editar é `podeEditarEvento`.
  */
 export function lerEdicao(

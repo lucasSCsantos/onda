@@ -6,6 +6,7 @@ import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeCriarEvento, type CampoCadastrado } from "@/dominio/catalogo";
 import {
+  camposChecklist,
   camposDaCriacao,
   diaDe,
   entradaDoEvento,
@@ -15,12 +16,14 @@ import {
   semResponsavel,
   statusNoMomento,
 } from "@/dominio/eventos";
+import { eChecklist } from "@/dominio/checklist";
 import { FUSO } from "@/dominio/fuso";
 import { descreverRegra, formatarDia } from "@/dominio/series";
 import { exigirLideranca } from "@/lib/contas/perfil";
 import { areasDaPessoa, evento as buscarEvento, pessoas, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { BotaoExcluir } from "./botao-excluir";
+import { Checklist } from "./checklist";
 import { PainelDaSerie } from "./painel-da-serie";
 
 export const metadata: Metadata = { title: "Evento" };
@@ -53,6 +56,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const agora = new Date();
   const status = statusNoMomento(evento, agora);
   const responsavel = evento.pessoaResponsavel;
+  const edita = podeEditarEvento(eu, areas, evento);
   const campos = camposDaCriacao(evento.categoria).filter((c) => evento.campos[c.id] !== undefined);
   const nomes = await pessoas(
     supabase,
@@ -126,6 +130,16 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
               {valorDoCampo(c)}
             </Item>
           ))}
+          {camposChecklist(evento.categoria)
+            .filter((c) => edita || evento.campos[c.id] !== undefined)
+            .map((c) => {
+              const itens = evento.campos[c.id];
+              return (
+                <Item key={c.id} rotulo={c.nome}>
+                  <Checklist eventoId={evento.id} campoId={c.id} itens={eChecklist(itens) ? itens : []} edita={edita} />
+                </Item>
+              );
+            })}
           {evento.link && (
             <Item rotulo="Link">
               <Externo href={evento.link} />
@@ -144,7 +158,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
-          {podeEditarEvento(eu, areas, evento) && (
+          {edita && (
             <Link href={`/eventos/${evento.id}/editar`} className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
               Editar
             </Link>

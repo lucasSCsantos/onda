@@ -255,8 +255,8 @@ describe("editar", () => {
     expect(erro(editar(outro, { campos: { anfitriao: "denize-saiu" } }))).toBe("Escolha uma pessoa da Liderança em “anfitriao”.");
   });
 
-  it("o checklist, que o formulário ainda não mostra, fica como estava (ticket 12)", () => {
-    const tarefas = [{ texto: "Comprar prêmios", feito: false }] as unknown as string[];
+  it("o checklist, que o formulário não mostra, fica como estava", () => {
+    const tarefas = [{ texto: "Comprar prêmios", feito: false }];
     expect(editado(editar(gravado({ campos: { tarefas } }))).campos.tarefas).toEqual(tarefas);
   });
 

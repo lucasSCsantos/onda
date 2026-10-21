@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
+import { eChecklist, lerMudancaDoChecklist, mudarChecklist } from "@/dominio/checklist";
 import { podeCriarEvento } from "@/dominio/catalogo";
-import { lerEdicao, lerEvento, podeEditarEvento, type CategoriaDoEvento, type EntradaDeEvento, type Evento } from "@/dominio/eventos";
+import { camposChecklist, lerEdicao, lerEvento, podeEditarEvento, type CategoriaDoEvento, type EntradaDeEvento, type Evento } from "@/dominio/eventos";
 import { editarSerie, escoposDeEdicao, lerSerie, type EntradaDeRegra, type EscopoDeEdicao } from "@/dominio/series";
 import { campoTexto, nomeDoCampoEspecifico } from "@/lib/campos";
 import { perfilAtual } from "@/lib/contas/perfil";
@@ -160,4 +161,37 @@ export async function excluirEvento(id: string): Promise<EstadoFormulario> {
 
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+/** Marca, desmarca, adiciona ou remove uma tarefa do checklist; só quem edita o Evento (`podeEditarEvento`), e a política de edição confere. */
+export async function mudarChecklistDoEvento(
+  eventoId: string,
+  campoId: string,
+  _anterior: EstadoFormulario,
+  dados: FormData,
+): Promise<EstadoFormulario> {
+  const supabase = await supabaseDoServidor();
+  const eu = await perfilAtual();
+  if (!eu) return { erro: "Entre de novo para mexer no checklist." };
+  const [gravado, areas] = await Promise.all([buscarEvento(supabase, eventoId), areasDaPessoa(supabase, eu.id)]);
+  if (!gravado) return { erro: "Evento não encontrado." };
+  if (!podeEditarEvento(eu, areas, gravado)) return { erro: "Você não pode editar este Evento." };
+  if (!camposChecklist(gravado.categoria).some((c) => c.id === campoId)) return { erro: "Checklist não encontrado." };
+
+  const atual = gravado.campos[campoId];
+  const mudanca = lerMudancaDoChecklist(campoTexto(dados, "mudanca"), campoTexto(dados, "texto"));
+  const itens = mudarChecklist(Array.isArray(atual) && eChecklist(atual) ? atual : [], mudanca);
+  if ("erro" in itens) return { erro: itens.erro };
+
+  // Um checklist vazio sai do Evento, como os demais campos opcionais vazios.
+  const campos = { ...gravado.campos };
+  if (itens.itens.length > 0) campos[campoId] = itens.itens;
+  else delete campos[campoId];
+
+  const { data, error } = await supabase.from("eventos").update({ campos }).eq("id", eventoId).select("id");
+  if (error?.code === SEM_PERMISSAO || data?.length === 0) return { erro: "Você não pode fazer esta alteração." };
+  if (error) return { erro: "Não foi possível salvar o checklist." };
+
+  revalidatePath(`/eventos/${eventoId}`);
+  return {};
 }
