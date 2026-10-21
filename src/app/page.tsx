@@ -4,6 +4,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
 import { podeVerTodosOsEventos } from "@/dominio/eventos";
+import { FUSO } from "@/dominio/fuso";
 import { alertas, filtrar, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, proximosEventos } from "@/dominio/filtros";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { categorias, eventos } from "@/lib/eventos/consultas";
@@ -59,7 +60,7 @@ export default async function Inicio(props: PageProps<"/">) {
                           <Link href={`/eventos/${e.id}`} className="underline">
                             {e.titulo}
                           </Link>
-                          <span className="text-texto-suave"> · {e.inicio.toLocaleDateString("pt-BR", { timeZone: "America/Bahia", day: "2-digit", month: "2-digit" })}</span>
+                          <span className="text-texto-suave"> · {e.inicio.toLocaleDateString("pt-BR", { timeZone: FUSO, day: "2-digit", month: "2-digit" })}</span>
                         </li>
                       ))}
                     </ul>

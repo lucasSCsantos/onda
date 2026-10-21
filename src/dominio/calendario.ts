@@ -73,7 +73,7 @@ export function lerPosicao(
   return { visao, dia: diaValido(dia) ? dia : diaDe(agora) };
 }
 
-type NoCalendario = { inicio: Date; fim: Date | null; diaInteiro: boolean };
+export type NoCalendario = { inicio: Date; fim: Date | null; diaInteiro: boolean };
 
 /** O último dia que um Evento ocupa: o do fim, ou o anterior quando um Evento com hora acaba à meia-noite. */
 export function ultimoDia(evento: NoCalendario): string {

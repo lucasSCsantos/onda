@@ -1,8 +1,6 @@
-import { diaValido, ultimoDia } from "./calendario";
+import { diaValido, ultimoDia, type NoCalendario } from "./calendario";
 import { diaDe, STATUS, terminou, type Status } from "./eventos";
 import { semanaDe } from "./semana";
-
-type NoCalendario = { inicio: Date; fim: Date | null; diaInteiro: boolean };
 
 /** O que os filtros precisam saber de um Evento. `envolvidos` são os ids do Responsável, do Professor e do Auxiliar. */
 export type EventoFiltravel = NoCalendario & {
