@@ -8,9 +8,10 @@ import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
 import { diaDe, podeVerTodosOsEventos } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
 import { alertas, filtrar, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, proximosEventos } from "@/dominio/filtros";
+import { podeCadastrarProfessor } from "@/dominio/professores";
 import { aniversariaveis } from "@/lib/aniversarios/consultas";
 import { perfilAtual } from "@/lib/contas/perfil";
-import { categorias, eventos } from "@/lib/eventos/consultas";
+import { areasDaPessoa, categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { CartaoDeEvento } from "./lista-de-eventos";
 
@@ -31,13 +32,21 @@ export default async function Inicio(props: PageProps<"/">) {
   const [todos, doCatalogo, quemFazAnos] = veEventos
     ? await Promise.all([eventos(supabase), categorias(supabase), aniversariaveis(supabase, perfil)])
     : [[], [], []];
+  // O Professor lê só as aulas em que foi colocado (as políticas por linha filtram); os demais níveis não consultam.
+  const aulas = tela === "mural" && perfil.nivel === "professor" ? proximosEventos(await eventos(supabase), agora) : null;
+  const areas = perfil.nivel === "lider" ? await areasDaPessoa(supabase, perfil.id) : [];
   const aniversariantes = aniversariosVisiveis(perfil, aniversariantesDoMes(quemFazAnos, diaDe(agora)));
   const proximos = proximosEventos(filtrar(todos, filtros, { eu: perfil.id, agora }), agora);
   const aviso = alertas(todos, agora);
 
   return (
     <>
-      <Cabecalho admin={podeGerenciarContas(perfil)} lideranca={veEventos} />
+      <Cabecalho
+        admin={podeGerenciarContas(perfil)}
+        lideranca={veEventos}
+        calendario={veEventos || aulas !== null}
+        professores={podeCadastrarProfessor(perfil, areas)}
+      />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
         <h1 className="text-2xl font-semibold">Olá{perfil.nome ? `, ${perfil.nome}` : ""}!</h1>
         {tela === "aguardando-aprovacao" && (
@@ -49,7 +58,25 @@ export default async function Inicio(props: PageProps<"/">) {
         {tela === "conta-desativada" && (
           <p className="mt-2 text-texto-suave">Sua conta foi desativada. Fale com um Admin se precisar de acesso.</p>
         )}
-        {tela === "mural" && !veEventos && <p className="mt-2 text-texto-suave">Suas aulas vão aparecer aqui.</p>}
+        {aulas && (
+          <section className="mt-6 flex flex-col gap-4">
+            <h2 className="text-xl font-semibold">Suas aulas</h2>
+            {GRUPOS.every(({ chave }) => aulas[chave].length === 0) ? (
+              <p className="text-texto-suave">Você ainda não foi colocado em nenhuma aula. Elas aparecem aqui assim que a Liderança escolher você.</p>
+            ) : (
+              GRUPOS.filter(({ chave }) => aulas[chave].length > 0).map(({ chave, titulo }) => (
+                <div key={chave} className="flex flex-col gap-2">
+                  <h3 className="text-sm font-semibold text-texto-suave">{titulo}</h3>
+                  <ul className="flex flex-col gap-2">
+                    {aulas[chave].map((e) => (
+                      <CartaoDeEvento key={e.id} evento={e} eu={perfil.id} mostraResponsavel={false} />
+                    ))}
+                  </ul>
+                </div>
+              ))
+            )}
+          </section>
+        )}
         {veEventos && (
           <div className="mt-6 flex flex-col gap-6">
             {aviso.length > 0 && (

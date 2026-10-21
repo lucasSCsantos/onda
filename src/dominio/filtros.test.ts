@@ -173,3 +173,32 @@ describe("alertas", () => {
     expect(tipos([evento("2026-10-30", { status: "confirmado" })])).toEqual([]);
   });
 });
+
+describe("alerta de aula sem Professor", () => {
+  type Aula = ReturnType<typeof evento> & { semProfessor?: boolean };
+  const tipos = (eventos: Aula[]) => alertas(eventos, agora).map((a) => a.tipo);
+
+  it("avisa a aula sem Professor que ainda não terminou, em Rascunho, Planejado ou Confirmado", () => {
+    for (const status of ["rascunho", "planejado", "confirmado"] as Status[]) {
+      expect(tipos([{ ...evento("2026-10-24", { status }), semProfessor: true }])).toContain("aula-sem-professor");
+    }
+  });
+
+  it("não avisa aula com Professor, vencida, Adiada, Cancelada ou Realizada", () => {
+    expect(tipos([{ ...evento("2026-10-24"), semProfessor: false }])).toEqual([]);
+    expect(tipos([evento("2026-10-24")])).toEqual([]);
+    // Vencida: já passou da data, então só o alerta de vencido vale.
+    expect(tipos([{ ...evento("2026-10-14"), semProfessor: true }])).toEqual(["vencido"]);
+    for (const status of ["adiado", "cancelado", "realizado"] as Status[]) {
+      expect(tipos([{ ...evento("2026-10-24", { status }), semProfessor: true }])).toEqual([]);
+    }
+  });
+
+  it("um Rascunho sem Professor e sem Responsável cai em três alertas, sem impedir nada", () => {
+    expect(tipos([{ ...evento("2026-10-24", { status: "rascunho", responsavel: null }), semProfessor: true }])).toEqual([
+      "sem-responsavel",
+      "aula-sem-professor",
+      "rascunho",
+    ]);
+  });
+});

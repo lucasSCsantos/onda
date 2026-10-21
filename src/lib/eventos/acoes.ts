@@ -7,11 +7,12 @@ import { eChecklist, lerMudancaDoChecklist, mudarChecklist } from "@/dominio/che
 import { podeCriarEvento } from "@/dominio/catalogo";
 import { camposChecklist, lerEdicao, lerEvento, podeEditarEvento, type CategoriaDoEvento, type EntradaDeEvento, type Evento } from "@/dominio/eventos";
 import { editarSerie, escoposDeEdicao, lerSerie, type EntradaDeRegra, type EscopoDeEdicao } from "@/dominio/series";
+import { podeEditarSoAsObservacoes } from "@/dominio/professores";
 import { campoTexto, nomeDoCampoEspecifico } from "@/lib/campos";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { colunas, linhaDaAlteracao } from "./colunas";
-import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, opcoesDaLideranca, serie as buscarSerie } from "./consultas";
+import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, opcoesDaLideranca, opcoesDeProfessores, serie as buscarSerie } from "./consultas";
 
 /** Em caso de erro, devolve o que foi digitado para o formulário não perder nada. */
 export type EstadoDoEvento = EstadoFormulario & { valores?: Record<string, string>; tentativa?: number };
@@ -69,10 +70,19 @@ export async function criarEvento(categoriaId: string, anterior: EstadoDoEvento,
   const falhou = (erro: string): EstadoDoEvento => ({ erro, valores, tentativa: (anterior.tentativa ?? 0) + 1 });
 
   const supabase = await supabaseDoServidor();
-  const [categoria, lideranca] = await Promise.all([buscarCategoria(supabase, categoriaId), opcoesDaLideranca(supabase)]);
+  const [categoria, lideranca, professores] = await Promise.all([
+    buscarCategoria(supabase, categoriaId),
+    opcoesDaLideranca(supabase),
+    opcoesDeProfessores(supabase),
+  ]);
   if (!categoria) return falhou("Categoria não encontrada.");
 
-  const lido = lerEvento(entradaDoFormulario(dados, categoria), categoria, lideranca.map((p) => p.valor));
+  const lido = lerEvento(
+    entradaDoFormulario(dados, categoria),
+    categoria,
+    lideranca.map((p) => p.valor),
+    professores.map((p) => p.valor),
+  );
   if ("erro" in lido) return falhou(lido.erro);
 
   // Com repetição, o Evento do formulário é o modelo de uma Série, criada com todas as Ocorrências de uma vez.
@@ -107,19 +117,22 @@ export async function editarEvento(id: string, anterior: EstadoDoEvento, dados: 
   const supabase = await supabaseDoServidor();
   const eu = await perfilAtual();
   if (!eu) return falhou("Entre de novo para editar.");
-  const [gravado, areas, lideranca] = await Promise.all([
+  const [gravado, areas, lideranca, professores] = await Promise.all([
     buscarEvento(supabase, id),
     areasDaPessoa(supabase, eu.id),
     opcoesDaLideranca(supabase),
+    opcoesDeProfessores(supabase),
   ]);
   if (!gravado) return falhou("Evento não encontrado.");
   if (!podeEditarEvento(eu, areas, gravado)) return falhou("Você não pode editar este Evento.");
 
-  const lido = lerEdicao(entradaDoFormulario(dados, gravado.categoria), gravado.categoria, lideranca.map((p) => p.valor), {
-    anterior: gravado,
-    quem: eu,
-    agora: new Date(),
-  });
+  const lido = lerEdicao(
+    entradaDoFormulario(dados, gravado.categoria),
+    gravado.categoria,
+    lideranca.map((p) => p.valor),
+    { anterior: gravado, quem: eu, agora: new Date() },
+    professores.map((p) => p.valor),
+  );
   if ("erro" in lido) return falhou(lido.erro);
 
   if (gravado.serieId) {
@@ -151,6 +164,28 @@ export async function editarEvento(id: string, anterior: EstadoDoEvento, dados: 
 
   revalidatePath("/", "layout");
   redirect(`/eventos/${id}`);
+}
+
+/**
+ * O Professor e o Auxiliar de uma aula editam só as observações dela (`podeEditarSoAsObservacoes`); o banco confere,
+ * recusando qualquer outra coluna, e a política de edição, qualquer aula que não seja deles.
+ */
+export async function editarObservacoes(id: string, _anterior: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
+  const supabase = await supabaseDoServidor();
+  const eu = await perfilAtual();
+  if (!eu) return { erro: "Entre de novo para editar." };
+  const gravado = await buscarEvento(supabase, id);
+  if (!gravado) return { erro: "Evento não encontrado." };
+  if (!podeEditarSoAsObservacoes(eu, { campos: gravado.campos, definicoes: gravado.categoria.campos })) {
+    return { erro: "Você não pode editar as observações desta aula." };
+  }
+
+  const { data, error } = await supabase.from("eventos").update({ observacoes: campoTexto(dados, "observacoes") }).eq("id", id).select("id");
+  if (error?.code === SEM_PERMISSAO || data?.length === 0) return { erro: "Você não pode fazer esta alteração." };
+  if (error) return { erro: "Não foi possível salvar as observações." };
+
+  revalidatePath("/", "layout");
+  return { aviso: "Observações salvas." };
 }
 
 /** Só o Admin exclui (podeExcluirEvento); a política de exclusão confere. */

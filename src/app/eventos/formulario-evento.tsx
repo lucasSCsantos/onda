@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { BotaoEnviar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import type { CampoCadastrado } from "@/dominio/catalogo";
 import { camposDaCriacao, NOMES_DOS_STATUS, type Status } from "@/dominio/eventos";
+import { eCampoDeAula } from "@/dominio/professores";
 import { NOMES_DOS_ESCOPOS, type EscopoDeEdicao } from "@/dominio/series";
 import { nomeDoCampoEspecifico } from "@/lib/campos";
 import type { EstadoDoEvento } from "@/lib/eventos/acoes";
@@ -18,6 +19,7 @@ export function FormularioEvento({
   acao: enviar,
   categoria,
   lideranca,
+  professores = [],
   status,
   iniciais,
   rotuloDaData,
@@ -28,6 +30,8 @@ export function FormularioEvento({
   acao: (anterior: EstadoDoEvento, dados: FormData) => Promise<EstadoDoEvento>;
   categoria: CategoriaComArea;
   lideranca: Opcao[];
+  /** Os Professores que também podem ser escolhidos nos campos Professor e Auxiliar. */
+  professores?: Opcao[];
   status: readonly Status[];
   iniciais: Record<string, string>;
   rotuloDaData: string;
@@ -76,7 +80,12 @@ export function FormularioEvento({
       </div>
 
       {camposDaCriacao(categoria).map((c) => (
-        <CampoEspecifico key={c.id} campo={c} lideranca={lideranca} valor={valor(nomeDoCampoEspecifico(c.id))} />
+        <CampoEspecifico
+          key={c.id}
+          campo={c}
+          pessoas={eCampoDeAula(c) ? [...lideranca, ...professores] : lideranca}
+          valor={valor(nomeDoCampoEspecifico(c.id))}
+        />
       ))}
 
       <Campo rotulo="Link" name="link" type="url" placeholder="https://" defaultValue={valor("link")} />
@@ -113,11 +122,11 @@ function EscopoDaEdicao({ escopos, valor }: { escopos: EscopoDeEdicao[]; valor: 
 /** Um campo específico, conforme o tipo. */
 function CampoEspecifico({
   campo,
-  lideranca,
+  pessoas,
   valor,
 }: {
   campo: CampoCadastrado;
-  lideranca: Opcao[];
+  pessoas: Opcao[];
   valor: string;
 }) {
   const comum = { name: nomeDoCampoEspecifico(campo.id), defaultValue: valor, required: campo.obrigatorio };
@@ -140,7 +149,7 @@ function CampoEspecifico({
         <Selecao rotulo={rotulo} opcoes={campo.opcoes.map((o) => ({ valor: o, texto: o }))} vazia="Escolha" {...comum} />
       );
     case "pessoa":
-      return <Selecao rotulo={rotulo} opcoes={lideranca} vazia="Ninguém" {...comum} />;
+      return <Selecao rotulo={rotulo} opcoes={pessoas} vazia="Ninguém" {...comum} />;
     default:
       return <Campo rotulo={rotulo} {...comum} />;
   }

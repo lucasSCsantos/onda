@@ -2,15 +2,28 @@ import Link from "next/link";
 import { sair } from "@/lib/auth/acoes";
 import { Marca } from "./marca";
 
-/** Barra do topo das telas internas: logotipo, calendário e Adolescentes (Liderança), atalhos da administração (só Admin) e Sair. */
-export function Cabecalho({ admin = false, lideranca = admin }: { admin?: boolean; lideranca?: boolean }) {
+/**
+ * Barra do topo das telas internas: logotipo, calendário e Adolescentes (Liderança), Professores (Admin e quem tem
+ * Função em Ensino), atalhos da administração (só Admin) e Sair. O Professor vê só o calendário, com as aulas dele.
+ */
+export function Cabecalho({
+  admin = false,
+  lideranca = admin,
+  calendario = lideranca,
+  professores = admin,
+}: {
+  admin?: boolean;
+  lideranca?: boolean;
+  calendario?: boolean;
+  professores?: boolean;
+}) {
   return (
     <header className="flex items-center justify-between border-b border-borda bg-superficie px-4 py-3">
       <Link href="/" aria-label="Início">
         <Marca qual="logotipo" rotulo="ONDA" className="h-9 w-14 text-texto" />
       </Link>
       <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
-        {lideranca && (
+        {calendario && (
           <Link href="/calendario" className="text-texto-suave hover:text-texto">
             Calendário
           </Link>
@@ -18,6 +31,11 @@ export function Cabecalho({ admin = false, lideranca = admin }: { admin?: boolea
         {lideranca && (
           <Link href="/adolescentes" className="text-texto-suave hover:text-texto">
             Adolescentes
+          </Link>
+        )}
+        {professores && (
+          <Link href="/professores" className="text-texto-suave hover:text-texto">
+            Professores
           </Link>
         )}
         {admin && (

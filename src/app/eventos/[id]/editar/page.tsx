@@ -10,7 +10,7 @@ import { entradaDoEvento, podeEditarEvento, rotuloDaData, statusDaEdicao, status
 import { nomeDoCampoEspecifico } from "@/lib/campos";
 import { exigirLideranca } from "@/lib/contas/perfil";
 import { editarEvento } from "@/lib/eventos/acoes";
-import { areasDaPessoa, evento as buscarEvento, opcoesDaLideranca, pessoas } from "@/lib/eventos/consultas";
+import { areasDaPessoa, evento as buscarEvento, opcoesDaLideranca, opcoesDeProfessores, pessoas } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { FormularioEvento } from "../../formulario-evento";
 
@@ -20,10 +20,11 @@ export default async function PaginaEditarEvento(props: PageProps<"/eventos/[id]
   const eu = await exigirLideranca();
   const { id } = await props.params;
   const supabase = await supabaseDoServidor();
-  const [evento, areas, lideranca] = await Promise.all([
+  const [evento, areas, lideranca, professores] = await Promise.all([
     buscarEvento(supabase, id),
     areasDaPessoa(supabase, eu.id),
     opcoesDaLideranca(supabase),
+    opcoesDeProfessores(supabase),
   ]);
   if (!evento || !podeEditarEvento(eu, areas, evento)) notFound();
 
@@ -38,7 +39,7 @@ export default async function PaginaEditarEvento(props: PageProps<"/eventos/[id]
   };
 
   // Quem já está no Evento e foi desativado continua entre as opções, para poder ficar.
-  const ativos = new Set(lideranca.map((p) => p.valor));
+  const ativos = new Set([...lideranca, ...professores].map((p) => p.valor));
   const camposPessoa = evento.categoria.campos.filter((c) => c.tipo === "pessoa").map((c) => campos[c.id]);
   const gravadas = [evento.responsavel, ...camposPessoa].filter((v): v is string => !!v && !ativos.has(v));
   const desativadas = [...(await pessoas(supabase, gravadas)).values()];
@@ -62,6 +63,7 @@ export default async function PaginaEditarEvento(props: PageProps<"/eventos/[id]
           acao={editarEvento.bind(null, evento.id)}
           categoria={evento.categoria}
           lideranca={opcoes}
+          professores={professores}
           status={statusDaEdicao(eu, evento, agora)}
           iniciais={iniciais}
           rotuloDaData={rotuloDaData(evento.categoria)}

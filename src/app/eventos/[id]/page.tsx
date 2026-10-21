@@ -12,6 +12,7 @@ import {
   entradaDoEvento,
   podeEditarEvento,
   podeExcluirEvento,
+  podeVerTodosOsEventos,
   rotuloDaData,
   semResponsavel,
   statusNoMomento,
@@ -19,11 +20,13 @@ import {
 import { eChecklist } from "@/dominio/checklist";
 import { FUSO } from "@/dominio/fuso";
 import { descreverRegra, formatarDia } from "@/dominio/series";
-import { exigirLideranca } from "@/lib/contas/perfil";
-import { areasDaPessoa, evento as buscarEvento, pessoas, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
+import { podeEditarSoAsObservacoes } from "@/dominio/professores";
+import { exigirMural } from "@/lib/contas/perfil";
+import { areasDaPessoa, evento as buscarEvento, pessoas, pessoasDaAula, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { BotaoExcluir } from "./botao-excluir";
 import { Checklist } from "./checklist";
+import { ObservacoesDaAula } from "./observacoes-da-aula";
 import { PainelDaSerie } from "./painel-da-serie";
 
 export const metadata: Metadata = { title: "Evento" };
@@ -46,7 +49,7 @@ function quando(evento: EventoCompleto): string {
 }
 
 export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
-  const eu = await exigirLideranca();
+  const eu = await exigirMural();
   const { id } = await props.params;
   const supabase = await supabaseDoServidor();
   const [evento, areas] = await Promise.all([buscarEvento(supabase, id), areasDaPessoa(supabase, eu.id)]);
@@ -55,13 +58,18 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
   const agora = new Date();
   const status = statusNoMomento(evento, agora);
-  const responsavel = evento.pessoaResponsavel;
   const edita = podeEditarEvento(eu, areas, evento);
+  // O Professor vê a aula inteira, mas não lê as outras contas: os nomes dela vêm por `pessoas_da_aula`.
+  const soObservacoes = podeEditarSoAsObservacoes(eu, { campos: evento.campos, definicoes: evento.categoria.campos });
+  const lideranca = podeVerTodosOsEventos(eu);
   const campos = camposDaCriacao(evento.categoria).filter((c) => evento.campos[c.id] !== undefined);
-  const nomes = await pessoas(
-    supabase,
-    campos.filter((c) => c.tipo === "pessoa").map((c) => evento.campos[c.id] as string),
-  );
+  const nomes = lideranca
+    ? await pessoas(
+        supabase,
+        campos.filter((c) => c.tipo === "pessoa").map((c) => evento.campos[c.id] as string),
+      )
+    : await pessoasDaAula(supabase, id);
+  const responsavel = evento.pessoaResponsavel ?? (evento.responsavel ? (nomes.get(evento.responsavel) ?? null) : null);
   // Os valores como o formulário os mostra (o valor em reais com vírgula, a lista um item por linha).
   const textos = entradaDoEvento(evento, evento.categoria).campos;
 
@@ -95,7 +103,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
   return (
     <>
-      <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
+      <Cabecalho admin={podeGerenciarContas(eu)} lideranca={lideranca} calendario />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <Link href="/" className="text-sm text-texto-suave hover:text-texto">
           ‹ Eventos
@@ -145,17 +153,21 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
               <Externo href={evento.link} />
             </Item>
           )}
-          {evento.observacoes && (
+          {evento.observacoes && !soObservacoes && (
             <Item rotulo="Observações">
               <span className="whitespace-pre-line">{evento.observacoes}</span>
             </Item>
           )}
         </dl>
 
-        <p className="text-sm text-texto-suave">
-          Criado por {evento.criadoPor || "(sem nome)"} em {momento(evento.criadoEm)}.
-          {evento.editadoEm && ` Editado por último por ${evento.editadoPor || "(sem nome)"} em ${momento(evento.editadoEm)}.`}
-        </p>
+        {soObservacoes && <ObservacoesDaAula eventoId={evento.id} observacoes={evento.observacoes} />}
+
+        {lideranca && (
+          <p className="text-sm text-texto-suave">
+            Criado por {evento.criadoPor || "(sem nome)"} em {momento(evento.criadoEm)}.
+            {evento.editadoEm && ` Editado por último por ${evento.editadoPor || "(sem nome)"} em ${momento(evento.editadoEm)}.`}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           {edita && (

@@ -1,6 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import { podeGerenciarContas, type NivelDeAcesso, type Pessoa } from "@/dominio/acesso";
+import { podeGerenciarContas, telaInicial, type NivelDeAcesso, type Pessoa } from "@/dominio/acesso";
 import { podeVerTodosOsEventos } from "@/dominio/eventos";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
@@ -22,6 +22,13 @@ export async function perfilAtual(): Promise<PerfilAtual | null> {
 export async function exigirAdmin(): Promise<PerfilAtual> {
   const perfil = await perfilAtual();
   if (!perfil || !podeGerenciarContas(perfil)) redirect("/");
+  return perfil;
+}
+
+/** Para o calendário e o Evento: a Liderança ativa e o Professor ativo (que lê só as aulas dele); os demais voltam para o início. */
+export async function exigirMural(): Promise<PerfilAtual> {
+  const perfil = await perfilAtual();
+  if (!perfil || telaInicial(perfil) !== "mural") redirect("/");
   return perfil;
 }
 

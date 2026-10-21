@@ -2,6 +2,7 @@ import type { Pessoa } from "./acesso";
 import type { ItemDoChecklist } from "./checklist";
 import { podeCriarEvento, type CampoCadastrado, type CampoDaCategoria } from "./catalogo";
 import { dataLocal, horaLocal, meiaNoite, somarDias } from "./fuso";
+import { eCampoDeAula } from "./professores";
 
 /** Os estágios de um Evento. As transições são livres, menos o Realizado manual (podeMarcarRealizado). */
 export const STATUS = ["rascunho", "planejado", "confirmado", "realizado", "cancelado", "adiado"] as const;
@@ -73,14 +74,16 @@ export const camposChecklist = (categoria: CategoriaDoEvento): CampoCadastrado[]
 
 /**
  * Confere e converte o que veio do formulário num Evento pronto para gravar, ou diz o que impede.
- * `lideranca` são os ids de quem pode ser Responsável.
+ * `lideranca` são os ids de quem pode ser Responsável; `professores`, os dos Professores ativos, que podem ser escolhidos
+ * (junto com a Liderança) nos campos Professor e Auxiliar.
  */
 export function lerEvento(
   entrada: EntradaDeEvento,
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
+  professores: readonly string[] = [],
 ): { evento: Evento } | { erro: string } {
-  return lerFormulario(entrada, categoria, lideranca, STATUS_INICIAIS, null);
+  return lerFormulario(entrada, categoria, lideranca, professores, STATUS_INICIAIS, null);
 }
 
 /** O que a edição precisa saber: o Evento como está gravado, quem edita e quando. */
@@ -97,8 +100,9 @@ export function lerEdicao(
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
   { anterior, quem, agora }: ContextoDaEdicao,
+  professores: readonly string[] = [],
 ): { evento: Evento } | { erro: string } {
-  const lido = lerFormulario(entrada, categoria, lideranca, STATUS, anterior);
+  const lido = lerFormulario(entrada, categoria, lideranca, professores, STATUS, anterior);
   if ("erro" in lido) return lido;
   const evento = lido.evento;
 
@@ -130,6 +134,7 @@ function lerFormulario(
   entrada: EntradaDeEvento,
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
+  professores: readonly string[],
   statusAceitos: readonly Status[],
   anterior: Evento | null,
 ): { evento: Evento } | { erro: string } {
@@ -151,7 +156,7 @@ function lerFormulario(
   const link = entrada.link.trim() || null;
   if (link && !eLink(link)) return { erro: "O link precisa começar com http:// ou https://." };
 
-  const campos = lerCampos(entrada.campos, categoria, lideranca, anterior?.campos ?? {});
+  const campos = lerCampos(entrada.campos, categoria, lideranca, professores, anterior?.campos ?? {});
   if ("erro" in campos) return campos;
 
   return {
@@ -172,11 +177,14 @@ function lerCampos(
   textos: Record<string, string>,
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
+  professores: readonly string[],
   gravados: Record<string, ValorDeCampo>,
 ): { valores: Record<string, ValorDeCampo> } | { erro: string } {
   const valores: Record<string, ValorDeCampo> = {};
   for (const campo of camposDaCriacao(categoria)) {
-    const lido = lerCampo(campo, textos[campo.id] ?? "", lideranca, gravados[campo.id]);
+    // Professor e Auxiliar saem da Liderança e dos Professores; os demais campos pessoa, só da Liderança.
+    const escolhiveis = eCampoDeAula(campo) ? [...lideranca, ...professores] : lideranca;
+    const lido = lerCampo(campo, textos[campo.id] ?? "", escolhiveis, gravados[campo.id]);
     if (lido === null) {
       if (campo.obrigatorio) return { erro: `Preencha “${campo.nome}”.` };
       continue;
@@ -228,7 +236,8 @@ function lerCampo(
     case "escolha":
       return campo.opcoes.includes(limpo) ? limpo : { erro: `Escolha uma das opções de “${campo.nome}”.` };
     case "pessoa":
-      return lideranca.includes(limpo) || limpo === gravado ? limpo : { erro: `Escolha uma pessoa da Liderança em “${campo.nome}”.` };
+      if (lideranca.includes(limpo) || limpo === gravado) return limpo;
+      return { erro: eCampoDeAula(campo) ? `Escolha um Professor ou alguém da Liderança em “${campo.nome}”.` : `Escolha uma pessoa da Liderança em “${campo.nome}”.` };
     default:
       return limpo;
   }

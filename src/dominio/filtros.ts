@@ -1,5 +1,6 @@
 import { diaValido, ultimoDia, type NoCalendario } from "./calendario";
 import { diaDe, STATUS, terminou, type Status } from "./eventos";
+import { professoresDaAula } from "./professores";
 import { semanaDe } from "./semana";
 
 /** O que os filtros precisam saber de um Evento. `envolvidos` são os ids do Responsável, do Professor e do Auxiliar. */
@@ -23,20 +24,13 @@ export type Filtros = {
 
 export const SEM_FILTROS: Filtros = { meus: false, semana: false, dia: null, categorias: [], area: null, status: null };
 
-/** Os papéis de uma aula de EBD: os campos pessoa da Categoria com esses nomes contam como envolvidos no Evento. */
-const PAPEIS_DE_AULA = ["Professor", "Auxiliar"];
-
 /** Quem está envolvido num Evento: o Responsável e as pessoas escolhidas como Professor e Auxiliar. */
 export function envolvidosDoEvento(
   responsavel: string | null,
   campos: Record<string, unknown>,
   definicoes: readonly { id: string; nome: string; tipo: string }[],
 ): string[] {
-  const aula = definicoes
-    .filter((d) => d.tipo === "pessoa" && PAPEIS_DE_AULA.includes(d.nome))
-    .map((d) => campos[d.id])
-    .filter((valor): valor is string => typeof valor === "string");
-  return [...new Set([...(responsavel ? [responsavel] : []), ...aula])];
+  return [...new Set([...(responsavel ? [responsavel] : []), ...professoresDaAula(campos, definicoes)])];
 }
 
 type Parametros = Record<string, string | string[] | undefined>;
@@ -103,10 +97,11 @@ export function proximosEventos<E extends NoCalendario>(eventos: E[], agora: Dat
   return grupos;
 }
 
-export type TipoDeAlerta = "sem-responsavel" | "rascunho" | "vencido";
+export type TipoDeAlerta = "sem-responsavel" | "aula-sem-professor" | "rascunho" | "vencido";
 
 export const NOMES_DOS_ALERTAS: Record<TipoDeAlerta, string> = {
   "sem-responsavel": "Sem Responsável",
+  "aula-sem-professor": "Aula sem Professor",
   rascunho: "Em Rascunho",
   vencido: "Planejado ou Rascunho que já passou da data",
 };
@@ -114,20 +109,23 @@ export const NOMES_DOS_ALERTAS: Record<TipoDeAlerta, string> = {
 /**
  * Os alertas da tela inicial, só os que têm Eventos. Sem Responsável vale para Rascunho, Planejado e Confirmado
  * que ainda não terminaram; Rascunho, para todos; vencido, para Planejado e Rascunho que já terminaram.
+ * Aula sem Professor (`semProfessor` ligado) vale para os mesmos Status e também só antes do fim; não impede sair de Rascunho.
  * Adiado, Cancelado e Realizado não alertam. Um Evento pode estar em mais de um alerta.
  * `responsavel` é nulo quando o Evento conta como sem Responsável (ver `semResponsavel`).
  */
-export function alertas<E extends NoCalendario & { status: Status; responsavel: string | null }>(
+export function alertas<E extends NoCalendario & { status: Status; responsavel: string | null; semProfessor?: boolean }>(
   eventos: E[],
   agora: Date,
 ): { tipo: TipoDeAlerta; eventos: E[] }[] {
-  const porTipo: Record<TipoDeAlerta, E[]> = { "sem-responsavel": [], rascunho: [], vencido: [] };
+  const porTipo: Record<TipoDeAlerta, E[]> = { "sem-responsavel": [], "aula-sem-professor": [], rascunho: [], vencido: [] };
   for (const e of [...eventos].sort((a, b) => a.inicio.getTime() - b.inicio.getTime())) {
     const parado = e.status === "rascunho" || e.status === "planejado";
     const venceu = terminou(e, agora);
     if (e.status === "rascunho") porTipo.rascunho.push(e);
     if (parado && venceu) porTipo.vencido.push(e);
-    if ((parado || e.status === "confirmado") && !venceu && !e.responsavel) porTipo["sem-responsavel"].push(e);
+    const ativo = (parado || e.status === "confirmado") && !venceu;
+    if (ativo && !e.responsavel) porTipo["sem-responsavel"].push(e);
+    if (ativo && e.semProfessor) porTipo["aula-sem-professor"].push(e);
   }
   return (Object.keys(porTipo) as TipoDeAlerta[]).filter((tipo) => porTipo[tipo].length > 0).map((tipo) => ({ tipo, eventos: porTipo[tipo] }));
 }

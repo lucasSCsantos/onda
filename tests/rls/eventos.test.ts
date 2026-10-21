@@ -97,6 +97,7 @@ describe("campos do Evento", () => {
   it("o banco confere o tipo de cada campo específico, como o módulo de domínio", async () => {
     const lucas = await contaNova("Lucas", "admin");
     const paulo = await contaNova("Paulo", "professor");
+    const novato = await contaNova("Novato");
     const extra = await categoria("Evento extra");
     const ebd = await categoria("EBD");
     const extraValido = { [extra.campo("Tipo")]: "Gincana", [extra.campo("O que levar")]: ["Bíblia"] };
@@ -105,6 +106,8 @@ describe("campos do Evento", () => {
 
     expect((await comCampos(extra, { ...extraValido, [extra.campo("Valor")]: 3550 })).error).toBeNull();
     expect((await comCampos(ebd, { ...ebdValida, [ebd.campo("Professor")]: lucas.id })).error).toBeNull();
+    // Professor e Auxiliar também aceitam um Professor ativo (ticket 11); os demais campos pessoa, só a Liderança.
+    expect((await comCampos(ebd, { ...ebdValida, [ebd.campo("Professor")]: paulo.id })).error).toBeNull();
     for (const [nome, campos] of [
       ["valor como texto", { ...extraValido, [extra.campo("Valor")]: "trinta" }],
       ["valor negativo", { ...extraValido, [extra.campo("Valor")]: -100 }],
@@ -112,7 +115,7 @@ describe("campos do Evento", () => {
       ["lista como texto", { ...extraValido, [extra.campo("O que levar")]: "Bíblia" }],
       ["link que não é da web", { ...extraValido, [extra.campo("Link de inscrição")]: "pasta do drive" }],
       ["texto que não é texto", { ...ebdValida, [ebd.campo("Tema")]: 42 }],
-      ["pessoa fora da Liderança", { ...ebdValida, [ebd.campo("Professor")]: paulo.id }],
+      ["pessoa que não é da Liderança nem Professor", { ...ebdValida, [ebd.campo("Professor")]: novato.id }],
     ] as const) {
       const c = nome.startsWith("texto") || nome.startsWith("pessoa") ? ebd : extra;
       expect((await comCampos(c, campos)).error, nome).not.toBeNull();

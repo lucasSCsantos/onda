@@ -31,6 +31,7 @@ export function ListaDeEventos({
   dias,
   aniversarios = {},
   eu,
+  mostraResponsavel = true,
   vazio = "Nenhum Evento ainda.",
 }: {
   eventos: EventoListado[];
@@ -39,6 +40,8 @@ export function ListaDeEventos({
   aniversarios?: Record<string, Aniversario[]>;
   /** Id de quem olha: os Eventos dele ganham destaque. */
   eu?: string;
+  /** O Professor não lê as outras contas, então a lista dele não diz quem é o Responsável. */
+  mostraResponsavel?: boolean;
   vazio?: string;
 }) {
   const grupos = dias
@@ -56,7 +59,7 @@ export function ListaDeEventos({
               <AniversarioNoDia key={a.nome} aniversario={a} />
             ))}
             {doDia.map((evento) => (
-              <CartaoDeEvento key={evento.id} evento={evento} eu={eu} />
+              <CartaoDeEvento key={evento.id} evento={evento} eu={eu} mostraResponsavel={mostraResponsavel} />
             ))}
           </ul>
         </li>
@@ -66,7 +69,15 @@ export function ListaDeEventos({
 }
 
 /** O cartão de um Evento; o cartão inteiro abre o Evento. Os de `eu` (Responsável, Professor ou Auxiliar) ganham destaque. */
-export function CartaoDeEvento({ evento, eu }: { evento: EventoListado; eu?: string }) {
+export function CartaoDeEvento({
+  evento,
+  eu,
+  mostraResponsavel = true,
+}: {
+  evento: EventoListado;
+  eu?: string;
+  mostraResponsavel?: boolean;
+}) {
   const meu = eu !== undefined && evento.envolvidos.includes(eu);
   return (
     <li
@@ -84,7 +95,9 @@ export function CartaoDeEvento({ evento, eu }: { evento: EventoListado; eu?: str
           {quando(evento)} · {evento.categoria.nome}
           {evento.local && ` · ${evento.local}`}
         </p>
-        <p className="text-sm text-texto-suave">{evento.responsavel ? `Responsável: ${evento.responsavel}` : "Sem Responsável"}</p>
+        {mostraResponsavel && (
+          <p className="text-sm text-texto-suave">{evento.responsavel ? `Responsável: ${evento.responsavel}` : "Sem Responsável"}</p>
+        )}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         <SeloDoStatus status={evento.status} />

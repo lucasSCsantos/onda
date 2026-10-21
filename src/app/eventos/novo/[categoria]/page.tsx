@@ -6,7 +6,7 @@ import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeCriarEvento } from "@/dominio/catalogo";
 import { rotuloDaData, STATUS_INICIAIS } from "@/dominio/eventos";
 import { exigirLideranca } from "@/lib/contas/perfil";
-import { areasDaPessoa, categoria as buscarCategoria, opcoesDaLideranca } from "@/lib/eventos/consultas";
+import { areasDaPessoa, categoria as buscarCategoria, opcoesDaLideranca, opcoesDeProfessores } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { criarEvento } from "@/lib/eventos/acoes";
 import { FormularioEvento } from "../../formulario-evento";
@@ -17,10 +17,11 @@ export default async function PaginaNovoEventoDaCategoria(props: PageProps<"/eve
   const eu = await exigirLideranca();
   const { categoria: id } = await props.params;
   const supabase = await supabaseDoServidor();
-  const [categoria, areas, lideranca] = await Promise.all([
+  const [categoria, areas, lideranca, professores] = await Promise.all([
     buscarCategoria(supabase, id),
     areasDaPessoa(supabase, eu.id),
     opcoesDaLideranca(supabase),
+    opcoesDeProfessores(supabase),
   ]);
   if (!categoria || !podeCriarEvento(eu, areas, categoria)) notFound();
 
@@ -40,6 +41,7 @@ export default async function PaginaNovoEventoDaCategoria(props: PageProps<"/eve
           acao={criarEvento.bind(null, categoria.id)}
           categoria={categoria}
           lideranca={lideranca}
+          professores={professores}
           status={STATUS_INICIAIS}
           iniciais={{ responsavel: eu.id, status: "planejado" }}
           rotuloDaData={rotuloDaData(categoria)}

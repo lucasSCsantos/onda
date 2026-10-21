@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
+import { semProfessor } from "@/dominio/professores";
 import type { OcorrenciaGravada, RegraDaSerie } from "@/dominio/series";
 
 /** Áreas das Funções de uma pessoa, para saber de quais Categorias ela cria Eventos. */
@@ -19,6 +20,12 @@ export async function areasDaPessoa(supabase: SupabaseClient, pessoa: string): P
 export async function opcoesDaLideranca(supabase: SupabaseClient): Promise<Opcao[]> {
   const { data } = await supabase.from("perfis").select("id, nome").in("nivel", ["admin", "lider"]).eq("ativo", true).order("nome");
   return (data ?? []).map((p) => ({ valor: p.id as string, texto: (p.nome as string) || "(sem nome)" }));
+}
+
+/** Quem pode ser Professor ou Auxiliar além da Liderança: os Professores ativos. */
+export async function opcoesDeProfessores(supabase: SupabaseClient): Promise<Opcao[]> {
+  const { data } = await supabase.from("perfis").select("id, nome").eq("nivel", "professor").eq("ativo", true).order("nome");
+  return (data ?? []).map((p) => ({ valor: p.id as string, texto: `${(p.nome as string) || "(sem nome)"} (Professor)` }));
 }
 
 export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string };
@@ -74,6 +81,8 @@ export type EventoListado = {
   area: string;
   /** Ids do Responsável, do Professor e do Auxiliar, para o filtro "meus eventos". */
   envolvidos: string[];
+  /** A Categoria tem a vaga de Professor e ela está vazia (alerta de aula sem Professor). */
+  semProfessor: boolean;
 };
 
 type EventoDoBanco = {
@@ -122,6 +131,7 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
       categoriaId: e.categorias.id,
       area: e.categorias.areas.nome,
       envolvidos: envolvidosDoEvento(e.responsavel_id, e.campos, e.categorias.campos_das_categorias),
+      semProfessor: semProfessor(e.campos, e.categorias.campos_das_categorias),
     };
   });
 }
@@ -153,7 +163,8 @@ type EventoCompletoDoBanco = Omit<EventoDoBanco, "categorias" | "responsavel"> &
   editada: boolean;
   categorias: CategoriaDoBanco;
   responsavel: PessoaGravada | null;
-  criador: { nome: string };
+  /** Nulo para o Professor, que não lê as outras contas. */
+  criador: { nome: string } | null;
   editor: { nome: string } | null;
 };
 
@@ -189,7 +200,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
     serieId: e.serie_id,
     editada: e.editada,
     pessoaResponsavel: e.responsavel,
-    criadoPor: e.criador.nome,
+    criadoPor: e.criador?.nome ?? "",
     criadoEm: new Date(e.criado_em),
     editadoPor: e.editor?.nome ?? null,
     editadoEm: e.editado_em ? new Date(e.editado_em) : null,
@@ -201,6 +212,15 @@ export async function pessoas(supabase: SupabaseClient, ids: string[]): Promise<
   if (ids.length === 0) return new Map();
   const { data } = await supabase.from("perfis").select("id, nome, ativo").in("id", ids).overrideTypes<PessoaGravada[], { merge: false }>();
   return new Map((data ?? []).map((p) => [p.id, p]));
+}
+
+/**
+ * Nome e situação do Responsável, do Professor e do Auxiliar de um Evento que quem olha enxerga. É o caminho do
+ * Professor, que não lê as outras contas (e-mail e data de nascimento são da Liderança).
+ */
+export async function pessoasDaAula(supabase: SupabaseClient, eventoId: string): Promise<Map<string, PessoaGravada>> {
+  const { data } = await supabase.rpc("pessoas_da_aula", { evento: eventoId });
+  return new Map(((data ?? []) as PessoaGravada[]).map((p) => [p.id, p]));
 }
 
 export type SerieCompleta = {

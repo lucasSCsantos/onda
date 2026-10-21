@@ -9,8 +9,10 @@ import { diaDe } from "@/dominio/eventos";
 import { filtrar, lerFiltros, parametrosDosFiltros, type Filtros } from "@/dominio/filtros";
 import { FUSO } from "@/dominio/fuso";
 import { aniversariaveis } from "@/lib/aniversarios/consultas";
-import { exigirLideranca } from "@/lib/contas/perfil";
-import { categorias, eventos } from "@/lib/eventos/consultas";
+import { podeVerTodosOsEventos } from "@/dominio/eventos";
+import { podeCadastrarProfessor } from "@/dominio/professores";
+import { exigirMural } from "@/lib/contas/perfil";
+import { areasDaPessoa, categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { ListaDeEventos } from "../lista-de-eventos";
 import { GradeDaSemana, GradeDoMes } from "./grade";
@@ -57,7 +59,9 @@ const classeDaAba = (visao: Visao, escolhida: Visao | null) => {
 };
 
 export default async function PaginaCalendario(props: PageProps<"/calendario">) {
-  const eu = await exigirLideranca();
+  const eu = await exigirMural();
+  // O Professor vê só as aulas dele: sem Novo Evento, sem nomes de Responsável (e sem aniversários, que o banco já nega).
+  const lideranca = podeVerTodosOsEventos(eu);
   const agora = new Date();
   const hoje = diaDe(agora);
   const parametros = await props.searchParams;
@@ -69,9 +73,10 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
   const mostra = (v: Visao) => (visao ? visao === v : v !== "semana");
   const periodos = { lista: periodoDaVisao("lista", dia), mes: periodoDaVisao("mes", dia), semana: periodoDaVisao("semana", dia) };
   const supabase = await supabaseDoServidor();
-  const [doCatalogo, quemFazAnos, ...periodosLidos] = await Promise.all([
+  const [doCatalogo, quemFazAnos, areas, ...periodosLidos] = await Promise.all([
     categorias(supabase),
     aniversariaveis(supabase, eu),
+    eu.nivel === "lider" ? areasDaPessoa(supabase, eu.id) : Promise.resolve([]),
     ...(["lista", "mes", "semana"] as const).map((v) => (mostra(v) ? eventos(supabase, periodos[v]) : Promise.resolve([]))),
   ]);
   const [daLista, doMes, daSemana] = periodosLidos.map((lidos) => filtrar(lidos, filtros, { eu: eu.id, agora }));
@@ -79,15 +84,17 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
 
   return (
     <>
-      <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
+      <Cabecalho admin={podeGerenciarContas(eu)} lideranca={lideranca} calendario professores={podeCadastrarProfessor(eu, areas)} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold first-letter:uppercase">
             {tituloDoPeriodo(navegacao, dia, periodos[navegacao].semanas[0].map((d) => d.dia))}
           </h1>
-          <Link href="/eventos/novo" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
-            Novo Evento
-          </Link>
+          {lideranca && (
+            <Link href="/eventos/novo" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+              Novo Evento
+            </Link>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -141,6 +148,7 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
                 dias={periodos.lista.semanas[0].map((d) => d.dia)}
                 aniversarios={aniversarios("lista")}
                 eu={eu.id}
+                mostraResponsavel={lideranca}
                 vazio="Nenhum Evento neste mês."
               />
             </section>
