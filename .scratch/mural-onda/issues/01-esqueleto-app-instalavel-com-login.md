@@ -6,9 +6,13 @@
 
 **Status:** ready-for-agent
 
-- [ ] O app instala como PWA no celular, com ícone e tela de abertura do ONDA
-- [ ] Login, logout e recuperação de senha funcionam, em pt-BR
-- [ ] Tema claro e escuro seguem a paleta das logos (`#459ac8`, `#284995`), com a logo do ONDA e a da igreja no rodapé
+- [x] O app instala como PWA no celular, com ícone e tela de abertura do ONDA
+- [x] Login, logout e recuperação de senha funcionam, em pt-BR
+- [x] Tema claro e escuro seguem a paleta das logos (`#459ac8`, `#284995`), com a logo do ONDA e a da igreja no rodapé
 - [ ] Deploy automático a partir do GitHub funciona
-- [ ] Existe um teste passando em cada ponto de teste: módulo de domínio e políticas por linha no Postgres local
-- [ ] Pasta de documentação do projeto (`CONTEXT.md`, ADRs) preservada
+- [x] Existe um teste passando em cada ponto de teste: módulo de domínio e políticas por linha no Postgres local
+- [x] Pasta de documentação do projeto (`CONTEXT.md`, ADRs) preservada
+
+## Comments
+
+**2026-10-21 (implementação, branch `feat/01-esqueleto-app-instalavel`):** tudo pronto e verificado localmente (login, sair, recuperar senha via Mailpit, modo claro e escuro, manifesto e ícones, 4 testes nos dois pontos de teste, `next build`). Falta só o deploy automático: exige criar o projeto no Supabase e na Vercel e ligar o repositório, passos que só uma pessoa pode fazer. Ao configurar, incluir a URL de produção em `additional_redirect_urls` do Supabase. A instalação no celular real também ainda não foi testada.
