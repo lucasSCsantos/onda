@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { visualDoStatus } from "@/components/status-do-evento";
+import { AniversarioNoDia } from "@/components/aniversarios";
+import type { Aniversario } from "@/dominio/aniversarios";
 import { eventosPorDia, type DiaDaGrade } from "@/dominio/calendario";
 import { NOMES_DOS_STATUS } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
@@ -36,6 +38,17 @@ function ChipDoEvento({ evento, comHora }: { evento: EventoListado; comHora: boo
   );
 }
 
+function Aniversarios({ aniversarios, compacto }: { aniversarios: Aniversario[]; compacto?: boolean }) {
+  if (aniversarios.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-1">
+      {aniversarios.map((a) => (
+        <AniversarioNoDia key={a.nome + a.dia} aniversario={a} compacto={compacto} />
+      ))}
+    </ul>
+  );
+}
+
 function EventosDoDia({ eventos, comHora }: { eventos: EventoListado[]; comHora: boolean }) {
   if (eventos.length === 0) return null;
   return (
@@ -48,7 +61,17 @@ function EventosDoDia({ eventos, comHora }: { eventos: EventoListado[]; comHora:
 }
 
 /** A visão mensal: semanas de segunda a domingo, com os dias de outros meses esmaecidos. */
-export function GradeDoMes({ semanas, eventos, hoje }: { semanas: DiaDaGrade[][]; eventos: EventoListado[]; hoje: string }) {
+export function GradeDoMes({
+  semanas,
+  eventos,
+  aniversarios,
+  hoje,
+}: {
+  semanas: DiaDaGrade[][];
+  eventos: EventoListado[];
+  aniversarios: Record<string, Aniversario[]>;
+  hoje: string;
+}) {
   const porDia = eventosPorDia(eventos, semanas.flat().map((d) => d.dia));
   return (
     <div className="overflow-hidden rounded-2xl border border-borda">
@@ -71,6 +94,7 @@ export function GradeDoMes({ semanas, eventos, hoje }: { semanas: DiaDaGrade[][]
               >
                 {numeroDoDia(dia)}
               </span>
+              <Aniversarios aniversarios={aniversarios[dia]} compacto />
               <EventosDoDia eventos={porDia[dia].slice(0, LIMITE_POR_DIA)} comHora={false} />
               {porDia[dia].length > LIMITE_POR_DIA && (
                 <Link href={`/calendario?visao=semana&dia=${dia}`} className="px-1 text-xs text-texto-suave hover:text-texto">
@@ -87,7 +111,17 @@ export function GradeDoMes({ semanas, eventos, hoje }: { semanas: DiaDaGrade[][]
 }
 
 /** A visão semanal, de segunda a domingo: em colunas nas telas largas, um dia embaixo do outro no celular. */
-export function GradeDaSemana({ dias, eventos, hoje }: { dias: DiaDaGrade[]; eventos: EventoListado[]; hoje: string }) {
+export function GradeDaSemana({
+  dias,
+  eventos,
+  aniversarios,
+  hoje,
+}: {
+  dias: DiaDaGrade[];
+  eventos: EventoListado[];
+  aniversarios: Record<string, Aniversario[]>;
+  hoje: string;
+}) {
   const porDia = eventosPorDia(eventos, dias.map((d) => d.dia));
   return (
     <ol className="grid gap-2 md:grid-cols-7">
@@ -99,7 +133,8 @@ export function GradeDaSemana({ dias, eventos, hoje }: { dias: DiaDaGrade[]; eve
             {diaDaSemanaPorExtenso(dia)}
             {dia === hoje && <span className="sr-only"> (hoje)</span>}
           </h2>
-          {porDia[dia].length === 0 ? (
+          <Aniversarios aniversarios={aniversarios[dia]} />
+          {porDia[dia].length === 0 && aniversarios[dia].length === 0 ? (
             <p className="text-xs text-texto-suave md:sr-only">Nada neste dia.</p>
           ) : (
             <EventosDoDia eventos={porDia[dia]} comHora />

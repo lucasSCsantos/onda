@@ -175,3 +175,14 @@ describe("lista do período", () => {
     ]);
   });
 });
+
+describe("diasComEventos com dias ocupados", () => {
+  it("mantém dias sem Evento que têm outra coisa a mostrar, na ordem da grade", () => {
+    const evento = { inicio: new Date("2026-10-20T10:00:00-03:00"), fim: null, diaInteiro: false };
+    const dias = ["2026-10-19", "2026-10-20", "2026-10-21"];
+    expect(diasComEventos([evento], dias, (dia) => dia === "2026-10-21")).toEqual([
+      { dia: "2026-10-20", eventos: [evento] },
+      { dia: "2026-10-21", eventos: [] },
+    ]);
+  });
+});

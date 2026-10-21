@@ -19,16 +19,22 @@ export function erroNoAdolescente({ nome, nascimento }: DadosDoAdolescente, agor
   return null;
 }
 
+/** O dia `AAAA-MM-DD` em que a pessoa comemora num ano: quem nasceu em 29/02 comemora em 28/02 nos anos não bissextos. */
+export function diaDoAniversario(nascimento: string, ano: number): string {
+  const [, mes, dia] = nascimento.split("-").map(Number);
+  return `${ano}-${doisDigitos(mes)}-${doisDigitos(mes === 2 && dia === 29 && !ehBissexto(ano) ? 28 : dia)}`;
+}
+
 /**
  * Próximo aniversário a partir de hoje (no fuso do Mural; hoje conta): a data, quantos dias faltam e a idade que
  * a pessoa completa. Quem nasceu em 29/02 comemora em 28/02 nos anos não bissextos, para não sumir da lista.
  */
 export function proximoAniversario(nascimento: string, agora: Date): { data: string; dias: number; idade: number } {
-  const [anoDeNascimento, mes, dia] = nascimento.split("-").map(Number);
+  const [anoDeNascimento, mes] = nascimento.split("-").map(Number);
   const hoje = dataLocal(agora);
   const hojeCivil = diaCivil(hoje.ano, hoje.mes, hoje.dia);
 
-  const noAno = (ano: number) => (mes === 2 && dia === 29 && !ehBissexto(ano) ? 28 : dia);
+  const noAno = (ano: number) => Number(diaDoAniversario(nascimento, ano).slice(8));
   let ano = hoje.ano;
   if (diaCivil(ano, mes, noAno(ano)) < hojeCivil) ano += 1;
 

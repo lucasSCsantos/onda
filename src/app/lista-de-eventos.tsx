@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AniversarioNoDia } from "@/components/aniversarios";
 import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
+import type { Aniversario } from "@/dominio/aniversarios";
 import { diasComEventos } from "@/dominio/calendario";
 import { agruparPorDia, diaDe } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
@@ -27,16 +29,21 @@ function quando(evento: EventoListado): string {
 export function ListaDeEventos({
   eventos,
   dias,
+  aniversarios = {},
   eu,
   vazio = "Nenhum Evento ainda.",
 }: {
   eventos: EventoListado[];
   dias?: string[];
+  /** Aniversários de cada dia de `dias`; um dia só com aniversário também entra na lista. */
+  aniversarios?: Record<string, Aniversario[]>;
   /** Id de quem olha: os Eventos dele ganham destaque. */
   eu?: string;
   vazio?: string;
 }) {
-  const grupos = dias ? diasComEventos(eventos, dias) : agruparPorDia(eventos);
+  const grupos = dias
+    ? diasComEventos(eventos, dias, (dia) => (aniversarios[dia] ?? []).length > 0)
+    : agruparPorDia(eventos);
   if (grupos.length === 0) return <p className="text-texto-suave">{vazio}</p>;
 
   return (
@@ -45,6 +52,9 @@ export function ListaDeEventos({
         <li key={dia} className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-texto-suave first-letter:uppercase">{dataPorExtenso(dia)}</h2>
           <ul className="flex flex-col gap-2">
+            {(aniversarios[dia] ?? []).map((a) => (
+              <AniversarioNoDia key={a.nome} aniversario={a} />
+            ))}
             {doDia.map((evento) => (
               <CartaoDeEvento key={evento.id} evento={evento} eu={eu} />
             ))}

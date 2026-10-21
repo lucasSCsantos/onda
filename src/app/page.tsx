@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { diaEMes } from "@/components/aniversarios";
 import { Cabecalho } from "@/components/cabecalho";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
+import { aniversariosVisiveis, aniversariantesDoMes } from "@/dominio/aniversarios";
 import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
-import { podeVerTodosOsEventos } from "@/dominio/eventos";
+import { diaDe, podeVerTodosOsEventos } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
 import { alertas, filtrar, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, proximosEventos } from "@/dominio/filtros";
+import { aniversariaveis } from "@/lib/aniversarios/consultas";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -25,7 +28,10 @@ export default async function Inicio(props: PageProps<"/">) {
   const agora = new Date();
   const filtros = lerFiltros(await props.searchParams);
   const supabase = await supabaseDoServidor();
-  const [todos, doCatalogo] = veEventos ? await Promise.all([eventos(supabase), categorias(supabase)]) : [[], []];
+  const [todos, doCatalogo, quemFazAnos] = veEventos
+    ? await Promise.all([eventos(supabase), categorias(supabase), aniversariaveis(supabase, perfil)])
+    : [[], [], []];
+  const aniversariantes = aniversariosVisiveis(perfil, aniversariantesDoMes(quemFazAnos, diaDe(agora)));
   const proximos = proximosEventos(filtrar(todos, filtros, { eu: perfil.id, agora }), agora);
   const aviso = alertas(todos, agora);
 
@@ -66,6 +72,19 @@ export default async function Inicio(props: PageProps<"/">) {
                     </ul>
                   </div>
                 ))}
+              </section>
+            )}
+
+            {aniversariantes.length > 0 && (
+              <section aria-label="Aniversariantes do mês" className="flex flex-col gap-2 rounded-2xl border border-borda bg-superficie p-4">
+                <h2 className="font-semibold">Aniversariantes do mês</h2>
+                <ul className="flex flex-col gap-1 text-sm">
+                  {aniversariantes.map((a) => (
+                    <li key={a.nome + a.dia}>
+                      <span className="font-semibold tabular-nums">{diaEMes(a.dia)}</span> · {a.nome}
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

@@ -96,8 +96,15 @@ export function eventosPorDia<E extends NoCalendario>(eventos: E[], dias: string
   );
 }
 
-/** A lista de um período: só os dias que têm Evento, cada um com os seus, na mesma ordem e cobertura da grade. */
-export function diasComEventos<E extends NoCalendario>(eventos: E[], dias: string[]): { dia: string; eventos: E[] }[] {
+/**
+ * A lista de um período: só os dias que têm Evento, cada um com os seus, na mesma ordem e cobertura da grade.
+ * `ocupado` mantém também dias sem Evento que têm outra coisa a mostrar, como aniversários.
+ */
+export function diasComEventos<E extends NoCalendario>(
+  eventos: E[],
+  dias: string[],
+  ocupado: (dia: string) => boolean = () => false,
+): { dia: string; eventos: E[] }[] {
   const porDia = eventosPorDia(eventos, dias);
-  return dias.filter((dia) => porDia[dia].length > 0).map((dia) => ({ dia, eventos: porDia[dia] }));
+  return dias.filter((dia) => porDia[dia].length > 0 || ocupado(dia)).map((dia) => ({ dia, eventos: porDia[dia] }));
 }

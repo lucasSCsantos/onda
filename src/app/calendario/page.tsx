@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas } from "@/dominio/acesso";
+import { aniversariosPorDia } from "@/dominio/aniversarios";
 import { lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
 import { diaDe } from "@/dominio/eventos";
 import { filtrar, lerFiltros, parametrosDosFiltros, type Filtros } from "@/dominio/filtros";
 import { FUSO } from "@/dominio/fuso";
+import { aniversariaveis } from "@/lib/aniversarios/consultas";
 import { exigirLideranca } from "@/lib/contas/perfil";
 import { categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -67,11 +69,13 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
   const mostra = (v: Visao) => (visao ? visao === v : v !== "semana");
   const periodos = { lista: periodoDaVisao("lista", dia), mes: periodoDaVisao("mes", dia), semana: periodoDaVisao("semana", dia) };
   const supabase = await supabaseDoServidor();
-  const [doCatalogo, ...periodosLidos] = await Promise.all([
+  const [doCatalogo, quemFazAnos, ...periodosLidos] = await Promise.all([
     categorias(supabase),
+    aniversariaveis(supabase, eu),
     ...(["lista", "mes", "semana"] as const).map((v) => (mostra(v) ? eventos(supabase, periodos[v]) : Promise.resolve([]))),
   ]);
   const [daLista, doMes, daSemana] = periodosLidos.map((lidos) => filtrar(lidos, filtros, { eu: eu.id, agora }));
+  const aniversarios = (v: Visao) => aniversariosPorDia(quemFazAnos, periodos[v].semanas.flat().map((d) => d.dia));
 
   return (
     <>
@@ -135,6 +139,7 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
               <ListaDeEventos
                 eventos={daLista}
                 dias={periodos.lista.semanas[0].map((d) => d.dia)}
+                aniversarios={aniversarios("lista")}
                 eu={eu.id}
                 vazio="Nenhum Evento neste mês."
               />
@@ -142,12 +147,12 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
           )}
           {mostra("mes") && (
             <section aria-label="Mês" className={visivel("mes", visao)}>
-              <GradeDoMes semanas={periodos.mes.semanas} eventos={doMes} hoje={hoje} />
+              <GradeDoMes semanas={periodos.mes.semanas} eventos={doMes} aniversarios={aniversarios("mes")} hoje={hoje} />
             </section>
           )}
           {mostra("semana") && (
             <section aria-label="Semana" className={visivel("semana", visao)}>
-              <GradeDaSemana dias={periodos.semana.semanas[0]} eventos={daSemana} hoje={hoje} />
+              <GradeDaSemana dias={periodos.semana.semanas[0]} eventos={daSemana} aniversarios={aniversarios("semana")} hoje={hoje} />
             </section>
           )}
         </div>

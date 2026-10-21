@@ -4,11 +4,11 @@
 
 **Blocked by:** 06, 09
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Aniversários de líderes e Adolescentes ativos aparecem nas visões do calendário
-- [ ] Bloco do mês na tela inicial
-- [ ] Nenhum Evento é gravado para aniversário
-- [ ] 29/02 tem tratamento definido e previsível em anos não bissextos
-- [ ] Adolescente inativo não aparece; Professor não vê aniversário nenhum
-- [ ] Testes no módulo de domínio
+- [x] Aniversários de líderes e Adolescentes ativos aparecem nas visões do calendário
+- [x] Bloco do mês na tela inicial
+- [x] Nenhum Evento é gravado para aniversário
+- [x] 29/02 tem tratamento definido e previsível em anos não bissextos
+- [x] Adolescente inativo não aparece; Professor não vê aniversário nenhum
+- [x] Testes no módulo de domínio
