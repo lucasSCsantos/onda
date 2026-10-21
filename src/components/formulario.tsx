@@ -21,6 +21,30 @@ export function Campo({
   );
 }
 
+export function CampoDeTextoLongo({
+  rotulo,
+  ...props
+}: { rotulo: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm font-medium">
+      {rotulo}
+      <textarea
+        {...props}
+        className="rounded-lg border border-borda bg-superficie px-3 py-2.5 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
+      />
+    </label>
+  );
+}
+
+export function CaixaDeMarcar({ rotulo, ...props }: { rotulo: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <input type="checkbox" {...props} className="size-4 accent-marca" />
+      {rotulo}
+    </label>
+  );
+}
+
 export function Selecao({
   rotulo,
   opcoes,

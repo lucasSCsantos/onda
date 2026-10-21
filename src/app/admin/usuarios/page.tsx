@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
+import { temFuncoes } from "@/dominio/catalogo";
 import { mudarAtivo, promoverAAdmin, recusarPendente } from "@/lib/contas/acoes";
 import { OPCOES_DE_NIVEL, opcoesDeFuncao } from "@/lib/contas/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { AprovarPendente } from "./aprovar-pendente";
+import { FuncoesDaPessoa } from "./funcoes-da-pessoa";
 
 export const metadata: Metadata = { title: "Usuários" };
 
@@ -17,7 +19,7 @@ type Usuario = {
   nivel: NivelDeAcesso;
   ativo: boolean;
   criado_em: string;
-  funcoes_das_pessoas: { funcoes: { nome: string } | null }[];
+  funcoes_das_pessoas: { funcao_id: string; funcoes: { nome: string } | null }[];
 };
 
 const dataCurta = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" });
@@ -30,7 +32,7 @@ export default async function PaginaUsuarios() {
   const [{ data }, funcoes] = await Promise.all([
     supabase
       .from("perfis")
-      .select("id, nome, email, data_nascimento, nivel, ativo, criado_em, funcoes_das_pessoas(funcoes(nome))")
+      .select("id, nome, email, data_nascimento, nivel, ativo, criado_em, funcoes_das_pessoas(funcao_id, funcoes(nome))")
       .order("nome")
       .overrideTypes<Usuario[], { merge: false }>(),
     opcoesDeFuncao(supabase),
@@ -79,6 +81,18 @@ export default async function PaginaUsuarios() {
                   <p className="text-sm text-texto-suave">
                     {u.funcoes_das_pessoas.map((f) => f.funcoes?.nome).filter(Boolean).join(", ") || "Sem Função"}
                   </p>
+                  {temFuncoes(u.nivel) && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm text-texto-suave hover:text-texto">Editar Funções</summary>
+                      <div className="mt-3">
+                        <FuncoesDaPessoa
+                          pessoa={u.id}
+                          atuais={u.funcoes_das_pessoas.map((f) => f.funcao_id)}
+                          funcoes={funcoes}
+                        />
+                      </div>
+                    </details>
+                  )}
                 </div>
                 {podeMudarAcesso(eu, u) && (
                   <div className="flex gap-2">

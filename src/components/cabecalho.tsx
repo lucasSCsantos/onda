@@ -18,6 +18,9 @@ export function Cabecalho({ admin = false }: { admin?: boolean }) {
             <Link href="/admin/convites" className="text-texto-suave hover:text-texto">
               Convites
             </Link>
+            <Link href="/admin/catalogo" className="text-texto-suave hover:text-texto">
+              Catálogo
+            </Link>
           </>
         )}
         <form action={sair}>
