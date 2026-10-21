@@ -5,6 +5,18 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // As instruções para agentes ficam no CLAUDE.md; sem isso o `next dev` cria um AGENTS.md.
   agentRules: false,
+  async headers() {
+    // O navegador precisa rever o service worker a cada abertura para que atualizações cheguem.
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {
