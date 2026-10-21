@@ -6,10 +6,14 @@
 
 **Status:** ready-for-agent
 
-- [ ] Convite de uso único com validade; segundo uso, convite vencido ou convite revogado são recusados
-- [ ] Cadastro por convite entra com nível e Função do convite
-- [ ] Cadastro sem convite cria um Pendente que não lê nenhum dado (testado nas políticas por linha)
-- [ ] Admin aprova (nível e Função) ou recusa Pendentes
-- [ ] Admin desativa usuário; o histórico permanece
-- [ ] Só um Admin promove outro Admin
-- [ ] Testes cobrem os quatro níveis de acesso no que se refere a quem lê e escreve usuários
+- [x] Convite de uso único com validade; segundo uso, convite vencido ou convite revogado são recusados
+- [x] Cadastro por convite entra com nível e Função do convite
+- [x] Cadastro sem convite cria um Pendente que não lê nenhum dado (testado nas políticas por linha)
+- [x] Admin aprova (nível e Função) ou recusa Pendentes
+- [x] Admin desativa usuário; o histórico permanece
+- [x] Só um Admin promove outro Admin
+- [x] Testes cobrem os quatro níveis de acesso no que se refere a quem lê e escreve usuários
+
+## Comments
+
+**2026-10-21 (implementação, branch `feat/02-convites-cadastro-e-aprovacao`):** pronto e verificado localmente: testes no domínio (`acesso`, `convites`, `cadastro`) e nas políticas por linha (`tests/rls/contas.test.ts`), e o fluxo completo no navegador (Admin gera convite, cadastro pelo link, segundo uso recusado, cadastro sem convite como Pendente, aprovação com Função, promoção, desativação, reativação, recusa). As Áreas e Funções do catálogo já entram nesta migração, porque convite e aprovação precisam delas; edição pelo Admin, várias Funções por pessoa e Categorias ficam no ticket 03. Decisões a confirmar: recusar apaga a conta do Pendente (a pessoa pode se cadastrar de novo); convite também pode conceder Admin; validade do convite vai de 1 a 30 dias; Professor não tem Função; a Liderança lê e-mail e data de nascimento uns dos outros. Atenção: com confirmação de e-mail ligada em produção, o convite é gasto no cadastro, antes da confirmação; um e-mail digitado errado exige um convite novo.

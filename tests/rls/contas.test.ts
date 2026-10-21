@@ -147,6 +147,17 @@ describe("aprovação de Pendentes", () => {
     expect(aprovacao.error).not.toBeNull();
   });
 
+  it("um Professor não recebe Função, nem por aprovação nem por convite", async () => {
+    const lucas = await contaNova("Lucas", "admin");
+    const novo = await cadastrar("Professor");
+    const ensino = await funcao("Líder do ensino");
+
+    const aprovacao = await lucas.cliente.rpc("aprovar_pendente", { pessoa: novo.id, novo_nivel: "professor", funcao: ensino });
+    expect(aprovacao.error).not.toBeNull();
+    const convite = await lucas.cliente.from("convites").insert({ nivel: "professor", funcao_id: ensino });
+    expect(convite.error).not.toBeNull();
+  });
+
   it("o Admin recusa o Pendente e a conta deixa de existir", async () => {
     const lucas = await contaNova("Lucas", "admin");
     const novo = await cadastrar("Estranho");
@@ -203,6 +214,16 @@ describe("desativação", () => {
     expect(historico.data).toEqual({ nome: "Denize", ativo: false });
   });
 
+  it("o Admin não desativa um Pendente, que é aprovado ou recusado", async () => {
+    const lucas = await contaNova("Lucas", "admin");
+    const novo = await cadastrar("Aguardando");
+
+    await lucas.cliente.from("perfis").update({ ativo: false }).eq("id", novo.id!);
+
+    const perfil = await admin.from("perfis").select("ativo").eq("id", novo.id!).single();
+    expect(perfil.data?.ativo).toBe(true);
+  });
+
   it("o Líder não desativa ninguém", async () => {
     const carol = await contaNova("Carol", "lider");
     const denize = await contaNova("Denize", "lider");
@@ -219,7 +240,7 @@ describe("promoção a Admin", () => {
     const lucas = await contaNova("Lucas", "admin");
     const carol = await contaNova("Carol", "lider");
 
-    const promocao = await lucas.cliente.from("perfis").update({ nivel: "admin" }).eq("id", carol.id);
+    const promocao = await lucas.cliente.rpc("promover_a_admin", { pessoa: carol.id });
     expect(promocao.error).toBeNull();
 
     const perfil = await admin.from("perfis").select("nivel").eq("id", carol.id).single();
@@ -231,8 +252,9 @@ describe("promoção a Admin", () => {
       const pessoa = await contaNova(`Ambicioso (${nivel})`, nivel);
       const outra = await contaNova("Outra", "lider");
 
+      await pessoa.cliente.rpc("promover_a_admin", { pessoa: pessoa.id });
+      await pessoa.cliente.rpc("promover_a_admin", { pessoa: outra.id });
       await pessoa.cliente.from("perfis").update({ nivel: "admin" }).eq("id", pessoa.id);
-      await pessoa.cliente.from("perfis").update({ nivel: "admin" }).eq("id", outra.id);
 
       const niveis = await admin.from("perfis").select("id, nivel").in("id", [pessoa.id, outra.id]);
       expect(niveis.data).toEqual(
@@ -248,10 +270,30 @@ describe("promoção a Admin", () => {
     const lucas = await contaNova("Lucas", "admin");
 
     await lucas.cliente.from("perfis").update({ ativo: false }).eq("id", lucas.id);
-    await lucas.cliente.from("perfis").update({ nivel: "lider" }).eq("id", lucas.id);
+    await lucas.cliente.rpc("promover_a_admin", { pessoa: lucas.id });
 
     const perfil = await admin.from("perfis").select("nivel, ativo").eq("id", lucas.id).single();
     expect(perfil.data).toEqual({ nivel: "admin", ativo: true });
+  });
+
+  it("o Admin não promove um Pendente, que passa pela aprovação", async () => {
+    const lucas = await contaNova("Lucas", "admin");
+    const novo = await cadastrar("Apressado");
+
+    const promocao = await lucas.cliente.rpc("promover_a_admin", { pessoa: novo.id });
+
+    expect(promocao.error).not.toBeNull();
+  });
+
+  it("o Admin só muda o nível pela aprovação e pela promoção, nunca direto", async () => {
+    const lucas = await contaNova("Lucas", "admin");
+    const novo = await cadastrar("Sem função");
+    const carol = await contaNova("Carol", "lider");
+
+    const atalho = await lucas.cliente.from("perfis").update({ nivel: "lider" }).eq("id", novo.id!);
+    expect(atalho.error).not.toBeNull();
+    const rebaixamento = await lucas.cliente.from("perfis").update({ nivel: "pendente" }).eq("id", carol.id);
+    expect(rebaixamento.error).not.toBeNull();
   });
 
   it("o Admin não muda nome, e-mail nem data de nascimento por esta via", async () => {

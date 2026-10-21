@@ -1,18 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, Campo, Mensagens, Selecao } from "@/components/formulario";
-import { NIVEIS_CONCEDIVEIS, NOMES_DOS_NIVEIS } from "@/dominio/acesso";
+import { BotaoEnviar, Campo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import { VALIDADE_MAXIMA_DIAS, VALIDADE_MINIMA_DIAS, VALIDADE_PADRAO_DIAS } from "@/dominio/convites";
 import { gerarConvite } from "@/lib/contas/acoes";
 
-const NIVEIS = NIVEIS_CONCEDIVEIS.map((nivel) => ({ valor: nivel, texto: NOMES_DOS_NIVEIS[nivel] }));
-
-export function FormularioConvite({ funcoes }: { funcoes: { valor: string; texto: string }[] }) {
+export function FormularioConvite({ niveis, funcoes }: { niveis: Opcao[]; funcoes: Opcao[] }) {
   const [estado, acao] = useActionState(gerarConvite, {});
   return (
     <form action={acao} className="flex flex-col gap-4">
-      <Selecao rotulo="Nível de acesso" name="nivel" opcoes={NIVEIS} defaultValue="lider" required />
+      <Selecao rotulo="Nível de acesso" name="nivel" opcoes={niveis} defaultValue="lider" required />
       <Selecao rotulo="Função" name="funcao" opcoes={funcoes} vazia="Sem Função (Professor)" />
       <Campo
         rotulo="Validade (dias)"

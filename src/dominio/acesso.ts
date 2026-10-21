@@ -18,11 +18,6 @@ function nivelEfetivo(pessoa: Pessoa): NivelDeAcesso | null {
   return pessoa.ativo ? pessoa.nivel : null;
 }
 
-export function eLideranca(pessoa: Pessoa) {
-  const nivel = nivelEfetivo(pessoa);
-  return nivel === "admin" || nivel === "lider";
-}
-
 export function telaInicial(pessoa: Pessoa): "mural" | "aguardando-aprovacao" | "conta-desativada" {
   const nivel = nivelEfetivo(pessoa);
   if (nivel === null) return "conta-desativada";
@@ -42,4 +37,23 @@ export function podeVerPessoa(quem: Pessoa, alvo: Pessoa): boolean {
 /** Convidar, aprovar, recusar, desativar e promover a Admin. */
 export function podeGerenciarContas(quem: Pessoa): boolean {
   return nivelEfetivo(quem) === "admin";
+}
+
+/**
+ * Desativar, reativar e promover a Admin valem para quem já foi aprovado; o Pendente é aprovado ou recusado.
+ * O Admin não muda o próprio acesso, para não se trancar fora. As políticas de `public.perfis` seguem a mesma regra.
+ */
+export function podeMudarAcesso(quem: Pessoa, alvo: Pessoa): boolean {
+  return podeGerenciarContas(quem) && quem.id !== alvo.id && alvo.nivel !== "pendente";
+}
+
+/**
+ * O que impede conceder um nível com uma Função, num convite ou numa aprovação; `null` se nada impede.
+ * Um Líder precisa de Função para criar Eventos; um Professor não é da Liderança e não tem Função.
+ * O banco confere a mesma regra.
+ */
+export function erroNaConcessao(nivel: NivelDeAcesso, funcao: string | null): string | null {
+  if (nivel === "lider" && !funcao) return "Um Líder precisa de uma Função.";
+  if (nivel === "professor" && funcao) return "Um Professor não tem Função.";
+  return null;
 }

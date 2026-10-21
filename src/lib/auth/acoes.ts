@@ -2,11 +2,10 @@
 
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
+import { campoTexto } from "@/lib/campos";
 import { origemDoApp } from "@/lib/origem";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
-import { SENHA_MINIMA } from "./senha";
-
-const campoTexto = (dados: FormData, campo: string) => String(dados.get(campo) ?? "").trim();
+import { erroDeSenha } from "./senha";
 
 export async function entrar(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
   const supabase = await supabaseDoServidor();
@@ -38,7 +37,8 @@ export async function pedirNovaSenha(_: EstadoFormulario, dados: FormData): Prom
 
 export async function redefinirSenha(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
   const senha = String(dados.get("senha") ?? "");
-  if (senha.length < SENHA_MINIMA) return { erro: `A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.` };
+  const erro = erroDeSenha(senha);
+  if (erro) return { erro };
   if (senha !== String(dados.get("confirmacao") ?? "")) return { erro: "As senhas não conferem." };
 
   const supabase = await supabaseDoServidor();

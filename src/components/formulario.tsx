@@ -4,6 +4,8 @@ import { useFormStatus } from "react-dom";
 
 export type EstadoFormulario = { erro?: string; aviso?: string };
 
+export type Opcao = { valor: string; texto: string };
+
 export function Campo({
   rotulo,
   ...props
@@ -26,7 +28,7 @@ export function Selecao({
   ...props
 }: {
   rotulo: string;
-  opcoes: { valor: string; texto: string }[];
+  opcoes: Opcao[];
   /** Texto da opção vazia, quando o campo é opcional. */
   vazia?: string;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {

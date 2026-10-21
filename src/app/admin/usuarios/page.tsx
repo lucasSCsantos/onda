@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Cabecalho } from "@/components/cabecalho";
-import { NOMES_DOS_NIVEIS, type NivelDeAcesso } from "@/dominio/acesso";
+import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
 import { mudarAtivo, promoverAAdmin, recusarPendente } from "@/lib/contas/acoes";
-import { opcoesDeFuncao } from "@/lib/contas/consultas";
+import { OPCOES_DE_NIVEL, opcoesDeFuncao } from "@/lib/contas/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { AprovarPendente } from "./aprovar-pendente";
@@ -57,7 +57,7 @@ export default async function PaginaUsuarios() {
                   {dataCurta(u.criado_em)}
                 </p>
               </div>
-              <AprovarPendente pessoa={u.id} funcoes={funcoes} />
+              <AprovarPendente pessoa={u.id} niveis={OPCOES_DE_NIVEL} funcoes={funcoes} />
               <form action={recusarPendente.bind(null, u.id)}>
                 <button type="submit" className={`${botaoDiscreto} text-erro`}>
                   Recusar e apagar o cadastro
@@ -80,7 +80,7 @@ export default async function PaginaUsuarios() {
                     {u.funcoes_das_pessoas.map((f) => f.funcoes?.nome).filter(Boolean).join(", ") || "Sem Função"}
                   </p>
                 </div>
-                {u.id !== eu.id && (
+                {podeMudarAcesso(eu, u) && (
                   <div className="flex gap-2">
                     {u.nivel !== "admin" && (
                       <form action={promoverAAdmin.bind(null, u.id)}>

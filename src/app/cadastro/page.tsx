@@ -8,8 +8,7 @@ import { FormularioCadastro } from "./formulario-cadastro";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
-const MOTIVOS: Record<SituacaoDoConvite, string> = {
-  valido: "",
+const MOTIVOS: Record<Exclude<SituacaoDoConvite, "valido">, string> = {
   usado: "Este convite já foi usado.",
   vencido: "Este convite venceu.",
   revogado: "Este convite foi cancelado pelo Admin.",
@@ -35,11 +34,17 @@ export default async function PaginaCadastro({ searchParams }: PageProps<"/cadas
     .rpc("consultar_convite", { codigo })
     .maybeSingle<{ situacao: SituacaoDoConvite; nivel: NivelDeAcesso; funcao: string | null }>();
 
-  if (!convite || convite.situacao !== "valido") {
+  const motivo = !convite
+    ? "Não encontramos este convite."
+    : convite.situacao === "valido"
+      ? null
+      : MOTIVOS[convite.situacao];
+
+  if (!convite || motivo) {
     return (
       <CartaoAcesso titulo="Convite inválido">
         <p className="text-sm text-texto-suave">
-          {convite ? MOTIVOS[convite.situacao] : "Não encontramos este convite."} Peça um novo ao Admin, ou cadastre-se
+          {motivo} Peça um novo ao Admin, ou cadastre-se
           sem convite e aguarde a aprovação.
         </p>
         <Link href="/cadastro" className="text-center text-sm text-marca underline-offset-4 hover:underline">

@@ -58,7 +58,9 @@ create table public.convites (
   usado_em timestamptz,
   revogado_em timestamptz,
   check (expira_em > criado_em),
-  check (nivel <> 'lider' or funcao_id is not null)
+  -- Mesma regra de erroNaConcessao: Líder tem Função; Professor não tem.
+  check (nivel <> 'lider' or funcao_id is not null),
+  check (nivel <> 'professor' or funcao_id is null)
 );
 
 -- Funções auxiliares das políticas. `security definer` para ler perfis sem cair nas próprias políticas.
@@ -119,16 +121,16 @@ create policy "cada pessoa lê o próprio perfil; a Liderança lê quem já foi 
     or ((select public.e_lideranca()) and nivel <> 'pendente')
   );
 
--- O Admin muda nível e ativo dos outros (aprova, promove, desativa), nunca os próprios,
--- para não se trancar fora por engano.
-create policy "o Admin muda o acesso dos outros"
+-- O Admin desativa e reativa quem já foi aprovado, nunca a si mesmo, para não se trancar fora por engano.
+-- O nível só muda pela aprovação e pela promoção, mais abaixo. Mesma regra de podeMudarAcesso.
+create policy "o Admin desativa e reativa os outros"
   on public.perfis for update
   to authenticated
-  using ((select public.e_admin()) and id <> (select auth.uid()))
-  with check ((select public.e_admin()) and id <> (select auth.uid()));
+  using ((select public.e_admin()) and id <> (select auth.uid()) and nivel <> 'pendente')
+  with check ((select public.e_admin()) and id <> (select auth.uid()) and nivel <> 'pendente');
 
 revoke insert, update, delete on public.perfis from anon, authenticated;
-grant update (nivel, ativo) on public.perfis to authenticated;
+grant update (ativo) on public.perfis to authenticated;
 
 -- Áreas e Funções -----------------------------------------------------------
 
@@ -251,7 +253,7 @@ create trigger ao_mudar_email
 
 -- Aprovação -----------------------------------------------------------------
 
-/** O Admin aprova um Pendente definindo nível e Função. Roda com as permissões de quem chama. */
+/** O Admin aprova um Pendente definindo nível e Função. */
 create function public.aprovar_pendente(
   pessoa uuid,
   novo_nivel public.nivel_de_acesso,
@@ -259,14 +261,22 @@ create function public.aprovar_pendente(
 )
 returns void
 language plpgsql
+security definer
 set search_path = ''
 as $$
 begin
+  if not public.e_admin() then
+    raise exception 'só o Admin aprova Pendentes' using errcode = '42501';
+  end if;
   if novo_nivel = 'pendente' then
     raise exception 'escolha um nível para aprovar' using errcode = 'P0001';
   end if;
+  -- Mesma regra de erroNaConcessao.
   if novo_nivel = 'lider' and funcao is null then
     raise exception 'um Líder precisa de uma Função' using errcode = 'P0001';
+  end if;
+  if novo_nivel = 'professor' and funcao is not null then
+    raise exception 'um Professor não tem Função' using errcode = 'P0001';
   end if;
 
   update public.perfis set nivel = novo_nivel where id = pessoa and nivel = 'pendente' and ativo;
@@ -282,6 +292,28 @@ $$;
 
 revoke execute on function public.aprovar_pendente from public, anon;
 grant execute on function public.aprovar_pendente to authenticated;
+
+/** O Admin promove a Admin outra pessoa já aprovada e ativa. */
+create function public.promover_a_admin(pessoa uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.e_admin() or pessoa = (select auth.uid()) then
+    raise exception 'só o Admin promove outra pessoa a Admin' using errcode = '42501';
+  end if;
+
+  update public.perfis set nivel = 'admin' where id = pessoa and nivel <> 'pendente' and ativo;
+  if not found then
+    raise exception 'pessoa aprovada e ativa não encontrada' using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+revoke execute on function public.promover_a_admin from public, anon;
+grant execute on function public.promover_a_admin to authenticated;
 
 /** O Admin recusa um Pendente: a conta é apagada, pois não tem histórico. */
 create function public.recusar_pendente(pessoa uuid)

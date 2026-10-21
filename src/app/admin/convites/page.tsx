@@ -3,7 +3,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DOS_NIVEIS, type NivelDeAcesso } from "@/dominio/acesso";
 import { situacaoDoConvite, type SituacaoDoConvite } from "@/dominio/convites";
 import { revogarConvite } from "@/lib/contas/acoes";
-import { opcoesDeFuncao } from "@/lib/contas/consultas";
+import { OPCOES_DE_NIVEL, opcoesDeFuncao } from "@/lib/contas/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { origemDoApp } from "@/lib/origem";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -60,7 +60,7 @@ export default async function PaginaConvites() {
           <p className="text-sm text-texto-suave">
             O link vale para um único cadastro. Quem entrar por ele já fica aprovado com o nível e a Função escolhidos.
           </p>
-          <FormularioConvite funcoes={funcoes} />
+          <FormularioConvite niveis={OPCOES_DE_NIVEL} funcoes={funcoes} />
         </section>
 
         <section className="flex flex-col gap-4">

@@ -3,22 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
-import { NIVEIS_CONCEDIVEIS } from "@/dominio/acesso";
+import { erroNaConcessao, NIVEIS_CONCEDIVEIS } from "@/dominio/acesso";
+import { dataDeNascimentoValida } from "@/dominio/cadastro";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
-import { SENHA_MINIMA } from "@/lib/auth/senha";
+import { erroDeSenha } from "@/lib/auth/senha";
+import { campoTexto } from "@/lib/campos";
 import { origemDoApp } from "@/lib/origem";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
-const campoTexto = (dados: FormData, campo: string) => String(dados.get(campo) ?? "").trim();
-
-const nivelConcedivel = (valor: string) =>
-  (NIVEIS_CONCEDIVEIS as readonly string[]).includes(valor) ? (valor as (typeof NIVEIS_CONCEDIVEIS)[number]) : null;
-
-/** Data no formato do campo `date` (aaaa-mm-dd), existente e não futura. */
-function dataDeNascimentoValida(valor: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
-  const data = new Date(`${valor}T12:00:00Z`);
-  return !Number.isNaN(data.getTime()) && data.toISOString().startsWith(valor) && data <= new Date();
+/** Nível e Função escolhidos num convite ou numa aprovação, já conferidos pela regra do domínio. */
+function concessao(dados: FormData) {
+  const valor = campoTexto(dados, "nivel");
+  const nivel = NIVEIS_CONCEDIVEIS.find((n) => n === valor);
+  const funcao = campoTexto(dados, "funcao") || null;
+  if (!nivel) return { erro: "Escolha o nível de acesso." } as const;
+  const erro = erroNaConcessao(nivel, funcao);
+  return erro ? ({ erro } as const) : ({ nivel, funcao } as const);
 }
 
 export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
@@ -30,8 +30,9 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
 
   if (!nome) return { erro: "Informe seu nome." };
   if (!email) return { erro: "Informe seu e-mail." };
-  if (!dataDeNascimentoValida(dataNascimento)) return { erro: "Informe uma data de nascimento válida." };
-  if (senha.length < SENHA_MINIMA) return { erro: `A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.` };
+  if (!dataDeNascimentoValida(dataNascimento, new Date())) return { erro: "Informe uma data de nascimento válida." };
+  const erroNaSenha = erroDeSenha(senha);
+  if (erroNaSenha) return { erro: erroNaSenha };
 
   const supabase = await supabaseDoServidor();
   const { data, error } = await supabase.auth.signUp({
@@ -56,16 +57,12 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
 }
 
 export async function gerarConvite(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
-  const nivel = nivelConcedivel(campoTexto(dados, "nivel"));
-  const funcao = campoTexto(dados, "funcao") || null;
-  const dias = Number(campoTexto(dados, "validade") || VALIDADE_PADRAO_DIAS);
-
-  if (!nivel) return { erro: "Escolha o nível de acesso." };
-  if (nivel === "lider" && !funcao) return { erro: "Um Líder precisa de uma Função." };
+  const escolha = concessao(dados);
+  if ("erro" in escolha) return { erro: escolha.erro };
 
   let expiraEm: Date;
   try {
-    expiraEm = vencimentoDoConvite(new Date(), dias);
+    expiraEm = vencimentoDoConvite(new Date(), Number(campoTexto(dados, "validade") || VALIDADE_PADRAO_DIAS));
   } catch (erro) {
     return { erro: (erro as Error).message };
   }
@@ -73,7 +70,7 @@ export async function gerarConvite(_: EstadoFormulario, dados: FormData): Promis
   const supabase = await supabaseDoServidor();
   const { error } = await supabase
     .from("convites")
-    .insert({ nivel, funcao_id: funcao, expira_em: expiraEm.toISOString() });
+    .insert({ nivel: escolha.nivel, funcao_id: escolha.funcao, expira_em: expiraEm.toISOString() });
   if (error) return { erro: "Não foi possível gerar o convite." };
 
   revalidatePath("/admin/convites");
@@ -87,13 +84,15 @@ export async function revogarConvite(id: string) {
 }
 
 export async function aprovarPendente(pessoa: string, _: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
-  const nivel = nivelConcedivel(campoTexto(dados, "nivel"));
-  const funcao = campoTexto(dados, "funcao") || null;
-  if (!nivel) return { erro: "Escolha o nível de acesso." };
-  if (nivel === "lider" && !funcao) return { erro: "Um Líder precisa de uma Função." };
+  const escolha = concessao(dados);
+  if ("erro" in escolha) return { erro: escolha.erro };
 
   const supabase = await supabaseDoServidor();
-  const { error } = await supabase.rpc("aprovar_pendente", { pessoa, novo_nivel: nivel, funcao });
+  const { error } = await supabase.rpc("aprovar_pendente", {
+    pessoa,
+    novo_nivel: escolha.nivel,
+    funcao: escolha.funcao,
+  });
   if (error) return { erro: "Não foi possível aprovar." };
 
   revalidatePath("/admin/usuarios");
@@ -114,6 +113,6 @@ export async function mudarAtivo(pessoa: string, ativo: boolean) {
 
 export async function promoverAAdmin(pessoa: string) {
   const supabase = await supabaseDoServidor();
-  await supabase.from("perfis").update({ nivel: "admin" }).eq("id", pessoa).neq("nivel", "pendente");
+  await supabase.rpc("promover_a_admin", { pessoa });
   revalidatePath("/admin/usuarios");
 }

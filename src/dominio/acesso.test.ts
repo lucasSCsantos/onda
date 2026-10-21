@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { podeGerenciarContas, podeVerPessoa, telaInicial, type Pessoa } from "./acesso";
+import { erroNaConcessao, podeGerenciarContas, podeMudarAcesso, podeVerPessoa, telaInicial, type Pessoa } from "./acesso";
 
 const pessoa = (id: string, nivel: Pessoa["nivel"], ativo = true): Pessoa => ({ id, nivel, ativo });
 
@@ -48,6 +48,41 @@ describe("podeVerPessoa", () => {
 
   it("quem foi desativado vê só a própria conta", () => {
     expect(visiveisPara(saiu)).toEqual(["saiu"]);
+  });
+});
+
+describe("podeMudarAcesso", () => {
+  it("o Admin desativa e promove quem já foi aprovado, menos a si mesmo", () => {
+    expect(podeMudarAcesso(lucas, carol)).toBe(true);
+    expect(podeMudarAcesso(lucas, paulo)).toBe(true);
+    expect(podeMudarAcesso(lucas, saiu)).toBe(true);
+    expect(podeMudarAcesso(lucas, lucas)).toBe(false);
+  });
+
+  it("o Pendente se aprova ou se recusa, não se desativa nem se promove", () => {
+    expect(podeMudarAcesso(lucas, novo)).toBe(false);
+  });
+
+  it("quem não é Admin não muda o acesso de ninguém", () => {
+    expect(podeMudarAcesso(carol, paulo)).toBe(false);
+    expect(podeMudarAcesso(paulo, carol)).toBe(false);
+  });
+});
+
+describe("erroNaConcessao", () => {
+  it("um Líder precisa de uma Função", () => {
+    expect(erroNaConcessao("lider", null)).toBe("Um Líder precisa de uma Função.");
+    expect(erroNaConcessao("lider", "louvor")).toBeNull();
+  });
+
+  it("um Professor não tem Função", () => {
+    expect(erroNaConcessao("professor", "louvor")).toBe("Um Professor não tem Função.");
+    expect(erroNaConcessao("professor", null)).toBeNull();
+  });
+
+  it("um Admin pode ter ou não uma Função", () => {
+    expect(erroNaConcessao("admin", null)).toBeNull();
+    expect(erroNaConcessao("admin", "geral")).toBeNull();
   });
 });
 
