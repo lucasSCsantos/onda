@@ -6,8 +6,13 @@
 
 **Status:** ready-for-agent
 
-- [ ] Criar, editar e inativar Adolescentes; reativar traz de volta
-- [ ] Busca por nome e ordenação por próximo aniversário
-- [ ] Pendente e Professor não leem nenhum dado de Adolescente (testado nas políticas por linha)
-- [ ] Páginas fora de buscadores (sem indexação)
-- [ ] Teste do cálculo de próximo aniversário, incluindo 29/02
+- [x] Criar, editar e inativar Adolescentes; reativar traz de volta
+- [x] Busca por nome e ordenação por próximo aniversário
+- [x] Pendente e Professor não leem nenhum dado de Adolescente (testado nas políticas por linha)
+- [x] Páginas fora de buscadores (sem indexação)
+- [x] Teste do cálculo de próximo aniversário, incluindo 29/02
+
+## Notes
+
+- Quem nasceu em 29/02 comemora em 28/02 nos anos não bissextos (`proximoAniversario` em `src/dominio/adolescentes.ts`).
+- `/adolescentes` é a lista (busca `?q=`, ordem `?ordem=nome`, `?inativos=1`); sem DELETE no banco, só inativar.

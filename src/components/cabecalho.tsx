@@ -2,7 +2,7 @@ import Link from "next/link";
 import { sair } from "@/lib/auth/acoes";
 import { Marca } from "./marca";
 
-/** Barra do topo das telas internas: logotipo, calendário (Liderança), atalhos da administração (só Admin) e Sair. */
+/** Barra do topo das telas internas: logotipo, calendário e Adolescentes (Liderança), atalhos da administração (só Admin) e Sair. */
 export function Cabecalho({ admin = false, lideranca = admin }: { admin?: boolean; lideranca?: boolean }) {
   return (
     <header className="flex items-center justify-between border-b border-borda bg-superficie px-4 py-3">
@@ -13,6 +13,11 @@ export function Cabecalho({ admin = false, lideranca = admin }: { admin?: boolea
         {lideranca && (
           <Link href="/calendario" className="text-texto-suave hover:text-texto">
             Calendário
+          </Link>
+        )}
+        {lideranca && (
+          <Link href="/adolescentes" className="text-texto-suave hover:text-texto">
+            Adolescentes
           </Link>
         )}
         {admin && (
