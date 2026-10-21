@@ -19,6 +19,9 @@ export function FormularioEntrar({ linkInvalido }: { linkInvalido: boolean }) {
       <Link href="/recuperar-senha" className="text-center text-sm text-marca underline-offset-4 hover:underline">
         Esqueci minha senha
       </Link>
+      <Link href="/cadastro" className="text-center text-sm text-marca underline-offset-4 hover:underline">
+        Criar conta
+      </Link>
     </form>
   );
 }

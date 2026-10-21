@@ -19,6 +19,35 @@ export function Campo({
   );
 }
 
+export function Selecao({
+  rotulo,
+  opcoes,
+  vazia,
+  ...props
+}: {
+  rotulo: string;
+  opcoes: { valor: string; texto: string }[];
+  /** Texto da opção vazia, quando o campo é opcional. */
+  vazia?: string;
+} & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm font-medium">
+      {rotulo}
+      <select
+        {...props}
+        className="rounded-lg border border-borda bg-superficie px-3 py-2.5 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
+      >
+        {vazia !== undefined && <option value="">{vazia}</option>}
+        {opcoes.map((opcao) => (
+          <option key={opcao.valor} value={opcao.valor}>
+            {opcao.texto}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function BotaoEnviar({ children, pendente }: { children: React.ReactNode; pendente: string }) {
   const { pending } = useFormStatus();
   return (

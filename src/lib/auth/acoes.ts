@@ -1,20 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
+import { origemDoApp } from "@/lib/origem";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { SENHA_MINIMA } from "./senha";
 
 const campoTexto = (dados: FormData, campo: string) => String(dados.get(campo) ?? "").trim();
-
-/** Endereço público do app, para montar links enviados por e-mail. */
-async function origemDoApp() {
-  const cabecalhos = await headers();
-  const host = cabecalhos.get("x-forwarded-host") ?? cabecalhos.get("host");
-  const protocolo = cabecalhos.get("x-forwarded-proto") ?? "http";
-  return host ? `${protocolo}://${host}` : (cabecalhos.get("origin") ?? "");
-}
 
 export async function entrar(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
   const supabase = await supabaseDoServidor();

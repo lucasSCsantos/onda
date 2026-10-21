@@ -1,24 +1,28 @@
-import { Marca } from "@/components/marca";
-import { sair } from "@/lib/auth/acoes";
-import { supabaseDoServidor } from "@/lib/supabase/servidor";
+import { redirect } from "next/navigation";
+import { Cabecalho } from "@/components/cabecalho";
+import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
+import { perfilAtual } from "@/lib/contas/perfil";
 
 export default async function Inicio() {
-  const supabase = await supabaseDoServidor();
-  const { data: perfil } = await supabase.from("perfis").select("nome").maybeSingle();
+  const perfil = await perfilAtual();
+  if (!perfil) redirect("/entrar");
+  const tela = telaInicial(perfil);
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-borda bg-superficie px-4 py-3">
-        <Marca qual="logotipo" rotulo="ONDA" className="h-9 w-14 text-texto" />
-        <form action={sair}>
-          <button type="submit" className="text-sm text-texto-suave hover:text-texto">
-            Sair
-          </button>
-        </form>
-      </header>
+      <Cabecalho admin={podeGerenciarContas(perfil)} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Olá{perfil?.nome ? `, ${perfil.nome}` : ""}!</h1>
-        <p className="mt-2 text-texto-suave">O calendário do ministério vai aparecer aqui.</p>
+        <h1 className="text-2xl font-semibold">Olá{perfil.nome ? `, ${perfil.nome}` : ""}!</h1>
+        {tela === "aguardando-aprovacao" && (
+          <p className="mt-2 text-texto-suave">
+            Seu cadastro está aguardando a aprovação de um Admin. Você não precisa fazer nada: assim que houver a
+            aprovação, o Mural aparece aqui.
+          </p>
+        )}
+        {tela === "conta-desativada" && (
+          <p className="mt-2 text-texto-suave">Sua conta foi desativada. Fale com um Admin se precisar de acesso.</p>
+        )}
+        {tela === "mural" && <p className="mt-2 text-texto-suave">O calendário do ministério vai aparecer aqui.</p>}
       </main>
     </>
   );

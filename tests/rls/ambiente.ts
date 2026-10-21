@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
+import type { NivelDeAcesso } from "@/dominio/acesso";
 
 /** Lê URL e chaves do Supabase local (`supabase start` precisa estar rodando). */
 function ambienteLocal() {
@@ -21,20 +22,46 @@ export function anonimo(): SupabaseClient {
   return createClient(ambiente.url, ambiente.anon, semSessao);
 }
 
-/** Cria uma conta nova e devolve um cliente já autenticado como ela. */
-export async function contaNova(nome: string) {
-  const email = `${crypto.randomUUID()}@teste.onda`;
-  const senha = "senha-de-teste-123";
+export const SENHA = "senha-de-teste-123";
+export const emailNovo = () => `${crypto.randomUUID()}@teste.onda`;
+
+/** Cria uma conta nova no nível pedido e devolve um cliente já autenticado como ela. */
+export async function contaNova(nome: string, nivel: NivelDeAcesso = "pendente") {
+  const email = emailNovo();
   const { data, error } = await admin.auth.admin.createUser({
     email,
-    password: senha,
+    password: SENHA,
     email_confirm: true,
     user_metadata: { nome },
   });
   if (error) throw error;
 
+  if (nivel !== "pendente") {
+    const promocao = await admin.from("perfis").update({ nivel }).eq("id", data.user.id);
+    if (promocao.error) throw promocao.error;
+  }
+
   const cliente = anonimo();
-  const login = await cliente.auth.signInWithPassword({ email, password: senha });
+  const login = await cliente.auth.signInWithPassword({ email, password: SENHA });
   if (login.error) throw login.error;
-  return { id: data.user.id, cliente };
+  return { id: data.user.id, email, cliente };
+}
+
+/** Cadastro pelo app, como faria quem abre a tela de cadastro (com ou sem convite). */
+export async function cadastrar(nome: string, convite?: string) {
+  const cliente = anonimo();
+  const email = emailNovo();
+  const { data, error } = await cliente.auth.signUp({
+    email,
+    password: SENHA,
+    options: { data: { nome, data_nascimento: "2000-05-10", ...(convite ? { convite } : {}) } },
+  });
+  return { cliente, email, id: data.user?.id, error };
+}
+
+/** Id de uma Função pelo nome. */
+export async function funcao(nome: string): Promise<string> {
+  const { data, error } = await admin.from("funcoes").select("id").eq("nome", nome).single();
+  if (error) throw error;
+  return data.id;
 }
