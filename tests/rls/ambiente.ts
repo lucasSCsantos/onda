@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
-import type { NivelDeAcesso } from "@/dominio/acesso";
+import type { NivelDeAcesso, Pessoa } from "@/dominio/acesso";
 
 /** Lê URL e chaves do Supabase local (`supabase start` precisa estar rodando). */
 function ambienteLocal() {
@@ -64,4 +64,14 @@ export async function funcao(nome: string): Promise<string> {
   const { data, error } = await admin.from("funcoes").select("id").eq("nome", nome).single();
   if (error) throw error;
   return data.id;
+}
+
+/** Conta nova no nível pedido, já com as Funções dadas (pelo nome). */
+export async function comFuncoes(nome: string, nivel: NivelDeAcesso, funcoes: string[], ativo = true) {
+  const conta = await contaNova(nome, nivel);
+  for (const f of funcoes) {
+    await admin.from("funcoes_das_pessoas").insert({ pessoa_id: conta.id, funcao_id: await funcao(f) }).throwOnError();
+  }
+  if (!ativo) await admin.from("perfis").update({ ativo: false }).eq("id", conta.id).throwOnError();
+  return { ...conta, pessoa: { id: conta.id, nivel, ativo } satisfies Pessoa, funcoes };
 }

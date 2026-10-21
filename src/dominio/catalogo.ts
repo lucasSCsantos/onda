@@ -35,6 +35,9 @@ export const NOMES_DOS_TIPOS: Record<TipoDeCampo, string> = {
 /** Um campo específico de uma Categoria. `opcoes` só vale para o tipo escolha. */
 export type CampoDaCategoria = { nome: string; tipo: TipoDeCampo; obrigatorio: boolean; opcoes: string[] };
 
+/** Um campo específico já gravado, com o id que identifica o valor dele num Evento. */
+export type CampoCadastrado = CampoDaCategoria & { id: string };
+
 export type Categoria = { nome: string; area: string; cor: string; campos: CampoDaCategoria[] };
 
 const campo = (nome: string, tipo: TipoDeCampo, obrigatorio = false, opcoes: string[] = []): CampoDaCategoria => ({

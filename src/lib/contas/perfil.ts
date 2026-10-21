@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { podeGerenciarContas, type NivelDeAcesso, type Pessoa } from "@/dominio/acesso";
+import { podeVerTodosOsEventos } from "@/dominio/eventos";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
 export type PerfilAtual = Pessoa & { nome: string };
@@ -21,5 +22,12 @@ export async function perfilAtual(): Promise<PerfilAtual | null> {
 export async function exigirAdmin(): Promise<PerfilAtual> {
   const perfil = await perfilAtual();
   if (!perfil || !podeGerenciarContas(perfil)) redirect("/");
+  return perfil;
+}
+
+/** Para as telas de Eventos: quem não é da Liderança ativa volta para o início. */
+export async function exigirLideranca(): Promise<PerfilAtual> {
+  const perfil = await perfilAtual();
+  if (!perfil || !podeVerTodosOsEventos(perfil)) redirect("/");
   return perfil;
 }

@@ -1,12 +1,19 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Cabecalho } from "@/components/cabecalho";
 import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
+import { podeVerTodosOsEventos } from "@/dominio/eventos";
 import { perfilAtual } from "@/lib/contas/perfil";
+import { eventos } from "@/lib/eventos/consultas";
+import { supabaseDoServidor } from "@/lib/supabase/servidor";
+import { ListaDeEventos } from "./lista-de-eventos";
 
 export default async function Inicio() {
   const perfil = await perfilAtual();
   if (!perfil) redirect("/entrar");
   const tela = telaInicial(perfil);
+  const veEventos = podeVerTodosOsEventos(perfil);
+  const lista = veEventos ? await eventos(await supabaseDoServidor()) : [];
 
   return (
     <>
@@ -22,7 +29,18 @@ export default async function Inicio() {
         {tela === "conta-desativada" && (
           <p className="mt-2 text-texto-suave">Sua conta foi desativada. Fale com um Admin se precisar de acesso.</p>
         )}
-        {tela === "mural" && <p className="mt-2 text-texto-suave">O calendário do ministério vai aparecer aqui.</p>}
+        {tela === "mural" && !veEventos && <p className="mt-2 text-texto-suave">Suas aulas vão aparecer aqui.</p>}
+        {veEventos && (
+          <section className="mt-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold">Eventos</h2>
+              <Link href="/eventos/novo" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+                Novo Evento
+              </Link>
+            </div>
+            <ListaDeEventos eventos={lista} />
+          </section>
+        )}
       </main>
     </>
   );

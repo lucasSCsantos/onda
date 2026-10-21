@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { NivelDeAcesso, Pessoa } from "@/dominio/acesso";
 import { CATALOGO_INICIAL, podeCriarEvento } from "@/dominio/catalogo";
-import { admin, cadastrar, contaNova, funcao } from "./ambiente";
+import { admin, cadastrar, comFuncoes, contaNova, funcao } from "./ambiente";
 
 type CategoriaDoBanco = {
   id: string;
@@ -18,16 +17,6 @@ async function categoriasDoBanco(): Promise<CategoriaDoBanco[]> {
     .overrideTypes<CategoriaDoBanco[], { merge: false }>()
     .throwOnError();
   return data;
-}
-
-/** Conta nova no nível pedido, já com as Funções dadas (pelo nome). */
-async function comFuncoes(nome: string, nivel: NivelDeAcesso, funcoes: string[], ativo = true) {
-  const conta = await contaNova(nome, nivel);
-  for (const f of funcoes) {
-    await admin.from("funcoes_das_pessoas").insert({ pessoa_id: conta.id, funcao_id: await funcao(f) }).throwOnError();
-  }
-  if (!ativo) await admin.from("perfis").update({ ativo: false }).eq("id", conta.id).throwOnError();
-  return { ...conta, pessoa: { id: conta.id, nivel, ativo } satisfies Pessoa, funcoes };
 }
 
 const areaDa = (nome: string) => CATALOGO_INICIAL.funcoes.find((f) => f.nome === nome)!.area;
