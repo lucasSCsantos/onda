@@ -18,7 +18,7 @@ export default async function PaginaNovoEvento() {
 
   return (
     <>
-      <Cabecalho admin={podeGerenciarContas(eu)} />
+      <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
         <Link href="/" className="text-sm text-texto-suave hover:text-texto">
           ‹ Eventos

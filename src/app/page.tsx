@@ -17,7 +17,7 @@ export default async function Inicio() {
 
   return (
     <>
-      <Cabecalho admin={podeGerenciarContas(perfil)} />
+      <Cabecalho admin={podeGerenciarContas(perfil)} lideranca={veEventos} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
         <h1 className="text-2xl font-semibold">Olá{perfil.nome ? `, ${perfil.nome}` : ""}!</h1>
         {tela === "aguardando-aprovacao" && (

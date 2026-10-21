@@ -12,6 +12,7 @@
   --destaque: #459ac8;
   --erro: #b42318;
   --sucesso: #1f7a4d;
+  --aviso: #9a5b00;
   color-scheme: light;
 }
 
@@ -27,6 +28,7 @@
     --destaque: #459ac8;
     --erro: #f97066;
     --sucesso: #47cd89;
+    --aviso: #f5b84d;
     color-scheme: dark;
   }
 }
@@ -42,6 +44,7 @@
   --destaque: #459ac8;
   --erro: #f97066;
   --sucesso: #47cd89;
+  --aviso: #f5b84d;
   color-scheme: dark;
 }
 
@@ -56,6 +59,7 @@
   --color-destaque: var(--destaque);
   --color-erro: var(--erro);
   --color-sucesso: var(--sucesso);
+  --color-aviso: var(--aviso);
   --font-sans: var(--font-geist-sans);
 }
 

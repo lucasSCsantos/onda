@@ -82,15 +82,21 @@ type EventoDoBanco = {
   responsavel: { nome: string } | null;
 };
 
-/** Todos os Eventos, em ordem cronológica. As políticas por linha decidem quem lê. */
-export async function eventos(supabase: SupabaseClient): Promise<EventoListado[]> {
-  const { data } = await supabase
+/**
+ * Os Eventos em ordem cronológica: todos, ou os que tocam um período (`fim` exclusivo). As políticas por linha
+ * decidem quem lê.
+ */
+export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date; fim: Date }): Promise<EventoListado[]> {
+  let consulta = supabase
     .from("eventos")
     .select(
       "id, titulo, inicio, fim, dia_inteiro, local, status, categorias(nome, cor), responsavel:perfis!eventos_responsavel_id_fkey(nome)",
-    )
-    .order("inicio")
-    .overrideTypes<EventoDoBanco[], { merge: false }>();
+    );
+  if (periodo) {
+    const inicio = periodo.inicio.toISOString();
+    consulta = consulta.lt("inicio", periodo.fim.toISOString()).or(`fim.gte."${inicio}",inicio.gte."${inicio}"`);
+  }
+  const { data } = await consulta.order("inicio").overrideTypes<EventoDoBanco[], { merge: false }>();
   return (data ?? []).map((e) => ({
     id: e.id,
     titulo: e.titulo,
