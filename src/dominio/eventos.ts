@@ -1,8 +1,8 @@
 import type { Pessoa } from "./acesso";
-import type { CampoCadastrado, CampoDaCategoria } from "./catalogo";
-import { dataLocal, meiaNoite } from "./fuso";
+import { podeCriarEvento, type CampoCadastrado, type CampoDaCategoria } from "./catalogo";
+import { dataLocal, horaLocal, meiaNoite, somarDias } from "./fuso";
 
-/** Os estágios de um Evento. As transições são livres (ticket 05). */
+/** Os estágios de um Evento. As transições são livres, menos o Realizado manual (podeMarcarRealizado). */
 export const STATUS = ["rascunho", "planejado", "confirmado", "realizado", "cancelado", "adiado"] as const;
 
 export type Status = (typeof STATUS)[number];
@@ -16,8 +16,11 @@ export const NOMES_DOS_STATUS: Record<Status, string> = {
   adiado: "Adiado",
 };
 
-/** Com que Status um Evento pode nascer. Realizado só vem depois do fim (ticket 05). */
+/** Com que Status um Evento pode nascer. Realizado só vem depois do fim, numa edição. */
 export const STATUS_INICIAIS = ["rascunho", "planejado", "confirmado", "cancelado", "adiado"] as const satisfies Status[];
+
+const daLideranca = (quem: Pessoa) => quem.ativo && (quem.nivel === "admin" || quem.nivel === "lider");
+const eAdmin = (quem: Pessoa) => quem.ativo && quem.nivel === "admin";
 
 /** O que o formulário de Evento envia, tudo como texto. `campos` vai do id do campo específico ao texto digitado. */
 export type EntradaDeEvento = {
@@ -72,15 +75,70 @@ export function lerEvento(
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
 ): { evento: Evento } | { erro: string } {
+  return lerFormulario(entrada, categoria, lideranca, STATUS_INICIAIS, null);
+}
+
+/** O que a edição precisa saber: o Evento como está gravado, quem edita e quando. */
+export type ContextoDaEdicao = { anterior: Evento; quem: Pessoa; agora: Date };
+
+/**
+ * Confere e converte a edição de um Evento, como `lerEvento`, com o que muda numa edição: qualquer Status, com o
+ * Realizado manual só para quem pode marcá-lo, e nunca antes do fim; o Responsável e as pessoas dos campos já gravados podem ficar mesmo
+ * se foram desativados; o checklist fica como estava; e remarcar um Adiado (mudar início ou fim) o volta a Planejado.
+ * Quem pode editar é `podeEditarEvento`.
+ */
+export function lerEdicao(
+  entrada: EntradaDeEvento,
+  categoria: CategoriaDoEvento,
+  lideranca: readonly string[],
+  { anterior, quem, agora }: ContextoDaEdicao,
+): { evento: Evento } | { erro: string } {
+  const lido = lerFormulario(entrada, categoria, lideranca, STATUS, anterior);
+  if ("erro" in lido) return lido;
+  const evento = lido.evento;
+
+  // Um Confirmado que terminou já é Realizado, mesmo que a transição automática ainda não tenha sido gravada.
+  const jaRealizado = statusNoMomento(anterior, agora) === "realizado";
+  if (
+    evento.status === "realizado" &&
+    !jaRealizado &&
+    !podeMarcarRealizado(quem, { ...evento, responsavel: anterior.responsavel }, agora)
+  ) {
+    return { erro: "Só o Admin e o Responsável marcam Realizado, e só depois do fim." };
+  }
+  if (evento.status === "realizado" && !terminou(evento, agora)) return { erro: "Um Evento só fica Realizado depois do fim." };
+
+  const remarcado =
+    evento.inicio.getTime() !== anterior.inicio.getTime() ||
+    (evento.fim?.getTime() ?? null) !== (anterior.fim?.getTime() ?? null) ||
+    evento.diaInteiro !== anterior.diaInteiro;
+  if (anterior.status === "adiado" && evento.status === "adiado" && remarcado) evento.status = "planejado";
+
+  for (const c of categoria.campos) {
+    if (c.tipo === "checklist" && anterior.campos[c.id] !== undefined) evento.campos[c.id] = anterior.campos[c.id];
+  }
+  return { evento };
+}
+
+/** `anterior` é o Evento já gravado, numa edição; `null` na criação. */
+function lerFormulario(
+  entrada: EntradaDeEvento,
+  categoria: CategoriaDoEvento,
+  lideranca: readonly string[],
+  statusAceitos: readonly Status[],
+  anterior: Evento | null,
+): { evento: Evento } | { erro: string } {
   const titulo = entrada.titulo.trim();
   if (!titulo) return { erro: "Dê um título ao Evento." };
 
-  const status = STATUS_INICIAIS.find((s) => s === entrada.status);
+  const status = statusAceitos.find((s) => s === entrada.status);
   if (!status) return { erro: "Escolha o Status." };
 
   const responsavel = entrada.responsavel || null;
   if (!responsavel && status !== "rascunho") return { erro: "Escolha o Responsável, ou salve como Rascunho." };
-  if (responsavel && !lideranca.includes(responsavel)) return { erro: "O Responsável precisa ser da Liderança." };
+  if (responsavel && !lideranca.includes(responsavel) && responsavel !== anterior?.responsavel) {
+    return { erro: "O Responsável precisa ser da Liderança." };
+  }
 
   const periodo = lerPeriodo(entrada);
   if ("erro" in periodo) return periodo;
@@ -88,7 +146,7 @@ export function lerEvento(
   const link = entrada.link.trim() || null;
   if (link && !eLink(link)) return { erro: "O link precisa começar com http:// ou https://." };
 
-  const campos = lerCampos(entrada.campos, categoria, lideranca);
+  const campos = lerCampos(entrada.campos, categoria, lideranca, anterior?.campos ?? {});
   if ("erro" in campos) return campos;
 
   return {
@@ -109,10 +167,11 @@ function lerCampos(
   textos: Record<string, string>,
   categoria: CategoriaDoEvento,
   lideranca: readonly string[],
+  gravados: Record<string, ValorDeCampo>,
 ): { valores: Record<string, ValorDeCampo> } | { erro: string } {
   const valores: Record<string, ValorDeCampo> = {};
   for (const campo of camposDaCriacao(categoria)) {
-    const lido = lerCampo(campo, textos[campo.id] ?? "", lideranca);
+    const lido = lerCampo(campo, textos[campo.id] ?? "", lideranca, gravados[campo.id]);
     if (lido === null) {
       if (campo.obrigatorio) return { erro: `Preencha “${campo.nome}”.` };
       continue;
@@ -126,8 +185,13 @@ function lerCampos(
 const VALOR_EM_REAIS = /^(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/;
 const DATA_E_HORA = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/;
 
-/** O valor de um campo a partir do texto digitado; `null` se ficou vazio. */
-function lerCampo(campo: CampoDaCategoria, texto: string, lideranca: readonly string[]): ValorDeCampo | null | { erro: string } {
+/** O valor de um campo a partir do texto digitado; `null` se ficou vazio. Uma pessoa já `gravada` no campo pode ficar. */
+function lerCampo(
+  campo: CampoDaCategoria,
+  texto: string,
+  lideranca: readonly string[],
+  gravado: ValorDeCampo | undefined,
+): ValorDeCampo | null | { erro: string } {
   const limpo = texto.trim();
   if (campo.tipo === "lista") {
     const itens = limpo
@@ -159,7 +223,7 @@ function lerCampo(campo: CampoDaCategoria, texto: string, lideranca: readonly st
     case "escolha":
       return campo.opcoes.includes(limpo) ? limpo : { erro: `Escolha uma das opções de “${campo.nome}”.` };
     case "pessoa":
-      return lideranca.includes(limpo) ? limpo : { erro: `Escolha uma pessoa da Liderança em “${campo.nome}”.` };
+      return lideranca.includes(limpo) || limpo === gravado ? limpo : { erro: `Escolha uma pessoa da Liderança em “${campo.nome}”.` };
     default:
       return limpo;
   }
@@ -232,7 +296,7 @@ export function rotuloDaData(categoria: { nome: string }): string {
  * (O Professor lê só as aulas dele, no ticket 11.) A política de leitura de `public.eventos` segue a mesma regra.
  */
 export function podeVerTodosOsEventos(quem: Pessoa): boolean {
-  return quem.ativo && (quem.nivel === "admin" || quem.nivel === "lider");
+  return daLideranca(quem);
 }
 
 /** Data civil `AAAA-MM-DD` de um instante, no fuso do Mural. */
@@ -253,4 +317,92 @@ export function agruparPorDia<E extends { inicio: Date; diaInteiro: boolean }>(e
     dias.at(-1)!.eventos.push(evento);
   }
   return dias;
+}
+
+/** Data, hora e fim de um Evento, como `lerPeriodo` os grava. */
+type Periodo = Pick<Evento, "inicio" | "fim" | "diaInteiro">;
+
+/**
+ * Quando o Evento termina: no horário de fim; sem fim, ou sendo de dia inteiro, à meia-noite do dia seguinte ao
+ * último dia. A função `public.fim_do_evento` no banco segue a mesma regra.
+ */
+export function fimDoEvento({ inicio, fim, diaInteiro }: Periodo): Date {
+  if (fim && !diaInteiro) return fim;
+  const { ano, mes, dia } = dataLocal(fim ?? inicio);
+  return somarDias(meiaNoite(ano, mes, dia), 1);
+}
+
+export const terminou = (periodo: Periodo, agora: Date) => agora >= fimDoEvento(periodo);
+
+/**
+ * O Status de um Evento num momento: um Confirmado passa sozinho a Realizado quando termina; Planejado e Rascunho
+ * vencidos ficam parados até alguém decidir. O banco aplica a mesma transição (`public.realizar_confirmados`).
+ */
+export function statusNoMomento(evento: Periodo & { status: Status }, agora: Date): Status {
+  return evento.status === "confirmado" && terminou(evento, agora) ? "realizado" : evento.status;
+}
+
+/**
+ * Quem edita um Evento e muda o seu Status: o Admin, quem tem Função na Área da Categoria (a Geral vale para todas)
+ * e o Responsável. Os demais líderes só leem. `areas` são as Áreas das Funções de quem edita.
+ * A política de edição de `public.eventos` (`pode_editar_evento`) segue a mesma regra.
+ */
+export function podeEditarEvento(
+  quem: Pessoa,
+  areas: readonly string[],
+  evento: { categoria: { area: string }; responsavel: string | null },
+): boolean {
+  return podeCriarEvento(quem, areas, evento.categoria) || (daLideranca(quem) && evento.responsavel === quem.id);
+}
+
+/** Só o Admin exclui um Evento; os demais usam Cancelado. */
+export function podeExcluirEvento(quem: Pessoa): boolean {
+  return eAdmin(quem);
+}
+
+/** O Realizado manual: o Admin e o Responsável, depois do fim. O banco confere a mesma regra ao editar. */
+export function podeMarcarRealizado(quem: Pessoa, evento: Periodo & { responsavel: string | null }, agora: Date): boolean {
+  const pode = eAdmin(quem) || (daLideranca(quem) && evento.responsavel === quem.id);
+  return pode && terminou(evento, agora);
+}
+
+/**
+ * Os Status que o formulário de edição oferece: todos, e o Realizado só a quem pode marcá-lo ou se já é Realizado
+ * (um Confirmado que terminou já é). O formulário começa no Status do momento.
+ */
+export function statusDaEdicao(quem: Pessoa, evento: Periodo & { status: Status; responsavel: string | null }, agora: Date): Status[] {
+  const comRealizado = statusNoMomento(evento, agora) === "realizado" || podeMarcarRealizado(quem, evento, agora);
+  return STATUS.filter((s) => s !== "realizado" || comRealizado);
+}
+
+/**
+ * Um Evento conta como "sem Responsável" se não tem um, ou se o dele foi desativado e o Evento ainda não terminou.
+ * Depois do fim, o Responsável desativado fica para o histórico.
+ */
+export function semResponsavel(evento: Periodo & { responsavel: { ativo: boolean } | null }, agora: Date): boolean {
+  return !evento.responsavel || (!evento.responsavel.ativo && !terminou(evento, agora));
+}
+
+/** O caminho inverso de `lerEvento`: o Evento gravado como o formulário de edição o mostra. */
+export function entradaDoEvento(evento: Evento, categoria: CategoriaDoEvento): EntradaDeEvento {
+  const textoDoCampo = (campo: CampoCadastrado): string => {
+    const valor = evento.campos[campo.id];
+    if (valor === undefined) return "";
+    if (Array.isArray(valor)) return valor.join("\n");
+    if (typeof valor === "number") return `${Math.trunc(valor / 100)},${String(valor % 100).padStart(2, "0")}`;
+    return valor;
+  };
+  return {
+    titulo: evento.titulo,
+    data: diaDe(evento.inicio),
+    hora: evento.diaInteiro ? "" : horaLocal(evento.inicio),
+    dataFim: evento.fim ? diaDe(evento.fim) : "",
+    horaFim: evento.fim && !evento.diaInteiro ? horaLocal(evento.fim) : "",
+    local: evento.local,
+    responsavel: evento.responsavel ?? "",
+    status: evento.status,
+    observacoes: evento.observacoes,
+    link: evento.link ?? "",
+    campos: Object.fromEntries(camposDaCriacao(categoria).map((c) => [c.id, textoDoCampo(c)])),
+  };
 }

@@ -75,3 +75,38 @@ export async function comFuncoes(nome: string, nivel: NivelDeAcesso, funcoes: st
   if (!ativo) await admin.from("perfis").update({ ativo: false }).eq("id", conta.id).throwOnError();
   return { ...conta, pessoa: { id: conta.id, nivel, ativo } satisfies Pessoa, funcoes };
 }
+
+export type Cliente = Awaited<ReturnType<typeof contaNova>>["cliente"];
+
+/** Id, Área e campos (pelo nome) de uma Categoria. */
+export async function categoria(nome: string) {
+  const { data } = await admin
+    .from("categorias")
+    .select("id, areas(nome), campos_das_categorias(id, nome)")
+    .eq("nome", nome)
+    .single()
+    .overrideTypes<{ id: string; areas: { nome: string }; campos_das_categorias: { id: string; nome: string }[] }, { merge: false }>()
+    .throwOnError();
+  const campo = (nomeDoCampo: string) => data.campos_das_categorias.find((c) => c.nome === nomeDoCampo)!.id;
+  return { id: data.id, area: data.areas.nome, campo };
+}
+
+/** Um Evento simples, das 19h às 21h de 24/10/2026 em Salvador, com o Responsável dado. */
+export const eventoDe = (categoriaId: string, responsavel: string | null, mudancas: Record<string, unknown> = {}) => ({
+  titulo: "Evento de teste",
+  categoria_id: categoriaId,
+  inicio: "2026-10-24T22:00:00Z",
+  fim: "2026-10-25T00:00:00Z",
+  dia_inteiro: false,
+  local: "Templo",
+  responsavel_id: responsavel,
+  status: "planejado",
+  observacoes: "",
+  link: null,
+  campos: {},
+  ...mudancas,
+});
+
+export async function criar(cliente: Cliente, evento: ReturnType<typeof eventoDe>) {
+  return cliente.from("eventos").insert(evento).select("id, criado_por, criado_em").single();
+}

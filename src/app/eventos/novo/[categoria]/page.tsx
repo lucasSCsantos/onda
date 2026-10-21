@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { Cabecalho } from "@/components/cabecalho";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeCriarEvento } from "@/dominio/catalogo";
-import { rotuloDaData } from "@/dominio/eventos";
+import { rotuloDaData, STATUS_INICIAIS } from "@/dominio/eventos";
 import { exigirLideranca } from "@/lib/contas/perfil";
 import { areasDaPessoa, categoria as buscarCategoria, opcoesDaLideranca } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
-import { FormularioEvento } from "./formulario-evento";
+import { criarEvento } from "@/lib/eventos/acoes";
+import { FormularioEvento } from "../../formulario-evento";
 
 export const metadata: Metadata = { title: "Novo Evento" };
 
@@ -34,7 +35,16 @@ export default async function PaginaNovoEventoDaCategoria(props: PageProps<"/eve
           <span aria-hidden className="size-3 rounded-full" style={{ backgroundColor: categoria.cor }} />
           Novo Evento: {categoria.nome}
         </h1>
-        <FormularioEvento categoria={categoria} lideranca={lideranca} eu={eu.id} rotuloDaData={rotuloDaData(categoria)} />
+        {/* Quem cria é o Responsável sugerido, e o Evento começa Planejado. */}
+        <FormularioEvento
+          acao={criarEvento.bind(null, categoria.id)}
+          categoria={categoria}
+          lideranca={lideranca}
+          status={STATUS_INICIAIS}
+          iniciais={{ responsavel: eu.id, status: "planejado" }}
+          rotuloDaData={rotuloDaData(categoria)}
+          botao={{ texto: "Criar Evento", pendente: "Criando…" }}
+        />
       </main>
     </>
   );

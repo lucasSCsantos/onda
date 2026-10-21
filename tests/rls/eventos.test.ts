@@ -1,40 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOGO_INICIAL, podeCriarEvento } from "@/dominio/catalogo";
-import { admin, cadastrar, comFuncoes, contaNova } from "./ambiente";
-
-type Cliente = Awaited<ReturnType<typeof contaNova>>["cliente"];
-
-async function categoria(nome: string) {
-  const { data } = await admin
-    .from("categorias")
-    .select("id, areas(nome), campos_das_categorias(id, nome)")
-    .eq("nome", nome)
-    .single()
-    .overrideTypes<{ id: string; areas: { nome: string }; campos_das_categorias: { id: string; nome: string }[] }, { merge: false }>()
-    .throwOnError();
-  const campo = (nomeDoCampo: string) => data.campos_das_categorias.find((c) => c.nome === nomeDoCampo)!.id;
-  return { id: data.id, area: data.areas.nome, campo };
-}
-
-/** Um Evento simples, das 19h às 21h de 24/10/2026 em Salvador, com o Responsável dado. */
-const eventoDe = (categoriaId: string, responsavel: string | null, mudancas: Record<string, unknown> = {}) => ({
-  titulo: "Evento de teste",
-  categoria_id: categoriaId,
-  inicio: "2026-10-24T22:00:00Z",
-  fim: "2026-10-25T00:00:00Z",
-  dia_inteiro: false,
-  local: "Templo",
-  responsavel_id: responsavel,
-  status: "planejado",
-  observacoes: "",
-  link: null,
-  campos: {},
-  ...mudancas,
-});
-
-async function criar(cliente: Cliente, evento: ReturnType<typeof eventoDe>) {
-  return cliente.from("eventos").insert(evento).select("id, criado_por, criado_em").single();
-}
+import { cadastrar, categoria, comFuncoes, contaNova, criar, eventoDe } from "./ambiente";
 
 describe("criar Evento: só quem tem Função na Área da Categoria", () => {
   it("Mariana cria Culto, e o banco registra quem criou e quando", async () => {
@@ -195,16 +161,5 @@ describe("ler Eventos", () => {
     for (const quem of [paulo.cliente, novo.cliente]) {
       expect((await quem.from("eventos").select("id")).data).toEqual([]);
     }
-  });
-
-  it("ninguém edita nem apaga por enquanto (ticket 05)", async () => {
-    const mariana = await comFuncoes("Mariana", "lider", ["Líder de integração e programação"]);
-    const culto = await categoria("Culto");
-    const { data } = await criar(mariana.cliente, eventoDe(culto.id, mariana.id));
-
-    await mariana.cliente.from("eventos").update({ titulo: "Mudado" }).eq("id", data!.id);
-    await mariana.cliente.from("eventos").delete().eq("id", data!.id);
-    const salvo = await admin.from("eventos").select("titulo").eq("id", data!.id).single();
-    expect(salvo.data?.titulo).toBe("Evento de teste");
   });
 });

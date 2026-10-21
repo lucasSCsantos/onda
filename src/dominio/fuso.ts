@@ -22,3 +22,9 @@ export function meiaNoite(ano: number, mes: number, dia: number): Date {
 export function somarDias(instante: Date, dias: number): Date {
   return new Date(instante.getTime() + dias * DIA_MS);
 }
+
+/** Hora `HH:MM` de um instante, no fuso do Mural. */
+export function horaLocal(instante: Date): string {
+  const local = new Date(instante.getTime() + DESLOCAMENTO_MS);
+  return `${String(local.getUTCHours()).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")}`;
+}

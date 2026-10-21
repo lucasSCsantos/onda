@@ -3,28 +3,35 @@
 import { useActionState } from "react";
 import { BotaoEnviar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import type { CampoCadastrado } from "@/dominio/catalogo";
-import { camposDaCriacao, NOMES_DOS_STATUS, STATUS_INICIAIS } from "@/dominio/eventos";
+import { camposDaCriacao, NOMES_DOS_STATUS, type Status } from "@/dominio/eventos";
 import { nomeDoCampoEspecifico } from "@/lib/campos";
-import { criarEvento, type EstadoDoEvento } from "@/lib/eventos/acoes";
+import type { EstadoDoEvento } from "@/lib/eventos/acoes";
 import type { CategoriaComArea } from "@/lib/eventos/consultas";
 
-const OPCOES_DE_STATUS: Opcao[] = STATUS_INICIAIS.map((s) => ({ valor: s, texto: NOMES_DOS_STATUS[s] }));
-
-/** Campos comuns e os específicos da Categoria. Quem cria é o Responsável sugerido. */
+/**
+ * Campos comuns e os específicos da Categoria, para criar e para editar. `iniciais` vai do nome do campo no
+ * formulário ao valor com que ele começa; `status` são os Status que quem preenche pode escolher.
+ */
 export function FormularioEvento({
+  acao: enviar,
   categoria,
   lideranca,
-  eu,
+  status,
+  iniciais,
   rotuloDaData,
+  botao,
 }: {
+  acao: (anterior: EstadoDoEvento, dados: FormData) => Promise<EstadoDoEvento>;
   categoria: CategoriaComArea;
   lideranca: Opcao[];
-  eu: string;
+  status: readonly Status[];
+  iniciais: Record<string, string>;
   rotuloDaData: string;
+  botao: { texto: string; pendente: string };
 }) {
-  const [estado, acao] = useActionState<EstadoDoEvento, FormData>(criarEvento.bind(null, categoria.id), {});
+  const [estado, acao] = useActionState<EstadoDoEvento, FormData>(enviar, {});
   // Depois de um erro, o formulário volta com o que foi digitado.
-  const valor = (nome: string, inicial = "") => estado.valores?.[nome] ?? inicial;
+  const valor = (nome: string) => estado.valores?.[nome] ?? iniciais[nome] ?? "";
 
   return (
     <form key={estado.tentativa ?? 0} action={acao} className="flex flex-col gap-4">
@@ -45,9 +52,15 @@ export function FormularioEvento({
           name="responsavel"
           opcoes={lideranca}
           vazia="Ninguém ainda (só Rascunho)"
-          defaultValue={valor("responsavel", eu)}
+          defaultValue={valor("responsavel")}
         />
-        <Selecao rotulo="Status" name="status" opcoes={OPCOES_DE_STATUS} defaultValue={valor("status", "planejado")} required />
+        <Selecao
+          rotulo="Status"
+          name="status"
+          opcoes={status.map((s) => ({ valor: s, texto: NOMES_DOS_STATUS[s] }))}
+          defaultValue={valor("status")}
+          required
+        />
       </div>
 
       {camposDaCriacao(categoria).map((c) => (
@@ -58,7 +71,7 @@ export function FormularioEvento({
       <CampoDeTextoLongo rotulo="Observações" name="observacoes" rows={3} defaultValue={valor("observacoes")} />
 
       <Mensagens estado={estado} />
-      <BotaoEnviar pendente="Criando…">Criar Evento</BotaoEnviar>
+      <BotaoEnviar pendente={botao.pendente}>{botao.texto}</BotaoEnviar>
     </form>
   );
 }

@@ -31,7 +31,7 @@ A pessoa da Liderança encarregada de um Evento, qualquer uma delas; obrigatóri
 _Avoid_: Dono, encarregado
 
 **Status**:
-O estágio de um Evento: Rascunho, Planejado, Confirmado, Realizado, Cancelado ou Adiado. Um Evento Confirmado passa sozinho a Realizado depois do horário de fim (ou no dia seguinte, se não houver fim). Planejado ou Rascunho que passam da data ficam parados com alerta até o Responsável decidir.
+O estágio de um Evento: Rascunho, Planejado, Confirmado, Realizado, Cancelado ou Adiado, com transições livres. Um Evento Confirmado passa sozinho a Realizado depois do horário de fim (ou no dia seguinte, se não houver fim); fora isso, só o Admin e o Responsável marcam Realizado, e nunca antes do fim. Planejado ou Rascunho que passam da data ficam parados com alerta até o Responsável decidir. Remarcar um Adiado (mudar a data) o volta a Planejado.
 
 **Postagem**:
 Categoria de Evento cuja data é a data de publicação.
