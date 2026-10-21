@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Mural ONDA",
     short_name: "Mural ONDA",
-    description: "Calendário e equipe do ONDA, ministério de adolescentes.",
+    description: "Calendário de Eventos da Liderança do ONDA, ministério de adolescentes.",
     lang: "pt-BR",
     start_url: "/",
     display: "standalone",

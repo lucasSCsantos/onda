@@ -8,7 +8,7 @@ const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "Mural ONDA", template: "%s · Mural ONDA" },
-  description: "Calendário e equipe do ONDA, ministério de adolescentes.",
+  description: "Calendário de Eventos da Liderança do ONDA, ministério de adolescentes.",
   applicationName: "Mural ONDA",
   // Há dados de menores: nada do app entra em buscadores.
   robots: { index: false, follow: false },

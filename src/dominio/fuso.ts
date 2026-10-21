@@ -1,6 +1,4 @@
-/** Fuso fixo do Mural. America/Bahia não tem horário de verão desde 2012: UTC-3 o ano todo. */
-export const FUSO = "America/Bahia";
-
+/** Fuso fixo do Mural, America/Bahia. Ele não tem horário de verão desde 2012: UTC-3 o ano todo. */
 const DESLOCAMENTO_MS = -3 * 60 * 60 * 1000;
 const DIA_MS = 24 * 60 * 60 * 1000;
 
