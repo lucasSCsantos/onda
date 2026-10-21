@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Cabecalho } from "@/components/cabecalho";
+import { Campo, Selecao } from "@/components/formulario";
 import { podeGerenciarContas } from "@/dominio/acesso";
-import { buscarPorNome, ordenarPorProximoAniversario, proximoAniversario } from "@/dominio/adolescentes";
+import { listarAdolescentes, prazoDoAniversario, proximoAniversario, type Adolescente } from "@/dominio/adolescentes";
 import { FUSO } from "@/dominio/fuso";
 import { definirAtivo } from "@/lib/adolescentes/acoes";
 import { exigirLideranca } from "@/lib/contas/perfil";
@@ -11,24 +12,17 @@ import { FormularioAdolescente } from "./formularios";
 // Dados de menores: fora de buscadores (o layout já diz o mesmo; aqui fica explícito).
 export const metadata: Metadata = { title: "Adolescentes", robots: { index: false, follow: false } };
 
-type Adolescente = { id: string; nome: string; nascimento: string; ativo: boolean };
-
 const diaEMes = (dia: string) =>
   new Date(`${dia}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: FUSO, day: "numeric", month: "long" });
 
-function quando(dias: number) {
-  if (dias === 0) return "hoje";
-  return dias === 1 ? "amanhã" : `em ${dias} dias`;
-}
-
-const texto = (valor: string | string[] | undefined) => (typeof valor === "string" ? valor : "");
+const parametroTexto = (valor: string | string[] | undefined) => (typeof valor === "string" ? valor : "");
 
 export default async function PaginaAdolescentes(props: PageProps<"/adolescentes">) {
   const eu = await exigirLideranca();
   const parametros = await props.searchParams;
-  const busca = texto(parametros.q);
-  const porNome = texto(parametros.ordem) === "nome";
-  const comInativos = texto(parametros.inativos) === "1";
+  const busca = parametroTexto(parametros.q);
+  const ordem = parametroTexto(parametros.ordem) === "nome" ? "nome" : "aniversario";
+  const comInativos = parametroTexto(parametros.inativos) === "1";
   const agora = new Date();
 
   const supabase = await supabaseDoServidor();
@@ -37,13 +31,7 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
     .select("id, nome, nascimento, ativo")
     .order("nome")
     .overrideTypes<Adolescente[], { merge: false }>();
-  const todos = data ?? [];
-  const visiveis = buscarPorNome(
-    todos.filter((a) => a.ativo || comInativos),
-    busca,
-  );
-  const lista = porNome ? visiveis : ordenarPorProximoAniversario(visiveis, agora);
-  const quantosInativos = todos.filter((a) => !a.ativo).length;
+  const { adolescentes: lista, inativos: quantosInativos } = listarAdolescentes(data ?? [], { busca, ordem, comInativos }, agora);
 
   return (
     <>
@@ -52,26 +40,18 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
         <h1 className="text-2xl font-semibold">Adolescentes</h1>
 
         <form className="flex flex-wrap items-end gap-3" role="search">
-          <label className="flex min-w-48 flex-1 flex-col gap-1.5 text-sm font-medium">
-            Buscar por nome
-            <input
-              name="q"
-              type="search"
-              defaultValue={busca}
-              className="rounded-lg border border-borda bg-superficie px-3 py-2.5 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Ordem
-            <select
-              name="ordem"
-              defaultValue={porNome ? "nome" : "aniversario"}
-              className="rounded-lg border border-borda bg-superficie px-3 py-2.5 text-base font-normal"
-            >
-              <option value="aniversario">Próximo aniversário</option>
-              <option value="nome">Nome</option>
-            </select>
-          </label>
+          <div className="min-w-48 flex-1">
+            <Campo rotulo="Buscar por nome" name="q" type="search" defaultValue={busca} />
+          </div>
+          <Selecao
+            rotulo="Ordem"
+            name="ordem"
+            defaultValue={ordem}
+            opcoes={[
+              { valor: "aniversario", texto: "Próximo aniversário" },
+              { valor: "nome", texto: "Nome" },
+            ]}
+          />
           <label className="flex items-center gap-2 pb-3 text-sm">
             <input type="checkbox" name="inativos" value="1" defaultChecked={comInativos} className="size-4 accent-marca" />
             Mostrar inativos{quantosInativos ? ` (${quantosInativos})` : ""}
@@ -96,7 +76,7 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
                         {!a.ativo && <span className="ml-2 text-sm font-normal text-texto-suave">(inativo)</span>}
                       </p>
                       <p className="text-sm text-texto-suave">
-                        Faz {proximo.idade} anos em {diaEMes(proximo.data)} · {quando(proximo.dias)}
+                        Faz {proximo.idade} anos em {diaEMes(proximo.data)} · {prazoDoAniversario(proximo.dias)}
                       </p>
                     </div>
                     <form action={definirAtivo.bind(null, a.id, !a.ativo)}>

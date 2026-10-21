@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { BotaoEnviar, Campo, Mensagens } from "@/components/formulario";
+import type { Adolescente } from "@/dominio/adolescentes";
 import { salvarAdolescente } from "@/lib/adolescentes/acoes";
 
 /** Cria (sem `adolescente`) ou edita nome e data de nascimento. */
-export function FormularioAdolescente({ adolescente }: { adolescente?: { id: string; nome: string; nascimento: string } }) {
+export function FormularioAdolescente({ adolescente }: { adolescente?: Adolescente }) {
   const [estado, acao] = useActionState(salvarAdolescente.bind(null, adolescente?.id ?? null), {});
   return (
     <form action={acao} className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">

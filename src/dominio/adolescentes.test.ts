@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buscarPorNome,
   erroNoAdolescente,
+  listarAdolescentes,
   ordenarPorProximoAniversario,
+  prazoDoAniversario,
   proximoAniversario,
+  type Adolescente,
 } from "./adolescentes";
 
 // quarta-feira, 21/10/2026, 22h em Salvador (já é dia 22 em UTC)
@@ -88,5 +91,38 @@ describe("erroNoAdolescente", () => {
     expect(erroNoAdolescente({ nome: "Ana", nascimento: "2011-02-29" }, agora)).toMatch(/nascimento/i);
     expect(erroNoAdolescente({ nome: "Ana", nascimento: "2026-10-22" }, agora)).toMatch(/nascimento/i);
     expect(erroNoAdolescente({ nome: "Ana", nascimento: "" }, agora)).toMatch(/nascimento/i);
+  });
+});
+
+describe("prazoDoAniversario", () => {
+  it("diz hoje, amanhã ou em N dias", () => {
+    expect(prazoDoAniversario(0)).toBe("hoje");
+    expect(prazoDoAniversario(1)).toBe("amanhã");
+    expect(prazoDoAniversario(65)).toBe("em 65 dias");
+  });
+});
+
+describe("listarAdolescentes", () => {
+  const lista: Adolescente[] = [
+    { id: "1", nome: "Bia", nascimento: "2010-03-02", ativo: true },
+    { id: "2", nome: "Caio", nascimento: "2011-10-21", ativo: true },
+    { id: "3", nome: "Ana", nascimento: "2012-12-25", ativo: false },
+  ];
+  const nomes = (l: Adolescente[]) => l.map((a) => a.nome);
+
+  it("esconde os inativos, ordena pelo próximo aniversário e conta os inativos", () => {
+    const { adolescentes, inativos } = listarAdolescentes(lista, { busca: "", ordem: "aniversario", comInativos: false }, agora);
+    expect(nomes(adolescentes)).toEqual(["Caio", "Bia"]);
+    expect(inativos).toBe(1);
+  });
+
+  it("mostra os inativos quando pedido, e ordena por nome", () => {
+    const { adolescentes } = listarAdolescentes(lista, { busca: "", ordem: "nome", comInativos: true }, agora);
+    expect(nomes(adolescentes)).toEqual(["Ana", "Bia", "Caio"]);
+  });
+
+  it("a busca vale só entre os que aparecem", () => {
+    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: false }, agora).adolescentes)).toEqual([]);
+    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: true }, agora).adolescentes)).toEqual(["Ana"]);
   });
 });
