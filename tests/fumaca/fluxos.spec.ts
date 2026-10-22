@@ -24,6 +24,13 @@ async function novoConvite(): Promise<string> {
   return convite.data.codigo;
 }
 
+/** Convite de Admin, sem Função. */
+async function novoConviteDeAdmin(): Promise<string> {
+  const convite = await admin.from("convites").insert({ nivel: "admin" }).select("codigo").single();
+  if (convite.error) throw convite.error;
+  return convite.data.codigo;
+}
+
 async function cadastrar(page: Page, nome: string, convite?: string) {
   await page.goto(convite ? `/cadastro?convite=${convite}` : "/cadastro");
   await page.getByLabel("Nome").fill(nome);
@@ -98,6 +105,39 @@ test("menu hambúrguer: abre, mostra os destinos, fecha com Esc e ao navegar", a
   await expect(page.getByRole("link", { name: "Adolescentes" })).toBeHidden();
   await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("link", { name: "Calendário" })).toHaveAttribute("aria-current", "page");
+});
+
+test("painel do Admin: indicadores, cartões e navegação; o Líder não entra", async ({ page }) => {
+  await cadastrar(page, "Admin de Fumaça", await novoConviteDeAdmin());
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  // O header do Admin tem só Calendário, Adolescentes e Administração.
+  await expect(page.getByRole("link", { name: "Professores" })).toBeHidden();
+  await page.getByRole("link", { name: "Administração" }).click();
+
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Indicadores" }).getByText("Aguardando aprovação")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Indicadores" }).getByText("Eventos sem Responsável")).toBeVisible();
+  const secoes = page.getByRole("region", { name: "Seções" });
+  for (const nome of ["Usuários", "Convites", "Catálogo", "Professores", "Exportar"]) {
+    await expect(secoes.getByRole("link", { name: new RegExp(nome) })).toBeVisible();
+  }
+
+  await secoes.getByRole("link", { name: /Convites/ }).click();
+  await expect(page.getByRole("heading", { name: "Novo convite" })).toBeVisible();
+  // No celular não há sidebar; a navegação administrativa está no menu.
+  await expect(page.getByRole("navigation", { name: "Administração" })).toBeHidden();
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  await expect(page.getByRole("link", { name: "Usuários" })).toBeVisible();
+});
+
+test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page }) => {
+  await cadastrar(page, "Líder Barrado", await novoConvite());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/admin/usuarios");
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("sem internet, a navegação mostra a tela offline", async ({ page, context }) => {

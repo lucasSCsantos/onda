@@ -1,34 +1,18 @@
 "use client";
 
-import {
-  CalendarDays,
-  Download,
-  GraduationCap,
-  LogOut,
-  Menu,
-  Tags,
-  Ticket,
-  UserCog,
-  Users,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, GraduationCap, LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { sair } from "@/lib/auth/acoes";
+import { PAINEL, SECOES_DE_ADMIN } from "./destinos-admin";
 
 type Destino = { href: string; rotulo: string; icone: LucideIcon };
 
 const CALENDARIO: Destino = { href: "/calendario", rotulo: "Calendário", icone: CalendarDays };
 const ADOLESCENTES: Destino = { href: "/adolescentes", rotulo: "Adolescentes", icone: Users };
 const PROFESSORES: Destino = { href: "/professores", rotulo: "Professores", icone: GraduationCap };
-const ADMINISTRACAO: Destino[] = [
-  { href: "/admin/usuarios", rotulo: "Usuários", icone: UserCog },
-  { href: "/admin/convites", rotulo: "Convites", icone: Ticket },
-  { href: "/admin/catalogo", rotulo: "Catálogo", icone: Tags },
-  { href: "/admin/exportar", rotulo: "Exportar", icone: Download },
-];
+const ADMINISTRACAO: Destino = { href: "/admin", rotulo: "Administração", icone: LayoutDashboard };
 
 /**
  * Menu do cabeçalho: hambúrguer com painel abaixo do header no celular e itens em linha, com cara de botão, a partir de
@@ -48,8 +32,9 @@ export function MenuDoCabecalho({
   const destinos = [
     ...(calendario ? [CALENDARIO] : []),
     ...(lideranca ? [ADOLESCENTES] : []),
-    ...(professores ? [PROFESSORES] : []),
-    ...(admin ? ADMINISTRACAO : []),
+    // O Admin chega a Professores pelo painel de administração.
+    ...(professores && !admin ? [PROFESSORES] : []),
+    ...(admin ? [ADMINISTRACAO] : []),
   ];
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
@@ -80,7 +65,11 @@ export function MenuDoCabecalho({
     };
   }, [aberto]);
 
+  // No celular, a navegação das telas de administração (a sidebar do desktop) vem junto no menu.
+  const secoes = admin && (caminho === "/admin" || caminho.startsWith("/admin/")) ? [PAINEL, ...SECOES_DE_ADMIN] : [];
   const atual = (href: string) => caminho === href || caminho.startsWith(`${href}/`);
+  // Dentro das seções, o Painel só é o atual na raiz (todas as outras também começam com `/admin`).
+  const atualNaSecao = (href: string) => (href === PAINEL.href ? caminho === href : atual(href));
   const escolher = () => {
     setAberto(false);
     botao.current?.focus();
@@ -141,6 +130,23 @@ export function MenuDoCabecalho({
               {rotulo}
             </Link>
           ))}
+          {secoes.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1 border-t border-borda pt-2">
+              <p className="px-3 text-xs font-semibold tracking-wide text-texto-suave uppercase">Administração</p>
+              {secoes.map(({ href, rotulo, icone: Icone }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={escolher}
+                  aria-current={atualNaSecao(href) ? "page" : undefined}
+                  className="toque flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium text-texto hover:bg-fundo active:bg-borda aria-[current=page]:bg-fundo aria-[current=page]:text-marca"
+                >
+                  <Icone aria-hidden className="size-5" />
+                  {rotulo}
+                </Link>
+              ))}
+            </div>
+          )}
           <form action={sair} className="mt-1 border-t border-borda pt-2">
             <button
               type="submit"

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
 import { temFuncoes } from "@/dominio/catalogo";
 import { mudarAtivo, promoverAAdmin, recusarPendente } from "@/lib/contas/acoes";
@@ -44,7 +43,6 @@ export default async function PaginaUsuarios() {
 
   return (
     <>
-      <Cabecalho admin />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-8">
         <section className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold">Pendentes</h1>

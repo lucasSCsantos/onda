@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DOS_NIVEIS, type NivelDeAcesso } from "@/dominio/acesso";
 import { situacaoDoConvite, type SituacaoDoConvite } from "@/dominio/convites";
 import { revogarConvite } from "@/lib/contas/acoes";
@@ -53,7 +52,6 @@ export default async function PaginaConvites() {
 
   return (
     <>
-      <Cabecalho admin />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-8">
         <section className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <h1 className="text-2xl font-semibold">Novo convite</h1>

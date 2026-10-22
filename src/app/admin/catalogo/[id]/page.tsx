@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DOS_TIPOS, type TipoDeCampo } from "@/dominio/catalogo";
 import { removerCampo } from "@/lib/catalogo/acoes";
 import { OPCOES_DE_TIPO, opcoesDeArea } from "@/lib/catalogo/consultas";
@@ -32,7 +31,6 @@ export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/
 
   return (
     <>
-      <Cabecalho admin />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-8">
         <section className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <Link href="/admin/catalogo" className="text-sm text-texto-suave hover:text-texto">

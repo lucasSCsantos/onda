@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Cabecalho } from "@/components/cabecalho";
 import { NOMES_DAS_TABELAS, TABELAS_EXPORTADAS, type TabelaExportada } from "@/dominio/exportacao";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -24,7 +23,6 @@ export default async function PaginaExportar() {
 
   return (
     <>
-      <Cabecalho admin />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-8">
         <section className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold">Exportar</h1>

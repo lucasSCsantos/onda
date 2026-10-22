@@ -4,14 +4,14 @@ import { MenuDoCabecalho } from "./menu-do-cabecalho";
 
 /**
  * Barra do topo das telas internas: logotipo e menu (hambúrguer no celular, em linha no desktop) com calendário e
- * Adolescentes (Liderança), Professores (Admin e quem tem Função em Ensino), atalhos da administração (só Admin) e Sair.
+ * Adolescentes (Liderança), Professores (quem tem Função em Ensino), "Administração" (só Admin, que chega a Professores pelo painel) e Sair.
  * O Professor vê só o calendário, com as aulas dele. No celular o header fica fixo no topo ao rolar.
  */
 export function Cabecalho({
   admin = false,
   lideranca = admin,
   calendario = lideranca,
-  professores = admin,
+  professores = false,
 }: {
   admin?: boolean;
   lideranca?: boolean;

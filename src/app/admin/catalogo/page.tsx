@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Cabecalho } from "@/components/cabecalho";
 import { opcoesDeArea } from "@/lib/catalogo/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -26,7 +25,6 @@ export default async function PaginaCatalogo() {
 
   return (
     <>
-      <Cabecalho admin />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-8">
         <section className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold">Funções</h1>
