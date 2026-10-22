@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { diasComEventos, eventosPorDia, lerPosicao, navegar, periodoDaVisao } from "./calendario";
+import {
+  diasComEventos,
+  enderecoDoNovoEvento,
+  eventosPorDia,
+  lerDataDoNovoEvento,
+  lerPosicao,
+  navegar,
+  periodoDaVisao,
+} from "./calendario";
 
 describe("visão mensal", () => {
   it("cobre o mês em semanas inteiras de segunda a domingo", () => {
@@ -81,6 +89,26 @@ describe("posição na URL", () => {
     expect(lerPosicao({ visao: "ano", dia: "2026-02-30" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
     expect(lerPosicao({ dia: "2026-02-32" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
     expect(lerPosicao({ visao: ["mes", "semana"], dia: "ontem" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
+  });
+});
+
+describe("Novo Evento neste dia", () => {
+  it("o endereço leva a data pela escolha da Categoria até o formulário", () => {
+    expect(enderecoDoNovoEvento("2026-11-03")).toBe("/eventos/novo?data=2026-11-03");
+    expect(enderecoDoNovoEvento("2026-11-03", "cat-1")).toBe("/eventos/novo/cat-1?data=2026-11-03");
+    expect(lerDataDoNovoEvento({ data: "2026-11-03" })).toBe("2026-11-03");
+  });
+
+  it("sem data, a criação fica como sempre foi", () => {
+    expect(enderecoDoNovoEvento(null)).toBe("/eventos/novo");
+    expect(enderecoDoNovoEvento(null, "cat-1")).toBe("/eventos/novo/cat-1");
+    expect(lerDataDoNovoEvento({})).toBeNull();
+  });
+
+  it("uma data inválida é ignorada", () => {
+    expect(lerDataDoNovoEvento({ data: "2026-02-30" })).toBeNull();
+    expect(lerDataDoNovoEvento({ data: "amanhã" })).toBeNull();
+    expect(lerDataDoNovoEvento({ data: ["2026-11-03", "2026-11-04"] })).toBeNull();
   });
 });
 

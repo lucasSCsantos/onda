@@ -73,6 +73,19 @@ export function lerPosicao(
   return { visao, dia: diaValido(dia) ? dia : diaDe(agora) };
 }
 
+/**
+ * Onde se cria um Evento já num dia (`data`), com ou sem a Categoria escolhida. A data é civil, no fuso do Mural,
+ * e vale igual para Eventos de dia inteiro e com hora. Sem data, é a criação de sempre.
+ */
+export function enderecoDoNovoEvento(data: string | null, categoria?: string): string {
+  const caminho = categoria ? `/eventos/novo/${categoria}` : "/eventos/novo";
+  return data ? `${caminho}?${new URLSearchParams({ data })}` : caminho;
+}
+
+/** A data pré-preenchida da criação na URL (`data`), ou `null` se ela falta ou não existe. */
+export const lerDataDoNovoEvento = (parametros: { data?: string | string[] }): string | null =>
+  diaValido(parametros.data) ? parametros.data : null;
+
 export type NoCalendario = { inicio: Date; fim: Date | null; diaInteiro: boolean };
 
 /** O último dia que um Evento ocupa: o do fim, ou o anterior quando um Evento com hora acaba à meia-noite. */

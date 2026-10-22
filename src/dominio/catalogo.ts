@@ -217,3 +217,8 @@ export function podeCriarEvento(quem: Pessoa, areas: readonly string[], categori
 export function categoriasQuePodeCriar<C extends { area: string }>(quem: Pessoa, areas: readonly string[], categorias: C[]): C[] {
   return categorias.filter((categoria) => podeCriarEvento(quem, areas, categoria));
 }
+
+/** Se a pessoa cria Evento de ao menos uma das Categorias: o Professor e o Líder sem Função que crie, não. */
+export function podeCriarAlgumEvento(quem: Pessoa, areas: readonly string[], categorias: readonly { area: string }[]): boolean {
+  return categorias.some((categoria) => podeCriarEvento(quem, areas, categoria));
+}

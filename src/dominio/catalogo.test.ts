@@ -8,6 +8,7 @@ import {
   erroNasFuncoes,
   erroNoCampo,
   erroNosCampos,
+  podeCriarAlgumEvento,
   podeCriarEvento,
   temFuncoes,
   TIPOS_DE_CAMPO,
@@ -92,6 +93,15 @@ describe("quem pode criar Evento de qual Categoria", () => {
 
   it("um Líder sem Função não cria nada", () => {
     expect(podeCriar({ pessoa: pessoa("l", "lider"), funcoes: [] })).toEqual([]);
+  });
+
+  it("cria algum Evento quem cria em ao menos uma Categoria (o que libera Novo Evento neste dia)", () => {
+    const criaAlgum = (quem: { pessoa: Pessoa; funcoes: string[] }) =>
+      podeCriarAlgumEvento(quem.pessoa, quem.funcoes.map(areaDa), CATALOGO_INICIAL.categorias);
+    expect(criaAlgum(lideranca.beythel)).toBe(true);
+    expect(criaAlgum({ pessoa: pessoa("admin", "admin"), funcoes: [] })).toBe(true);
+    expect(criaAlgum({ pessoa: pessoa("l", "lider"), funcoes: [] })).toBe(false);
+    expect(criaAlgum({ pessoa: pessoa("p", "professor"), funcoes: ["Líder do ministério"] })).toBe(false);
   });
 });
 
