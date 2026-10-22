@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Status } from "./eventos";
-import { alertas, envolvidosDoEvento, filtrar, lerFiltros, parametrosDosFiltros, proximosEventos, SEM_FILTROS, type EventoFiltravel } from "./filtros";
+import { alertas, envolvidosDoEvento, filtrar, haFiltros, lerFiltros, parametrosDosFiltros, proximosEventos, SEM_FILTROS, type EventoFiltravel } from "./filtros";
 
 // 2026-10-21 é uma quarta-feira; a semana vai de 19/10 a 25/10 (fuso America/Bahia, UTC-3)
 const agora = new Date("2026-10-21T15:00:00Z");
 const em = (dia: string, hora = "12:00") => new Date(`${dia}T${hora}:00-03:00`);
 
-function evento(dia: string, extra: Partial<EventoFiltravel & { responsavel: string | null }> = {}) {
+function evento(dia: string, extra: Partial<EventoFiltravel> = {}) {
   return {
     inicio: em(dia),
     fim: null,
@@ -99,7 +99,7 @@ describe("lerFiltros", () => {
   it("lê os parâmetros da URL", () => {
     expect(
       lerFiltros({ meus: "1", semana: "1", data: "2026-10-21", categoria: ["a", "b"], area: "Louvor", status: "adiado" }),
-    ).toEqual({ meus: true, semana: true, dia: "2026-10-21", categorias: ["a", "b"], area: "Louvor", status: "adiado" });
+    ).toEqual({ ...SEM_FILTROS, meus: true, semana: true, dia: "2026-10-21", categorias: ["a", "b"], area: "Louvor", status: "adiado" });
   });
 
   it("uma Categoria só vem como texto", () => {
@@ -113,7 +113,19 @@ describe("lerFiltros", () => {
 
 describe("parametrosDosFiltros", () => {
   it("volta aos mesmos filtros ao ser lido de novo", () => {
-    const filtros = { meus: true, semana: true, dia: "2026-10-21", categorias: ["a", "b"], area: "Louvor", status: "adiado" as Status };
+    const filtros = {
+      meus: true,
+      hoje: true,
+      semana: true,
+      proximos: true,
+      semResponsavel: true,
+      semProfessor: true,
+      atrasados: true,
+      dia: "2026-10-21",
+      categorias: ["a", "b"],
+      area: "Louvor",
+      status: "adiado" as Status,
+    };
     const parametros = new URLSearchParams(parametrosDosFiltros(filtros));
     expect(lerFiltros({ ...Object.fromEntries(parametros), categoria: parametros.getAll("categoria") })).toEqual(filtros);
   });
@@ -202,3 +214,90 @@ describe("alerta de aula sem Professor", () => {
     ]);
   });
 });
+
+describe("atalhos de filtro", () => {
+  type Aula = ReturnType<typeof evento> & { semProfessor?: boolean };
+  const dos = (eventos: Aula[], filtros: Partial<typeof SEM_FILTROS>) => filtrado(eventos, filtros);
+
+  it("hoje: cobre o dia de hoje, inclusive Evento de vários dias", () => {
+    const hoje = evento("2026-10-21");
+    const longo = evento("2026-10-19", { fim: em("2026-10-23"), diaInteiro: true });
+    const amanha = evento("2026-10-22");
+    const ontem = evento("2026-10-20");
+    expect(dos([hoje, longo, amanha, ontem], { hoje: true })).toEqual([hoje, longo]);
+  });
+
+  it("próximos: esconde o que já terminou, mantém o que cobre hoje", () => {
+    const passado = evento("2026-10-20");
+    const hoje = evento("2026-10-21");
+    const longo = evento("2026-10-19", { fim: em("2026-10-22"), diaInteiro: true });
+    const futuro = evento("2026-11-01");
+    expect(dos([passado, hoje, longo, futuro], { proximos: true })).toEqual([hoje, longo, futuro]);
+  });
+
+  it("sem Responsável: Evento ativo sem Responsável; ignora Cancelado, Realizado, Adiado e vencido", () => {
+    const sem = evento("2026-10-30", { responsavel: null });
+    const confirmado = evento("2026-10-30", { responsavel: null, status: "confirmado" });
+    const outros = [
+      evento("2026-10-30", { responsavel: null, status: "cancelado" }),
+      evento("2026-10-30", { responsavel: null, status: "adiado" }),
+      evento("2026-10-10", { responsavel: null, status: "realizado" }),
+      evento("2026-10-10", { responsavel: null }),
+      evento("2026-10-30"),
+    ];
+    expect(dos([sem, confirmado, ...outros], { semResponsavel: true })).toEqual([sem, confirmado]);
+  });
+
+  it("aula sem Professor: só a aula ativa e sem Professor", () => {
+    const aula: Aula = { ...evento("2026-10-30"), semProfessor: true };
+    const comProfessor: Aula = { ...evento("2026-10-30"), semProfessor: false };
+    const vencida: Aula = { ...evento("2026-10-10"), semProfessor: true };
+    expect(dos([aula, comProfessor, vencida], { semProfessor: true })).toEqual([aula]);
+  });
+
+  it("atrasados: Planejado ou Rascunho que já terminou; Confirmado e o que ainda vem ficam de fora", () => {
+    const planejado = evento("2026-10-10");
+    const rascunho = evento("2026-10-10", { status: "rascunho" });
+    const outros = [
+      evento("2026-10-10", { status: "confirmado" }),
+      evento("2026-10-10", { status: "realizado" }),
+      evento("2026-10-30"),
+      evento("2026-10-21", { fim: em("2026-10-21", "18:00") }),
+    ];
+    expect(dos([planejado, rascunho, ...outros], { atrasados: true })).toEqual([planejado, rascunho]);
+  });
+
+  it("os atalhos combinam entre si", () => {
+    const certo = evento("2026-10-21", { responsavel: null, envolvidos: [eu] });
+    const semMeu = evento("2026-10-21", { responsavel: null });
+    expect(dos([certo, semMeu], { hoje: true, semResponsavel: true, meus: true })).toEqual([certo]);
+  });
+
+  it("os atalhos por situação seguem as mesmas regras dos alertas", () => {
+    const aula = (dia: string, extra: Partial<EventoFiltravel> = {}): Aula => ({ ...evento(dia, extra), semProfessor: true });
+    const todos: Aula[] = (["rascunho", "planejado", "confirmado", "realizado", "cancelado", "adiado"] as Status[]).flatMap((status) =>
+      ["2026-10-10", "2026-10-21", "2026-10-30"].flatMap((dia) => [aula(dia, { status }), aula(dia, { status, responsavel: null })]),
+    );
+    const doAlerta = (tipo: string) => alertas(todos, agora).find((a) => a.tipo === tipo)?.eventos ?? [];
+    expect(dos(todos, { semResponsavel: true }).sort(porInicio)).toEqual(doAlerta("sem-responsavel").sort(porInicio));
+    expect(dos(todos, { semProfessor: true }).sort(porInicio)).toEqual(doAlerta("aula-sem-professor").sort(porInicio));
+    expect(dos(todos, { atrasados: true }).sort(porInicio)).toEqual(doAlerta("vencido").sort(porInicio));
+    expect(dos(todos, { status: "rascunho" }).sort(porInicio)).toEqual(doAlerta("rascunho").sort(porInicio));
+  });
+
+  it("os atalhos fazem o ciclo URL → filtros → URL", () => {
+    const url = { meus: "1", hoje: "1", semana: "1", proximos: "1", "sem-responsavel": "1", "sem-professor": "1", atrasados: "1" };
+    const filtros = lerFiltros(url);
+    expect(filtros).toMatchObject({ hoje: true, proximos: true, semResponsavel: true, semProfessor: true, atrasados: true });
+    expect(Object.fromEntries(parametrosDosFiltros(filtros))).toEqual(url);
+  });
+
+  it("haFiltros vê os atalhos", () => {
+    expect(haFiltros({ ...SEM_FILTROS, atrasados: true })).toBe(true);
+    expect(haFiltros(SEM_FILTROS)).toBe(false);
+  });
+});
+
+function porInicio(a: { inicio: Date }, b: { inicio: Date }) {
+  return a.inicio.getTime() - b.inicio.getTime();
+}

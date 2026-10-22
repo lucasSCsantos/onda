@@ -9,12 +9,24 @@ export type EventoFiltravel = NoCalendario & {
   categoriaId: string;
   area: string;
   envolvidos: string[];
+  /** Nulo quando o Evento conta como sem Responsável (ver `semResponsavel`). */
+  responsavel: string | null;
+  /** A Categoria tem a vaga de Professor e ela está vazia. */
+  semProfessor?: boolean;
 };
 
 /** Os filtros combináveis de Eventos; um filtro vazio não restringe nada. */
 export type Filtros = {
   meus: boolean;
+  /** Eventos que cobrem o dia de hoje. */
+  hoje: boolean;
   semana: boolean;
+  /** Esconde o que já terminou (só no Calendário; a Home já mostra só o que vem). */
+  proximos: boolean;
+  /** Os três a seguir são as regras dos `alertas`, aplicadas como filtro. */
+  semResponsavel: boolean;
+  semProfessor: boolean;
+  atrasados: boolean;
   /** Um dia `AAAA-MM-DD`. */
   dia: string | null;
   categorias: string[];
@@ -22,7 +34,30 @@ export type Filtros = {
   status: Status | null;
 };
 
-export const SEM_FILTROS: Filtros = { meus: false, semana: false, dia: null, categorias: [], area: null, status: null };
+export const SEM_FILTROS: Filtros = {
+  meus: false,
+  hoje: false,
+  semana: false,
+  proximos: false,
+  semResponsavel: false,
+  semProfessor: false,
+  atrasados: false,
+  dia: null,
+  categorias: [],
+  area: null,
+  status: null,
+};
+
+/** Os filtros que são só ligado ou desligado, com o parâmetro de URL de cada um. */
+const ATALHOS = [
+  ["meus", "meus"],
+  ["hoje", "hoje"],
+  ["semana", "semana"],
+  ["proximos", "proximos"],
+  ["semResponsavel", "sem-responsavel"],
+  ["semProfessor", "sem-professor"],
+  ["atrasados", "atrasados"],
+] as const satisfies readonly (readonly [keyof Filtros, string])[];
 
 /** Quem está envolvido num Evento: o Responsável e as pessoas escolhidas como Professor e Auxiliar. */
 export function envolvidosDoEvento(
@@ -41,8 +76,10 @@ const lista = (valor: string | string[] | undefined) => (Array.isArray(valor) ? 
 export function lerFiltros(parametros: Parametros): Filtros {
   const [dia, area, status] = [parametros.data, parametros.area, parametros.status].map((valor) => lista(valor)[0]);
   return {
-    meus: lista(parametros.meus)[0] === "1",
-    semana: lista(parametros.semana)[0] === "1",
+    ...(Object.fromEntries(ATALHOS.map(([chave, parametro]) => [chave, lista(parametros[parametro])[0] === "1"])) as Pick<
+      Filtros,
+      (typeof ATALHOS)[number][0]
+    >),
     dia: diaValido(dia) ? dia : null,
     categorias: lista(parametros.categoria),
     area: area || null,
@@ -51,7 +88,7 @@ export function lerFiltros(parametros: Parametros): Filtros {
 }
 
 export const haFiltros = (filtros: Filtros) =>
-  filtros.meus || filtros.semana || filtros.dia !== null || filtros.categorias.length > 0 || filtros.area !== null || filtros.status !== null;
+  ATALHOS.some(([chave]) => filtros[chave]) || filtros.dia !== null || filtros.categorias.length > 0 || filtros.area !== null || filtros.status !== null;
 
 /** Primeiro e último dia (segunda e domingo) da semana de um instante. */
 function diasDaSemana(agora: Date): { segunda: string; domingo: string } {
@@ -65,15 +102,23 @@ function diasDaSemana(agora: Date): { segunda: string; domingo: string } {
  */
 export function filtrar<E extends EventoFiltravel>(eventos: E[], filtros: Filtros, { eu, agora }: { eu: string; agora: Date }): E[] {
   const { segunda, domingo } = diasDaSemana(agora);
-  return eventos.filter(
-    (e) =>
+  const hoje = diaDe(agora);
+  return eventos.filter((e) => {
+    const situacao = situacaoDoEvento(e, agora);
+    return (
       (!filtros.meus || e.envolvidos.includes(eu)) &&
+      (!filtros.hoje || (diaDe(e.inicio) <= hoje && hoje <= ultimoDia(e))) &&
+      (!filtros.proximos || ultimoDia(e) >= hoje) &&
+      (!filtros.semResponsavel || situacao.semResponsavel) &&
+      (!filtros.semProfessor || situacao.semProfessor) &&
+      (!filtros.atrasados || situacao.vencido) &&
       (!filtros.semana || (diaDe(e.inicio) <= domingo && segunda <= ultimoDia(e))) &&
       (filtros.dia === null || (diaDe(e.inicio) <= filtros.dia && filtros.dia <= ultimoDia(e))) &&
       (filtros.categorias.length === 0 || filtros.categorias.includes(e.categoriaId)) &&
       (filtros.area === null || e.area === filtros.area) &&
-      (filtros.status === null || e.status === filtros.status),
-  );
+      (filtros.status === null || e.status === filtros.status)
+    );
+  });
 }
 
 export type Proximos<E> = { hoje: E[]; semana: E[]; depois: E[] };
@@ -95,6 +140,25 @@ export function proximosEventos<E extends NoCalendario>(eventos: E[], agora: Dat
     (comeca <= hoje ? grupos.hoje : comeca <= domingo ? grupos.semana : grupos.depois).push(evento);
   }
   return grupos;
+}
+
+/**
+ * As situações que pedem ação, numa só fonte de verdade: os alertas da Home e os atalhos de filtro as usam.
+ * Ver `alertas` para o que cada uma significa.
+ */
+function situacaoDoEvento(
+  e: NoCalendario & { status: Status; responsavel: string | null; semProfessor?: boolean },
+  agora: Date,
+) {
+  const parado = e.status === "rascunho" || e.status === "planejado";
+  const venceu = terminou(e, agora);
+  const ativo = (parado || e.status === "confirmado") && !venceu;
+  return {
+    rascunho: e.status === "rascunho",
+    vencido: parado && venceu,
+    semResponsavel: ativo && !e.responsavel,
+    semProfessor: ativo && !!e.semProfessor,
+  };
 }
 
 export type TipoDeAlerta = "sem-responsavel" | "aula-sem-professor" | "rascunho" | "vencido";
@@ -119,22 +183,30 @@ export function alertas<E extends NoCalendario & { status: Status; responsavel: 
 ): { tipo: TipoDeAlerta; eventos: E[] }[] {
   const porTipo: Record<TipoDeAlerta, E[]> = { "sem-responsavel": [], "aula-sem-professor": [], rascunho: [], vencido: [] };
   for (const e of [...eventos].sort((a, b) => a.inicio.getTime() - b.inicio.getTime())) {
-    const parado = e.status === "rascunho" || e.status === "planejado";
-    const venceu = terminou(e, agora);
-    if (e.status === "rascunho") porTipo.rascunho.push(e);
-    if (parado && venceu) porTipo.vencido.push(e);
-    const ativo = (parado || e.status === "confirmado") && !venceu;
-    if (ativo && !e.responsavel) porTipo["sem-responsavel"].push(e);
-    if (ativo && e.semProfessor) porTipo["aula-sem-professor"].push(e);
+    const situacao = situacaoDoEvento(e, agora);
+    if (situacao.rascunho) porTipo.rascunho.push(e);
+    if (situacao.vencido) porTipo.vencido.push(e);
+    if (situacao.semResponsavel) porTipo["sem-responsavel"].push(e);
+    if (situacao.semProfessor) porTipo["aula-sem-professor"].push(e);
   }
   return (Object.keys(porTipo) as TipoDeAlerta[]).filter((tipo) => porTipo[tipo].length > 0).map((tipo) => ({ tipo, eventos: porTipo[tipo] }));
 }
 
+/** O que cada alerta da Home liga ao abrir a tela de Eventos: o mesmo conjunto de Eventos que o alerta lista. */
+export const FILTRO_DO_ALERTA: Record<TipoDeAlerta, Partial<Filtros>> = {
+  "sem-responsavel": { semResponsavel: true },
+  "aula-sem-professor": { semProfessor: true },
+  rascunho: { status: "rascunho" },
+  vencido: { atrasados: true },
+};
+
+/** Todos os parâmetros de URL que são filtros; os demais (a visão e o dia do calendário) não são tocados ao filtrar. */
+export const PARAMETROS_DE_FILTRO = [...ATALHOS.map(([, parametro]) => parametro), "data", "categoria", "area", "status"];
+
 /** O caminho inverso de `lerFiltros`: os parâmetros de URL que os filtros ligados geram. */
 export function parametrosDosFiltros(filtros: Filtros): [string, string][] {
   return [
-    ...(filtros.meus ? [["meus", "1"] as [string, string]] : []),
-    ...(filtros.semana ? [["semana", "1"] as [string, string]] : []),
+    ...ATALHOS.filter(([chave]) => filtros[chave]).map(([, parametro]) => [parametro, "1"] as [string, string]),
     ...(filtros.dia ? [["data", filtros.dia] as [string, string]] : []),
     ...filtros.categorias.map((id) => ["categoria", id] as [string, string]),
     ...(filtros.area ? [["area", filtros.area] as [string, string]] : []),

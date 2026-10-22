@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
+import { AtalhosDeFiltro } from "@/components/atalhos-de-filtro";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { aniversariosPorDia } from "@/dominio/aniversarios";
@@ -132,6 +133,12 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
             ))}
           </nav>
         </div>
+
+        {lideranca && (
+          <div className="mt-4">
+            <AtalhosDeFiltro filtros={filtros} calendario />
+          </div>
+        )}
 
         <div className="mt-4">
           <FiltrosDeEventos

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { diaEMes } from "@/components/aniversarios";
 import { Cabecalho } from "@/components/cabecalho";
+import { AtalhosDeFiltro } from "@/components/atalhos-de-filtro";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { aniversariosVisiveis, aniversariantesDoMes } from "@/dominio/aniversarios";
 import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
 import { diaDe, podeVerTodosOsEventos } from "@/dominio/eventos";
 import { FUSO } from "@/dominio/fuso";
-import { alertas, filtrar, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, proximosEventos } from "@/dominio/filtros";
+import { alertas, FILTRO_DO_ALERTA, filtrar, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, parametrosDosFiltros, proximosEventos, SEM_FILTROS } from "@/dominio/filtros";
 import { podeCadastrarProfessor } from "@/dominio/professores";
 import { aniversariaveis } from "@/lib/aniversarios/consultas";
 import { perfilAtual } from "@/lib/contas/perfil";
@@ -86,7 +87,12 @@ export default async function Inicio(props: PageProps<"/">) {
                 {aviso.map(({ tipo, eventos: doAlerta }) => (
                   <div key={tipo}>
                     <h3 className="text-sm font-semibold">
-                      {NOMES_DOS_ALERTAS[tipo]} ({doAlerta.length})
+                      <Link
+                        href={`/calendario?${new URLSearchParams(parametrosDosFiltros({ ...SEM_FILTROS, ...FILTRO_DO_ALERTA[tipo] }))}`}
+                        className="underline"
+                      >
+                        {NOMES_DOS_ALERTAS[tipo]} ({doAlerta.length})
+                      </Link>
                     </h3>
                     <ul className="mt-1 flex flex-col gap-1 text-sm">
                       {doAlerta.map((e) => (
@@ -124,6 +130,7 @@ export default async function Inicio(props: PageProps<"/">) {
                   Novo Evento
                 </Link>
               </div>
+              <AtalhosDeFiltro filtros={filtros} />
               <FiltrosDeEventos caminho="/" filtros={filtros} categorias={doCatalogo} />
               {GRUPOS.every(({ chave }) => proximos[chave].length === 0) ? (
                 <p className="text-texto-suave">

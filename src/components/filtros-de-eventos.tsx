@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { NOMES_DOS_STATUS, STATUS } from "@/dominio/eventos";
-import { haFiltros, type Filtros } from "@/dominio/filtros";
+import { haFiltros, parametrosDosFiltros, SEM_FILTROS, type Filtros } from "@/dominio/filtros";
 import { CaixaDeMarcar, Campo, Selecao } from "./formulario";
 
 /**
@@ -26,6 +26,12 @@ export function FiltrosDeEventos({
         {Object.entries(ocultos).map(([nome, valor]) => (
           <input key={nome} type="hidden" name={nome} value={valor} />
         ))}
+        {/* Os atalhos da barra que este formulário não mostra precisam sobreviver ao filtrar. */}
+        {parametrosDosFiltros({ ...SEM_FILTROS, ...filtros, meus: false, semana: false, dia: null, categorias: [], area: null, status: null }).map(
+          ([nome, valor]) => (
+            <input key={nome} type="hidden" name={nome} value={valor} />
+          ),
+        )}
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <CaixaDeMarcar rotulo="Meus eventos" name="meus" value="1" defaultChecked={filtros.meus} />
           <CaixaDeMarcar rotulo="Esta semana" name="semana" value="1" defaultChecked={filtros.semana} />

@@ -140,6 +140,38 @@ test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page })
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("atalhos de filtro: ligar muda a lista e a URL sem botão, e Limpar desliga", async ({ page }) => {
+  await cadastrar(page, "Atalhos de Fumaça", await novoConvite());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  const barra = page.getByRole("group", { name: "Atalhos de filtro" });
+  await expect(barra.getByRole("button", { name: "Próximos" })).toHaveCount(0);
+  await expect(barra.getByRole("button", { name: "Limpar" })).toHaveCount(0);
+
+  // Quem acabou de entrar não tem Evento nenhum: "Meus eventos" esvazia a lista sem apertar "Filtrar".
+  await barra.getByRole("button", { name: "Meus eventos" }).click();
+  await expect(page).toHaveURL(/meus=1/);
+  await expect(page.getByText("Nenhum Evento com esses filtros.")).toBeVisible();
+  await barra.getByRole("button", { name: "Meus eventos" }).click();
+  await expect(page.getByText("Nenhum Evento com esses filtros.")).toBeHidden();
+
+  await barra.getByRole("button", { name: "Atrasados" }).click();
+  await expect(page).toHaveURL(/atrasados=1/);
+  await expect(barra.getByRole("button", { name: "Atrasados" })).toHaveAttribute("aria-pressed", "true");
+
+  await barra.getByRole("button", { name: "Sem Responsável" }).click();
+  await expect(page).toHaveURL(/sem-responsavel=1/);
+  await expect(page).toHaveURL(/atrasados=1/);
+
+  await barra.getByRole("button", { name: "Limpar" }).click();
+  await expect(page).not.toHaveURL(/atrasados|sem-responsavel/);
+  await expect(barra.getByRole("button", { name: "Atrasados" })).toHaveAttribute("aria-pressed", "false");
+
+  await page.goto("/calendario?atrasados=1");
+  await expect(page.getByRole("group", { name: "Atalhos de filtro" }).getByRole("button", { name: "Próximos" })).toBeVisible();
+  await page.getByRole("link", { name: "Hoje", exact: true }).click();
+  await expect(page).toHaveURL(/atrasados=1/);
+});
+
 test("sem internet, a navegação mostra a tela offline", async ({ page, context }) => {
   await page.goto("/entrar");
   await page.evaluate(() => navigator.serviceWorker.ready);
