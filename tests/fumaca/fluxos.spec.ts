@@ -41,6 +41,7 @@ test("login por convite: a pessoa entra no Mural com a Função do convite", asy
 
   await cadastrar(page, "Líder de Fumaça", await novoConvite());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("link", { name: "Calendário" })).toBeVisible();
 });
 
@@ -66,12 +67,37 @@ test("criar um Evento e vê-lo no calendário no celular", async ({ page }) => {
   await page.getByRole("button", { name: "Criar Evento" }).click();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
+  await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.getByRole("link", { name: "Calendário" }).click();
   await expect(page.getByRole("link", { name: new RegExp(titulo) }).first()).toBeVisible();
 
   // No celular não pode haver rolagem lateral.
   const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
+test("menu hambúrguer: abre, mostra os destinos, fecha com Esc e ao navegar", async ({ page }) => {
+  await cadastrar(page, "Menu de Fumaça", await novoConvite());
+  const botao = page.getByRole("button", { name: "Abrir menu" });
+  await expect(botao).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("link", { name: "Adolescentes" })).toBeHidden();
+
+  await botao.click();
+  const menu = page.getByRole("button", { name: "Fechar menu" });
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("link", { name: "Adolescentes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("link", { name: "Adolescentes" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Abrir menu" })).toBeFocused();
+
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  await page.getByRole("link", { name: "Calendário" }).click();
+  await expect(page).toHaveURL(/\/calendario/);
+  await expect(page.getByRole("link", { name: "Adolescentes" })).toBeHidden();
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  await expect(page.getByRole("link", { name: "Calendário" })).toHaveAttribute("aria-current", "page");
 });
 
 test("sem internet, a navegação mostra a tela offline", async ({ page, context }) => {

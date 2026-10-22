@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Base visual e ícones).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Abaixo de `md` há um botão hambúrguer, com rótulo acessível e estado aberto/fechado, que abre e fecha o painel de itens.
 - [ ] Os itens do painel têm ícone e toque de 44px ou mais, a página atual fica destacada (`aria-current`) e "Sair" aparece separado dos demais, no fim.

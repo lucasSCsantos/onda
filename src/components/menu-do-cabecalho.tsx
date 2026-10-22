@@ -1,0 +1,157 @@
+"use client";
+
+import {
+  CalendarDays,
+  Download,
+  GraduationCap,
+  LogOut,
+  Menu,
+  Tags,
+  Ticket,
+  UserCog,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
+import { sair } from "@/lib/auth/acoes";
+
+type Destino = { href: string; rotulo: string; icone: LucideIcon };
+
+const CALENDARIO: Destino = { href: "/calendario", rotulo: "Calendário", icone: CalendarDays };
+const ADOLESCENTES: Destino = { href: "/adolescentes", rotulo: "Adolescentes", icone: Users };
+const PROFESSORES: Destino = { href: "/professores", rotulo: "Professores", icone: GraduationCap };
+const ADMINISTRACAO: Destino[] = [
+  { href: "/admin/usuarios", rotulo: "Usuários", icone: UserCog },
+  { href: "/admin/convites", rotulo: "Convites", icone: Ticket },
+  { href: "/admin/catalogo", rotulo: "Catálogo", icone: Tags },
+  { href: "/admin/exportar", rotulo: "Exportar", icone: Download },
+];
+
+/**
+ * Menu do cabeçalho: hambúrguer com painel abaixo do header no celular e itens em linha, com cara de botão, a partir de
+ * `md`. Quem vê cada destino vem de fora; aqui só se desenha.
+ */
+export function MenuDoCabecalho({
+  admin,
+  lideranca,
+  calendario,
+  professores,
+}: {
+  admin: boolean;
+  lideranca: boolean;
+  calendario: boolean;
+  professores: boolean;
+}) {
+  const destinos = [
+    ...(calendario ? [CALENDARIO] : []),
+    ...(lideranca ? [ADOLESCENTES] : []),
+    ...(professores ? [PROFESSORES] : []),
+    ...(admin ? ADMINISTRACAO : []),
+  ];
+  const caminho = usePathname();
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const idDoPainel = useId();
+
+  useEffect(() => {
+    if (!aberto) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setAberto(false);
+      botao.current?.focus();
+    };
+    const aoTocarFora = (e: PointerEvent) => {
+      if (raiz.current?.contains(e.target as Node)) return;
+      setAberto(false);
+      // O foco só volta ao botão se o toque não levou o foco a outro lugar (um campo, por exemplo).
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body) botao.current?.focus();
+      });
+    };
+    document.addEventListener("keydown", aoTeclar);
+    document.addEventListener("pointerdown", aoTocarFora);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.removeEventListener("pointerdown", aoTocarFora);
+    };
+  }, [aberto]);
+
+  const atual = (href: string) => caminho === href || caminho.startsWith(`${href}/`);
+  const escolher = () => {
+    setAberto(false);
+    botao.current?.focus();
+  };
+
+  return (
+    <div ref={raiz}>
+      <button
+        ref={botao}
+        type="button"
+        className="botao-secundario md:hidden"
+        aria-expanded={aberto}
+        aria-controls={idDoPainel}
+        aria-label={aberto ? "Fechar menu" : "Abrir menu"}
+        onClick={() => setAberto((a) => !a)}
+      >
+        {aberto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+      </button>
+
+      <nav aria-label="Principal" className="hidden items-center gap-1 text-sm md:flex">
+        {destinos.map(({ href, rotulo, icone: Icone }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={atual(href) ? "page" : undefined}
+            className="toque inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-texto-suave hover:bg-fundo hover:text-texto active:bg-borda aria-[current=page]:bg-fundo aria-[current=page]:font-semibold aria-[current=page]:text-texto"
+          >
+            <Icone aria-hidden className="size-4" />
+            {rotulo}
+          </Link>
+        ))}
+        <form action={sair}>
+          <button
+            type="submit"
+            className="toque inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-texto-suave hover:bg-fundo hover:text-texto active:bg-borda"
+          >
+            <LogOut aria-hidden className="size-4" />
+            Sair
+          </button>
+        </form>
+      </nav>
+
+      {aberto && (
+        <nav
+          id={idDoPainel}
+          aria-label="Principal"
+          className="absolute inset-x-0 top-full z-30 flex flex-col gap-1 border-b border-borda bg-superficie p-3 shadow-lg md:hidden"
+        >
+          {destinos.map(({ href, rotulo, icone: Icone }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={escolher}
+              aria-current={atual(href) ? "page" : undefined}
+              className="toque flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium text-texto hover:bg-fundo active:bg-borda aria-[current=page]:bg-fundo aria-[current=page]:text-marca"
+            >
+              <Icone aria-hidden className="size-5" />
+              {rotulo}
+            </Link>
+          ))}
+          <form action={sair} className="mt-1 border-t border-borda pt-2">
+            <button
+              type="submit"
+              className="toque flex min-h-12 w-full items-center gap-3 rounded-xl px-3 font-medium text-texto-suave hover:bg-fundo active:bg-borda"
+            >
+              <LogOut aria-hidden className="size-5" />
+              Sair
+            </button>
+          </form>
+        </nav>
+      )}
+    </div>
+  );
+}

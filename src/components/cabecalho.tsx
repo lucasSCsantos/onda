@@ -1,11 +1,11 @@
-import { LogOut } from "lucide-react";
 import Link from "next/link";
-import { sair } from "@/lib/auth/acoes";
 import { Marca } from "./marca";
+import { MenuDoCabecalho } from "./menu-do-cabecalho";
 
 /**
- * Barra do topo das telas internas: logotipo, calendário e Adolescentes (Liderança), Professores (Admin e quem tem
- * Função em Ensino), atalhos da administração (só Admin) e Sair. O Professor vê só o calendário, com as aulas dele.
+ * Barra do topo das telas internas: logotipo e menu (hambúrguer no celular, em linha no desktop) com calendário e
+ * Adolescentes (Liderança), Professores (Admin e quem tem Função em Ensino), atalhos da administração (só Admin) e Sair.
+ * O Professor vê só o calendário, com as aulas dele. No celular o header fica fixo no topo ao rolar.
  */
 export function Cabecalho({
   admin = false,
@@ -19,49 +19,11 @@ export function Cabecalho({
   professores?: boolean;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-borda bg-superficie px-4 py-3">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-borda bg-superficie px-4 py-3 md:static">
       <Link href="/" aria-label="Início">
         <Marca qual="logotipo" rotulo="ONDA" className="h-9 w-14 text-texto" />
       </Link>
-      <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
-        {calendario && (
-          <Link href="/calendario" className="text-texto-suave hover:text-texto">
-            Calendário
-          </Link>
-        )}
-        {lideranca && (
-          <Link href="/adolescentes" className="text-texto-suave hover:text-texto">
-            Adolescentes
-          </Link>
-        )}
-        {professores && (
-          <Link href="/professores" className="text-texto-suave hover:text-texto">
-            Professores
-          </Link>
-        )}
-        {admin && (
-          <>
-            <Link href="/admin/usuarios" className="text-texto-suave hover:text-texto">
-              Usuários
-            </Link>
-            <Link href="/admin/convites" className="text-texto-suave hover:text-texto">
-              Convites
-            </Link>
-            <Link href="/admin/catalogo" className="text-texto-suave hover:text-texto">
-              Catálogo
-            </Link>
-            <Link href="/admin/exportar" className="text-texto-suave hover:text-texto">
-              Exportar
-            </Link>
-          </>
-        )}
-        <form action={sair}>
-          <button type="submit" className="botao-discreto text-texto-suave hover:text-texto">
-            <LogOut aria-hidden className="size-4" />
-            Sair
-          </button>
-        </form>
-      </nav>
+      <MenuDoCabecalho admin={admin} lideranca={lideranca} calendario={calendario} professores={professores} />
     </header>
   );
 }
