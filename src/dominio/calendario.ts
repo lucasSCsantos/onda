@@ -73,6 +73,10 @@ export function lerPosicao(
   return { visao, dia: diaValido(dia) ? dia : diaDe(agora) };
 }
 
+/** O dia do Painel do dia aberto na URL (`abrir`), ou `null` com o painel fechado. Independe de `dia`, a âncora do mês. */
+export const lerAbrir = (parametros: { abrir?: string | string[]; dia?: string | string[] }): string | null =>
+  diaValido(parametros.abrir) ? parametros.abrir : null;
+
 /**
  * Onde se cria um Evento já num dia (`data`), com ou sem a Categoria escolhida. A data é civil, no fuso do Mural,
  * e vale igual para Eventos de dia inteiro e com hora. Sem data, é a criação de sempre.

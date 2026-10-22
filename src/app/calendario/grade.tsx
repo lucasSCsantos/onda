@@ -10,7 +10,7 @@ import { hora } from "../lista-de-eventos";
 
 const DIAS_DA_SEMANA = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
-/** Quantos Eventos cabem num dia da visão mensal no desktop; o resto fica na semana daquele dia. */
+/** Quantos Eventos cabem num dia da visão mensal no desktop; o resto fica no Painel do dia. */
 const LIMITE_POR_DIA = 4;
 
 /** Quantos pontos de Categoria cabem num dia da visão mensal no celular; depois deles vem um "+". */
@@ -19,6 +19,9 @@ const LIMITE_DE_PONTOS = 3;
 const numeroDoDia = (dia: string) => Number(dia.slice(8));
 const diaDaSemanaPorExtenso = (dia: string) =>
   new Date(`${dia}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: FUSO, weekday: "long", day: "numeric", month: "short" });
+
+const diaPorExtenso = (dia: string) =>
+  new Date(`${dia}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: FUSO, weekday: "long", month: "long" });
 
 /**
  * Um Evento dentro de um dia, como link para ele: a cor da Categoria na borda, o Status no visual e a hora, se houver.
@@ -78,11 +81,14 @@ export function GradeDoMes({
   eventos,
   aniversarios,
   hoje,
+  abrir,
 }: {
   semanas: DiaDaGrade[][];
   eventos: EventoListado[];
   aniversarios: Record<string, Aniversario[]>;
   hoje: string;
+  /** O endereço do Calendário com o Painel do dia aberto naquele dia. */
+  abrir: (dia: string) => string;
 }) {
   const porDia = eventosPorDia(eventos, semanas.flat().map((d) => d.dia));
   return (
@@ -99,24 +105,25 @@ export function GradeDoMes({
           {semana.map(({ dia, doPeriodo }) => {
             const doDia = porDia[dia];
             const aniversariosDoDia = aniversarios[dia] ?? [];
-            const semanaDoDia = `/calendario?visao=semana&dia=${dia}`;
+            const painelDoDia = abrir(dia);
             return (
               <div
                 key={dia}
-                className={`flex min-h-28 min-w-0 flex-col gap-1 border-r border-borda p-1 last:border-r-0 md:min-h-36 ${doPeriodo ? "" : "bg-fundo opacity-60"}`}
+                className={`relative flex min-h-28 min-w-0 flex-col gap-1 border-r border-borda p-1 last:border-r-0 md:min-h-36 ${doPeriodo ? "" : "bg-fundo opacity-60"}`}
               >
-                <span
-                  className={`self-end rounded-full px-1.5 text-base md:text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
+                {/* O número abre o Painel do dia; o link se estende pela célula, e os chips (relative) ficam por cima. */}
+                <Link
+                  href={painelDoDia}
+                  scroll={false}
+                  className={`self-end rounded-full px-1.5 text-base after:absolute after:inset-0 md:text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
                 >
                   {numeroDoDia(dia)}
-                </span>
+                  <span className="sr-only">, abrir o dia ({diaPorExtenso(dia)})</span>
+                </Link>
 
-                {/* Celular: pontos de Categoria; o toque leva à semana do dia até o Painel do dia (ticket 07). */}
+                {/* Celular: pontos de Categoria; qualquer toque na célula abre o Painel do dia. */}
                 {(doDia.length > 0 || aniversariosDoDia.length > 0) && (
-                  <Link
-                    href={semanaDoDia}
-                    className="relative flex flex-wrap items-center justify-center gap-1 py-1 before:absolute before:-inset-1 md:hidden"
-                  >
+                  <div className="flex flex-wrap items-center justify-center gap-1 py-1 md:hidden">
                     {doDia.slice(0, LIMITE_DE_PONTOS).map((e) => (
                       <span key={e.id} aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: e.categoria.cor }} />
                     ))}
@@ -129,7 +136,7 @@ export function GradeDoMes({
                     <span className="sr-only">
                       {doDia.length} Evento(s) e {aniversariosDoDia.length} aniversário(s) neste dia
                     </span>
-                  </Link>
+                  </div>
                 )}
 
                 {/* Desktop: chips maiores, com hora e selo de Status. */}
@@ -137,7 +144,7 @@ export function GradeDoMes({
                   <Aniversarios aniversarios={aniversariosDoDia} compacto />
                   <EventosDoDia eventos={doDia.slice(0, LIMITE_POR_DIA)} comHora={false} grande />
                   {doDia.length > LIMITE_POR_DIA && (
-                    <Link href={semanaDoDia} className="px-1 text-xs text-texto-suave hover:text-texto">
+                    <Link href={painelDoDia} scroll={false} className="relative px-1 text-xs text-texto-suave hover:text-texto">
                       +{doDia.length - LIMITE_POR_DIA}
                       <span className="sr-only"> Eventos neste dia</span>
                     </Link>
@@ -158,22 +165,24 @@ export function GradeDaSemana({
   eventos,
   aniversarios,
   hoje,
+  abrir,
 }: {
   dias: DiaDaGrade[];
   eventos: EventoListado[];
   aniversarios: Record<string, Aniversario[]>;
   hoje: string;
+  abrir: (dia: string) => string;
 }) {
   const porDia = eventosPorDia(eventos, dias.map((d) => d.dia));
   return (
     <ol className="grid gap-2 md:grid-cols-7">
       {dias.map(({ dia }) => (
-        <li key={dia} className="flex min-w-0 flex-col gap-2 rounded-2xl border border-borda bg-superficie p-2 md:min-h-48">
-          <h2
-            className={`text-sm font-semibold first-letter:uppercase ${dia === hoje ? "text-marca" : "text-texto-suave"}`}
-          >
-            {diaDaSemanaPorExtenso(dia)}
-            {dia === hoje && <span className="sr-only"> (hoje)</span>}
+        <li key={dia} className="relative flex min-w-0 flex-col gap-2 rounded-2xl border border-borda bg-superficie p-2 md:min-h-48">
+          <h2 className={`text-sm font-semibold first-letter:uppercase ${dia === hoje ? "text-marca" : "text-texto-suave"}`}>
+            <Link href={abrir(dia)} scroll={false} className="after:absolute after:inset-0">
+              {diaDaSemanaPorExtenso(dia)}
+              {dia === hoje && <span className="sr-only"> (hoje)</span>}
+            </Link>
           </h2>
           <Aniversarios aniversarios={aniversarios[dia]} />
           {porDia[dia].length === 0 && aniversarios[dia].length === 0 ? (

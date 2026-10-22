@@ -6,7 +6,7 @@ import { AtalhosDeFiltro } from "@/components/atalhos-de-filtro";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { aniversariosPorDia } from "@/dominio/aniversarios";
-import { lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
+import { eventosPorDia, lerAbrir, lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
 import { diaDe } from "@/dominio/eventos";
 import { filtrar, lerFiltros, parametrosDosFiltros, type Filtros } from "@/dominio/filtros";
 import { FUSO } from "@/dominio/fuso";
@@ -16,24 +16,32 @@ import { podeCadastrarProfessor } from "@/dominio/professores";
 import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, categorias, eventos } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
-import { ListaDeEventos } from "../lista-de-eventos";
+import { AniversarioNoDia } from "@/components/aniversarios";
+import { CartaoDeEvento, ListaDeEventos } from "../lista-de-eventos";
 import { GradeDaSemana, GradeDoMes } from "./grade";
+import { PainelDoDia } from "./painel-do-dia";
 
 export const metadata: Metadata = { title: "Calendário" };
 
 const NOMES_DAS_VISOES: Record<Visao, string> = { lista: "Lista", mes: "Mês", semana: "Semana" };
 
-/** O endereço de uma posição do calendário; os filtros ligados acompanham a navegação. */
-const endereco = (filtros: Filtros, visao: Visao | null, dia?: string) => {
+/**
+ * O endereço de uma posição do calendário; os filtros ligados acompanham a navegação. O Painel do dia (`abrir`) só
+ * fica aberto no endereço que o pede: qualquer outro, ao mudar de período, visão ou filtro, o fecha.
+ */
+const endereco = (filtros: Filtros, visao: Visao | null, dia?: string, abrir?: string) => {
   const parametros = new URLSearchParams(parametrosDosFiltros(filtros));
   if (visao) parametros.set("visao", visao);
   if (dia) parametros.set("dia", dia);
+  if (abrir) parametros.set("abrir", abrir);
   const busca = parametros.toString();
   return busca ? `/calendario?${busca}` : "/calendario";
 };
 
 const data = (dia: string, opcoes: Intl.DateTimeFormatOptions) =>
   new Date(`${dia}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: FUSO, ...opcoes });
+
+const dataPorExtenso = (dia: string) => data(dia, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 /** "outubro de 2026", ou "19 a 25 de outubro de 2026" na semana. */
 function tituloDoPeriodo(visao: Visao, dia: string, dias: string[]): string {
@@ -69,19 +77,25 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
   const parametros = await props.searchParams;
   const { visao, dia } = lerPosicao(parametros, agora);
   const filtros = lerFiltros(parametros);
+  const aberto = lerAbrir(parametros);
+  const diaDaUrl = dia === hoje ? undefined : dia;
 
   // Sem visão, a lista e o mês andam juntos, de mês em mês.
   const navegacao: Visao = visao ?? "mes";
   const mostra = (v: Visao) => (visao ? visao === v : v !== "semana");
   const periodos = { lista: periodoDaVisao("lista", dia), mes: periodoDaVisao("mes", dia), semana: periodoDaVisao("semana", dia) };
   const supabase = await supabaseDoServidor();
-  const [doCatalogo, quemFazAnos, areas, ...periodosLidos] = await Promise.all([
+  const [doCatalogo, quemFazAnos, areas, doPainel, ...periodosLidos] = await Promise.all([
     categorias(supabase),
     aniversariaveis(supabase, eu),
     eu.nivel === "lider" ? areasDaPessoa(supabase, eu.id) : Promise.resolve([]),
+    aberto ? eventos(supabase, periodoDaVisao("semana", aberto)) : Promise.resolve([]),
     ...(["lista", "mes", "semana"] as const).map((v) => (mostra(v) ? eventos(supabase, periodos[v]) : Promise.resolve([]))),
   ]);
   const [daLista, doMes, daSemana] = periodosLidos.map((lidos) => filtrar(lidos, filtros, { eu: eu.id, agora }));
+  const eventosDoPainel = aberto ? eventosPorDia(filtrar(doPainel, filtros, { eu: eu.id, agora }), [aberto])[aberto] : [];
+  const aniversariosDoPainel = aberto ? (aniversariosPorDia(quemFazAnos, [aberto])[aberto] ?? []) : [];
+  const abrir = (diaAberto: string) => endereco(filtros, visao, diaDaUrl, diaAberto);
   const aniversarios = (v: Visao) => aniversariosPorDia(quemFazAnos, periodos[v].semanas.flat().map((d) => d.dia));
 
   return (
@@ -159,15 +173,32 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
           )}
           {mostra("mes") && (
             <section aria-label="Mês" className={visivel("mes", visao)}>
-              <GradeDoMes semanas={periodos.mes.semanas} eventos={doMes} aniversarios={aniversarios("mes")} hoje={hoje} />
+              <GradeDoMes semanas={periodos.mes.semanas} eventos={doMes} aniversarios={aniversarios("mes")} hoje={hoje} abrir={abrir} />
             </section>
           )}
           {mostra("semana") && (
             <section aria-label="Semana" className={visivel("semana", visao)}>
-              <GradeDaSemana dias={periodos.semana.semanas[0]} eventos={daSemana} aniversarios={aniversarios("semana")} hoje={hoje} />
+              <GradeDaSemana dias={periodos.semana.semanas[0]} eventos={daSemana} aniversarios={aniversarios("semana")} hoje={hoje} abrir={abrir} />
             </section>
           )}
         </div>
+
+        {aberto && (
+          <PainelDoDia titulo={dataPorExtenso(aberto)} fechar={endereco(filtros, visao, diaDaUrl)}>
+            {eventosDoPainel.length === 0 && aniversariosDoPainel.length === 0 ? (
+              <p className="text-texto-suave">Nenhum Evento neste dia.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {aniversariosDoPainel.map((a) => (
+                  <AniversarioNoDia key={a.nome} aniversario={a} />
+                ))}
+                {eventosDoPainel.map((evento) => (
+                  <CartaoDeEvento key={evento.id} evento={evento} eu={eu.id} mostraResponsavel={lideranca} />
+                ))}
+              </ul>
+            )}
+          </PainelDoDia>
+        )}
       </main>
     </>
   );

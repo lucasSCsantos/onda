@@ -3,6 +3,7 @@ import {
   diasComEventos,
   enderecoDoNovoEvento,
   eventosPorDia,
+  lerAbrir,
   lerDataDoNovoEvento,
   lerPosicao,
   navegar,
@@ -89,6 +90,20 @@ describe("posição na URL", () => {
     expect(lerPosicao({ visao: "ano", dia: "2026-02-30" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
     expect(lerPosicao({ dia: "2026-02-32" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
     expect(lerPosicao({ visao: ["mes", "semana"], dia: "ontem" }, agora)).toEqual({ visao: null, dia: "2026-10-21" });
+  });
+});
+
+describe("Painel do dia na URL", () => {
+  it("lê o dia em `abrir`, sem depender de `dia`", () => {
+    expect(lerAbrir({ abrir: "2026-11-03" })).toBe("2026-11-03");
+    expect(lerAbrir({ abrir: "2026-11-03", dia: "2026-10-01" })).toBe("2026-11-03");
+  });
+
+  it("sem `abrir`, ou com um valor inválido, o painel fica fechado", () => {
+    expect(lerAbrir({})).toBeNull();
+    expect(lerAbrir({ abrir: "2026-02-30" })).toBeNull();
+    expect(lerAbrir({ abrir: "hoje" })).toBeNull();
+    expect(lerAbrir({ abrir: ["2026-11-03", "2026-11-04"] })).toBeNull();
   });
 });
 
