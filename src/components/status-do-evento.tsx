@@ -13,7 +13,7 @@ export const visualDoStatus = (status: Status) => ({
 export function SeloDoStatus({ status }: { status: Status }) {
   const cor = status === "adiado" ? "border-aviso text-aviso" : status === "rascunho" ? "border-dashed border-texto-suave" : "border-borda";
   return (
-    <span className={`h-fit shrink-0 rounded-full border px-2 py-0.5 text-xs ${cor}`}>
+    <span className={`h-fit shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${cor}`}>
       {status === "adiado" && <span aria-hidden>⏸ </span>}
       {NOMES_DOS_STATUS[status]}
     </span>

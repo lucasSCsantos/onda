@@ -56,7 +56,7 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
             <input type="checkbox" name="inativos" value="1" defaultChecked={comInativos} className="size-4 accent-marca" />
             Mostrar inativos{quantosInativos ? ` (${quantosInativos})` : ""}
           </label>
-          <button type="submit" className="rounded-lg bg-marca px-4 py-3 font-semibold text-marca-texto">
+          <button type="submit" className="botao-primario">
             Aplicar
           </button>
         </form>

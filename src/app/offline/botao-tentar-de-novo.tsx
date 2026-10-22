@@ -8,7 +8,7 @@ export function BotaoTentarDeNovo() {
     <button
       type="button"
       onClick={() => router.push("/")}
-      className="rounded-lg bg-marca px-4 py-3 font-semibold text-marca-texto"
+      className="botao-primario"
     >
       Tentar de novo
     </button>

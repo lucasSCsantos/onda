@@ -20,7 +20,7 @@ const ROTULOS: Record<SituacaoDoConvite, string> = { valido: "Válido", usado: "
 const dataEHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Bahia", dateStyle: "short", timeStyle: "short" });
 
-const botaoDiscreto = "rounded-lg border border-borda px-3 py-1.5 text-sm hover:bg-fundo";
+const botaoDiscreto = "botao-discreto";
 
 export default async function PaginaProfessores() {
   const eu = await perfilAtual();

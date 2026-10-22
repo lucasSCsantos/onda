@@ -24,7 +24,7 @@ type Usuario = {
 
 const dataCurta = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" });
 
-const botaoDiscreto = "rounded-lg border border-borda px-3 py-1.5 text-sm hover:bg-fundo";
+const botaoDiscreto = "botao-discreto";
 
 export default async function PaginaUsuarios() {
   const eu = await exigirAdmin();

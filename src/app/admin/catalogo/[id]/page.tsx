@@ -66,7 +66,7 @@ export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/
                   <div className="flex flex-col gap-3 border-t border-borda p-4">
                     <FormularioCampo categoria={categoria.id} campo={campo} tipos={OPCOES_DE_TIPO} />
                     <form action={removerCampo.bind(null, categoria.id, campo.id)}>
-                      <button type="submit" className="rounded-lg border border-borda px-3 py-1.5 text-sm text-erro hover:bg-fundo">
+                      <button type="submit" className="botao-discreto text-erro">
                         Remover campo
                       </button>
                     </form>

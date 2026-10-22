@@ -171,7 +171,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
         <div className="flex flex-wrap items-center gap-3">
           {edita && (
-            <Link href={`/eventos/${evento.id}/editar`} className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+            <Link href={`/eventos/${evento.id}/editar`} className="botao-primario">
               Editar
             </Link>
           )}

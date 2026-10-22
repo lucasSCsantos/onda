@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
@@ -91,7 +92,8 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
             {tituloDoPeriodo(navegacao, dia, periodos[navegacao].semanas[0].map((d) => d.dia))}
           </h1>
           {lideranca && (
-            <Link href="/eventos/novo" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+            <Link href="/eventos/novo" className="botao-primario">
+              <Plus aria-hidden className="size-5" />
               Novo Evento
             </Link>
           )}
@@ -102,17 +104,17 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
             <Link
               href={endereco(filtros, visao, navegar(navegacao, dia, -1))}
               aria-label={navegacao === "semana" ? "Semana anterior" : "Mês anterior"}
-              className="rounded-lg border border-borda bg-superficie px-3 py-1.5"
+              className="botao-secundario"
             >
               ‹
             </Link>
-            <Link href={endereco(filtros, visao)} className="rounded-lg border border-borda bg-superficie px-3 py-1.5 text-sm">
+            <Link href={endereco(filtros, visao)} className="botao-secundario text-sm">
               Hoje
             </Link>
             <Link
               href={endereco(filtros, visao, navegar(navegacao, dia, 1))}
               aria-label={navegacao === "semana" ? "Próxima semana" : "Próximo mês"}
-              className="rounded-lg border border-borda bg-superficie px-3 py-1.5"
+              className="botao-secundario"
             >
               ›
             </Link>

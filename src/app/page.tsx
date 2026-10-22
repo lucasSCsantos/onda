@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { diaEMes } from "@/components/aniversarios";
@@ -118,7 +119,8 @@ export default async function Inicio(props: PageProps<"/">) {
             <section className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold">Próximos eventos</h2>
-                <Link href="/eventos/novo" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+                <Link href="/eventos/novo" className="botao-primario">
+                  <Plus aria-hidden className="size-5" />
                   Novo Evento
                 </Link>
               </div>

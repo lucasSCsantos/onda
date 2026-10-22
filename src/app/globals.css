@@ -67,3 +67,55 @@ body {
   background: var(--fundo);
   color: var(--texto);
 }
+
+/* O destaque de toque nativo some: o estado `:active` dos botões o substitui. */
+@layer base {
+  a,
+  button,
+  summary,
+  label {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Links e resumos fora dos botões também respondem ao toque. */
+  a[href]:not([class*="botao-"]):active,
+  summary:active {
+    opacity: 0.65;
+  }
+
+  a[href],
+  summary {
+    transition: opacity 150ms;
+  }
+
+  /* Títulos com mais presença e hierarquia mais nítida. */
+  h1,
+  h2 {
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Botões: toque mínimo de 44px, cantos arredondados e um leve "afundar" ao toque (no celular não há hover). */
+@utility toque {
+  transition:
+    background-color 150ms,
+    filter 150ms,
+    transform 150ms,
+    box-shadow 150ms;
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+@utility botao-primario {
+  @apply toque inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-marca px-4 py-2 font-semibold text-marca-texto shadow-sm hover:brightness-110 enabled:active:brightness-90 disabled:opacity-60;
+}
+
+@utility botao-secundario {
+  @apply toque inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-borda bg-superficie px-4 py-2 font-medium text-texto shadow-sm hover:bg-fundo active:bg-borda;
+}
+
+/* O botão menor das listas; a cor do texto fica a cargo de quem usa (ex.: `text-erro`). */
+@utility botao-discreto {
+  @apply toque inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-borda px-3 py-1.5 text-sm hover:bg-fundo active:bg-borda pointer-coarse:min-h-11;
+}

@@ -1,3 +1,4 @@
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { sair } from "@/lib/auth/acoes";
 import { Marca } from "./marca";
@@ -55,7 +56,8 @@ export function Cabecalho({
           </>
         )}
         <form action={sair}>
-          <button type="submit" className="text-texto-suave hover:text-texto">
+          <button type="submit" className="botao-discreto text-texto-suave hover:text-texto">
+            <LogOut aria-hidden className="size-4" />
             Sair
           </button>
         </form>

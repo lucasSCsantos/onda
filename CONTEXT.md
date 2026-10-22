@@ -33,6 +33,14 @@ _Avoid_: Dono, encarregado
 **Status**:
 O estágio de um Evento: Rascunho, Planejado, Confirmado, Realizado, Cancelado ou Adiado, com transições livres. Um Evento Confirmado passa sozinho a Realizado depois do horário de fim (ou no dia seguinte, se não houver fim); fora isso, só o Admin e o Responsável marcam Realizado, e nunca antes do fim. Planejado ou Rascunho que passam da data ficam parados com alerta até o Responsável decidir. Remarcar um Adiado (mudar a data) o volta a Planejado.
 
+**Atalho de filtro**:
+Um filtro marcável da barra de Eventos (Meus eventos, Hoje, Esta semana, Próximos, Rascunho, Sem Responsável, Aula sem Professor, Atrasados) que liga e desliga na hora, sem botão de confirmar.
+_Avoid_: Filtro rápido, botão de filtro
+
+**Painel do dia**:
+A lista dos Eventos de um dia (com os aniversariantes), aberta ao tocar nele no Calendário.
+_Avoid_: Modal do dia, detalhe do dia
+
 **Postagem**:
 Categoria de Evento cuja data é a data de publicação.
 

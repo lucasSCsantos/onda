@@ -56,7 +56,7 @@ export function FiltrosDeEventos({
           </div>
         </fieldset>
         <div className="flex items-center gap-4">
-          <button type="submit" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+          <button type="submit" className="botao-primario">
             Filtrar
           </button>
           {haFiltros(filtros) && (

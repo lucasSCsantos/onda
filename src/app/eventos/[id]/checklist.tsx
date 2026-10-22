@@ -75,9 +75,9 @@ export function Checklist({
             name="texto"
             aria-label="Nova tarefa"
             placeholder="Nova tarefa"
-            className="min-w-0 flex-1 rounded-lg border border-borda bg-superficie px-3 py-2 outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-borda bg-superficie px-3 py-2 outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
           />
-          <button type="submit" name="mudanca" value="adicionar" disabled={pendente} className="rounded-lg bg-marca px-3 py-2 font-semibold text-marca-texto">
+          <button type="submit" name="mudanca" value="adicionar" disabled={pendente} className="botao-primario">
             Adicionar
           </button>
         </form>

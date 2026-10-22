@@ -11,7 +11,7 @@ export function CopiarLink({ link }: { link: string }) {
         value={link}
         aria-label="Link do convite"
         onFocus={(e) => e.currentTarget.select()}
-        className="min-w-0 flex-1 rounded-lg border border-borda bg-fundo px-3 py-1.5 text-sm"
+        className="min-h-11 min-w-0 flex-1 rounded-lg border border-borda bg-fundo px-3 py-1.5 text-sm"
       />
       <button
         type="button"
@@ -19,7 +19,7 @@ export function CopiarLink({ link }: { link: string }) {
           await navigator.clipboard.writeText(link);
           setCopiado(true);
         }}
-        className="rounded-lg bg-marca px-3 py-1.5 text-sm font-semibold text-marca-texto"
+        className="botao-primario"
       >
         {copiado ? "Copiado!" : "Copiar link"}
       </button>

@@ -37,7 +37,7 @@ export default async function PaginaExportar() {
               <li key={tabela} className="flex items-center justify-between gap-3 p-4">
                 <span className="font-semibold">{NOMES_DAS_TABELAS[tabela]}</span>
                 <form method="post" action={`/admin/exportar/${tabela}`}>
-                  <button type="submit" className="rounded-lg bg-marca px-4 py-2 font-semibold text-marca-texto">
+                  <button type="submit" className="botao-primario">
                     Baixar CSV
                   </button>
                 </form>

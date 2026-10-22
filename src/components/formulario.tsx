@@ -80,7 +80,7 @@ export function BotaoEnviar({ children, pendente }: { children: React.ReactNode;
     <button
       type="submit"
       disabled={pending}
-      className="rounded-lg bg-marca px-4 py-3 font-semibold text-marca-texto disabled:opacity-60"
+      className="botao-primario"
     >
       {pending ? pendente : children}
     </button>
