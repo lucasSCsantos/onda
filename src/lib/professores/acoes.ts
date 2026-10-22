@@ -5,6 +5,7 @@ import type { EstadoFormulario } from "@/components/formulario";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
 import { podeCadastrarProfessor } from "@/dominio/professores";
 import { campoTexto } from "@/lib/campos";
+import { registrarFalha } from "@/lib/logs/registrar";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { areasDaPessoa } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -29,7 +30,10 @@ export async function gerarConviteDeProfessor(_: EstadoFormulario, dados: FormDa
   const { supabase, pode } = await quemCadastra();
   if (!pode) return { erro: "Só o Admin e quem tem Função em Ensino cadastram Professores." };
   const { error } = await supabase.from("convites").insert({ nivel: "professor", expira_em: expiraEm.toISOString() });
-  if (error) return { erro: "Não foi possível gerar o convite." };
+  if (error) {
+    registrarFalha(supabase, "convite.criado", { tipo: "convite" }, error);
+    return { erro: "Não foi possível gerar o convite." };
+  }
 
   revalidatePath("/professores");
   return { aviso: "Convite gerado. Copie o link na lista abaixo e envie para o Professor." };

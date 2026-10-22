@@ -78,3 +78,12 @@ _Avoid_: Docente, instrutor
 **Adolescente**:
 Pessoa atendida pelo ministério, existente só como cadastro (nome, data de nascimento, ativo/inativo); sem login.
 _Avoid_: Membro, jovem
+
+### Administração
+
+**Log**:
+O registro de uma ação no Mural: quem fez (ou o Sistema), o quê, sobre qual objeto, quando e com qual resultado. Só de inserção e só o Admin lê; nunca guarda senha, e-mail ou data de nascimento. O registro de alterações dos Eventos é a fonte dos Logs de Evento.
+_Avoid_: Auditoria (o "Histórico do Evento" é o recorte dos Logs de um Evento)
+
+**Configurações**:
+O que o Admin ajusta sem mexer no sistema (por quanto tempo guardar os Logs, se líderes veem o histórico dos Eventos e o que as fases seguintes acrescentarem); cada mudança vira um Log.

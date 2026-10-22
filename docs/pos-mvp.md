@@ -34,8 +34,7 @@ Tudo o que ficou deliberadamente fora do MVP. Usa o vocabulário de `CONTEXT.md`
 - No MVP os alertas existem só dentro do app, na tela de Próximos eventos. O app não escreve no WhatsApp.
 
 ### Registro de alterações
-- Tela para o Admin consultar o registro completo de alterações por Evento (quem, quando, o que mudou).
-- O registro é gravado desde o MVP, porque não dá para reconstruí-lo depois.
+- Feito na fase de Logs (`.scratch/logs-presenca-ranking`): a seção "Logs" do Admin e o "Histórico do Evento" mostram o registro de alterações em linguagem de gente (ADR 0004).
 
 ### Recorrência
 - Série mensal por dia fixo do mês ("todo dia 15"). O MVP só tem mensal por N-ésimo dia da semana ("primeiro domingo", "último sábado").

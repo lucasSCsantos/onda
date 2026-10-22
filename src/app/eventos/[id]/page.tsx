@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Cabecalho } from "@/components/cabecalho";
+import { LinhaDoTempo } from "@/components/linha-do-tempo";
 import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeCriarEvento, type CampoCadastrado } from "@/dominio/catalogo";
@@ -19,10 +20,13 @@ import {
 } from "@/dominio/eventos";
 import { eChecklist } from "@/dominio/checklist";
 import { FUSO } from "@/dominio/fuso";
+import { podeVerHistoricoDoEvento } from "@/dominio/logs";
 import { descreverRegra, formatarDia } from "@/dominio/series";
 import { podeEditarSoAsObservacoes } from "@/dominio/professores";
+import { configuracoes } from "@/lib/configuracoes/consultas";
 import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, evento as buscarEvento, pessoas, pessoasDaAula, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
+import { historicoDoEvento } from "@/lib/logs/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { BotaoExcluir } from "./botao-excluir";
 import { Checklist } from "./checklist";
@@ -70,6 +74,10 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
       )
     : await pessoasDaAula(supabase, id);
   const responsavel = evento.pessoaResponsavel ?? (evento.responsavel ? (nomes.get(evento.responsavel) ?? null) : null);
+  // O histórico (logs) do Evento: o Admin sempre; o líder que edita, se o Admin ligar. A política de `logs` confere.
+  const veHistorico =
+    lideranca && podeVerHistoricoDoEvento(eu, areas, evento, (await configuracoes(supabase)).lideresVeemHistoricoDoEvento);
+  const historico = veHistorico ? await historicoDoEvento(supabase, evento.id, evento.serieId) : [];
   // Os valores como o formulário os mostra (o valor em reais com vírgula, a lista um item por linha).
   const textos = entradaDoEvento(evento, evento.categoria).campos;
 
@@ -177,6 +185,19 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
           )}
           {podeExcluirEvento(eu) && <BotaoExcluir id={evento.id} />}
         </div>
+
+        {veHistorico && (
+          <details className="flex flex-col gap-3">
+            <summary className="cursor-pointer font-semibold">Histórico do Evento</summary>
+            <div className="pt-3">
+              {historico.length === 0 ? (
+                <p className="text-sm text-texto-suave">Nada registrado ainda. Os logs só contam o que aconteceu depois que entraram no ar.</p>
+              ) : (
+                <LinhaDoTempo logs={historico} agora={agora} existentes={new Set([evento.id])} />
+              )}
+            </div>
+          </details>
+        )}
 
         {serie && (
           <PainelDaSerie

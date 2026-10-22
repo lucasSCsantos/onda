@@ -3,6 +3,8 @@ import Link from "next/link";
 import { SECOES_DE_ADMIN } from "@/components/destinos-admin";
 import { TABELAS_EXPORTADAS } from "@/dominio/exportacao";
 import { indicadoresDoPainel } from "@/dominio/painel-admin";
+import { somarDias } from "@/dominio/fuso";
+import { configuracoes } from "@/lib/configuracoes/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { categorias, eventos } from "@/lib/eventos/consultas";
 import { professoresCadastrados } from "@/lib/professores/consultas";
@@ -18,12 +20,18 @@ export default async function PainelDeAdmin() {
   await exigirAdmin();
   const supabase = await supabaseDoServidor();
   const agora = new Date();
-  const [{ data: pessoas }, { data: convites }, todos, doCatalogo, professores] = await Promise.all([
+  const [{ data: pessoas }, { data: convites }, todos, doCatalogo, professores, { count: alertasDaSemana }, config] = await Promise.all([
     supabase.from("perfis").select("nivel, ativo").overrideTypes<Pessoa[], { merge: false }>(),
     supabase.from("convites").select("expira_em, usado_em, revogado_em").overrideTypes<Convite[], { merge: false }>(),
     eventos(supabase),
     categorias(supabase),
     professoresCadastrados(supabase),
+    supabase
+      .from("logs")
+      .select("id", { count: "exact", head: true })
+      .gte("feito_em", somarDias(agora, -7).toISOString())
+      .or("resultado.eq.falha,severidade.neq.info"),
+    configuracoes(supabase),
   ]);
   const perfis = pessoas ?? [];
   const indicadores = indicadoresDoPainel({
@@ -50,6 +58,8 @@ export default async function PainelDeAdmin() {
     "/admin/catalogo": `${doCatalogo.length} Categorias`,
     "/professores": `${professores.filter((p) => p.ativo).length} cadastrados`,
     "/admin/exportar": `${TABELAS_EXPORTADAS.length} tabelas`,
+    "/admin/logs": alertasDaSemana ? `${alertasDaSemana} ${alertasDaSemana === 1 ? "alerta" : "alertas"} em 7 dias` : "Sem alertas em 7 dias",
+    "/admin/configuracoes": `Logs por ${config.retencaoDosLogsMeses} ${config.retencaoDosLogsMeses === 1 ? "mês" : "meses"}`,
   };
 
   return (

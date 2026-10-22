@@ -1,4 +1,4 @@
-import { Download, GraduationCap, LayoutDashboard, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
+import { Download, GraduationCap, LayoutDashboard, ScrollText, Settings, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
 
 export type DestinoDeAdmin = { href: string; rotulo: string; icone: LucideIcon };
 
@@ -10,4 +10,6 @@ export const SECOES_DE_ADMIN: DestinoDeAdmin[] = [
   { href: "/admin/catalogo", rotulo: "Catálogo", icone: Tags },
   { href: "/professores", rotulo: "Professores", icone: GraduationCap },
   { href: "/admin/exportar", rotulo: "Exportar", icone: Download },
+  { href: "/admin/logs", rotulo: "Logs", icone: ScrollText },
+  { href: "/admin/configuracoes", rotulo: "Configurações", icone: Settings },
 ];

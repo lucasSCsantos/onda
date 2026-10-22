@@ -8,8 +8,12 @@ import { dataDeNascimentoValida } from "@/dominio/cadastro";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
 import { erroDeSenha } from "@/lib/auth/senha";
 import { campoTexto } from "@/lib/campos";
+import { registrarFalha } from "@/lib/logs/registrar";
 import { origemDoApp } from "@/lib/origem";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
+
+/** Uma escrita que a política por linha barrou não dá erro: só não altera nada. Para o log, é falta de permissão. */
+const SEM_LINHA = { code: "42501", message: "nenhuma linha alterada" };
 
 /** Nível e Função escolhidos num convite ou numa aprovação, já conferidos pela regra do domínio. */
 function concessao(dados: FormData) {
@@ -71,7 +75,10 @@ export async function gerarConvite(_: EstadoFormulario, dados: FormData): Promis
   const { error } = await supabase
     .from("convites")
     .insert({ nivel: escolha.nivel, funcao_id: escolha.funcao, expira_em: expiraEm.toISOString() });
-  if (error) return { erro: "Não foi possível gerar o convite." };
+  if (error) {
+    registrarFalha(supabase, "convite.criado", { tipo: "convite" }, error);
+    return { erro: "Não foi possível gerar o convite." };
+  }
 
   revalidatePath("/admin/convites");
   return { aviso: "Convite gerado. Copie o link na lista abaixo e envie para a pessoa." };
@@ -79,7 +86,8 @@ export async function gerarConvite(_: EstadoFormulario, dados: FormData): Promis
 
 export async function revogarConvite(id: string) {
   const supabase = await supabaseDoServidor();
-  await supabase.from("convites").update({ revogado_em: new Date().toISOString() }).eq("id", id).is("usado_em", null);
+  const { error } = await supabase.from("convites").update({ revogado_em: new Date().toISOString() }).eq("id", id).is("usado_em", null);
+  if (error) registrarFalha(supabase, "convite.revogado", { tipo: "convite", id }, error);
   revalidatePath("/admin/convites");
 }
 
@@ -93,7 +101,10 @@ export async function aprovarPendente(pessoa: string, _: EstadoFormulario, dados
     novo_nivel: escolha.nivel,
     funcao: escolha.funcao,
   });
-  if (error) return { erro: "Não foi possível aprovar." };
+  if (error) {
+    registrarFalha(supabase, "conta.aprovada", { tipo: "conta", id: pessoa }, error);
+    return { erro: "Não foi possível aprovar." };
+  }
 
   revalidatePath("/admin/usuarios");
   return {};
@@ -101,18 +112,21 @@ export async function aprovarPendente(pessoa: string, _: EstadoFormulario, dados
 
 export async function recusarPendente(pessoa: string) {
   const supabase = await supabaseDoServidor();
-  await supabase.rpc("recusar_pendente", { pessoa });
+  const { error } = await supabase.rpc("recusar_pendente", { pessoa });
+  if (error) registrarFalha(supabase, "conta.recusada", { tipo: "conta", id: pessoa }, error);
   revalidatePath("/admin/usuarios");
 }
 
 export async function mudarAtivo(pessoa: string, ativo: boolean) {
   const supabase = await supabaseDoServidor();
-  await supabase.from("perfis").update({ ativo }).eq("id", pessoa);
+  const { data, error } = await supabase.from("perfis").update({ ativo }).eq("id", pessoa).select("id");
+  if (error || !data?.length) registrarFalha(supabase, ativo ? "conta.reativada" : "conta.desativada", { tipo: "conta", id: pessoa }, error ?? SEM_LINHA);
   revalidatePath("/admin/usuarios");
 }
 
 export async function promoverAAdmin(pessoa: string) {
   const supabase = await supabaseDoServidor();
-  await supabase.rpc("promover_a_admin", { pessoa });
+  const { error } = await supabase.rpc("promover_a_admin", { pessoa });
+  if (error) registrarFalha(supabase, "conta.nivel_alterado", { tipo: "conta", id: pessoa }, error);
   revalidatePath("/admin/usuarios");
 }

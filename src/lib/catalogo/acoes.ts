@@ -13,6 +13,7 @@ import {
   type TipoDeCampo,
 } from "@/dominio/catalogo";
 import { campoTexto } from "@/lib/campos";
+import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
 const UNICO_VIOLADO = "23505";
@@ -28,7 +29,10 @@ export async function salvarFuncao(id: string | null, _: EstadoFormulario, dados
     ? await supabase.from("funcoes").update(linha).eq("id", id)
     : await supabase.from("funcoes").insert(linha);
   if (error?.code === UNICO_VIOLADO) return { erro: "Já existe uma Função com esse nome." };
-  if (error) return { erro: "Não foi possível salvar a Função." };
+  if (error) {
+    registrarFalha(supabase, id ? "funcao.editada" : "funcao.criada", { tipo: "funcao", id, rotulo: funcao.nome }, error);
+    return { erro: "Não foi possível salvar a Função." };
+  }
 
   revalidatePath("/admin/catalogo");
   return { aviso: id ? "Função salva." : "Função criada." };
@@ -44,7 +48,10 @@ export async function definirFuncoes(pessoa: string, _: EstadoFormulario, dados:
   if (erro) return { erro };
 
   const { error } = await supabase.rpc("definir_funcoes", { pessoa, novas_funcoes: funcoes });
-  if (error) return { erro: "Não foi possível salvar as Funções." };
+  if (error) {
+    registrarFalha(supabase, "conta.funcao_adicionada", { tipo: "conta", id: pessoa }, error);
+    return { erro: "Não foi possível salvar as Funções." };
+  }
 
   revalidatePath("/admin/usuarios");
   return { aviso: "Funções salvas." };
@@ -62,7 +69,10 @@ export async function salvarCategoria(id: string | null, _: EstadoFormulario, da
     ? await supabase.from("categorias").update(linha).eq("id", id).select("id").single()
     : await supabase.from("categorias").insert(linha).select("id").single();
   if (error?.code === UNICO_VIOLADO) return { erro: "Já existe uma Categoria com esse nome." };
-  if (error) return { erro: "Não foi possível salvar a Categoria." };
+  if (error) {
+    registrarFalha(supabase, id ? "categoria.editada" : "categoria.criada", { tipo: "categoria", id, rotulo: categoria.nome }, error);
+    return { erro: "Não foi possível salvar a Categoria." };
+  }
 
   revalidatePath("/admin/catalogo");
   if (!id) redirect(`/admin/catalogo/${data.id}`);
@@ -112,7 +122,10 @@ export async function salvarCampo(
       .insert({ ...campo, categoria_id: categoria, ordem: (ultimo?.ordem ?? -1) + 1 }));
   }
   if (error?.code === UNICO_VIOLADO) return { erro: "Já existe um campo com esse nome nesta Categoria." };
-  if (error) return { erro: "Não foi possível salvar o campo." };
+  if (error) {
+    registrarFalha(supabase, id ? "categoria.campo_editado" : "categoria.campo_adicionado", { tipo: "categoria", id: categoria }, error);
+    return { erro: "Não foi possível salvar o campo." };
+  }
 
   revalidatePath(`/admin/catalogo/${categoria}`);
   return { aviso: id ? "Campo salvo." : "Campo adicionado." };
@@ -120,6 +133,7 @@ export async function salvarCampo(
 
 export async function removerCampo(categoria: string, id: string) {
   const supabase = await supabaseDoServidor();
-  await supabase.from("campos_das_categorias").delete().eq("id", id).eq("categoria_id", categoria);
+  const { error } = await supabase.from("campos_das_categorias").delete().eq("id", id).eq("categoria_id", categoria);
+  if (error) registrarFalha(supabase, "categoria.campo_removido", { tipo: "categoria", id: categoria }, error);
   revalidatePath(`/admin/catalogo/${categoria}`);
 }

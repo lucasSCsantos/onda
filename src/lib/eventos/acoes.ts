@@ -10,6 +10,7 @@ import { editarSerie, escoposDeEdicao, lerSerie, type EntradaDeRegra, type Escop
 import { podeEditarSoAsObservacoes } from "@/dominio/professores";
 import { campoTexto, nomeDoCampoEspecifico } from "@/lib/campos";
 import { perfilAtual } from "@/lib/contas/perfil";
+import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { colunas, linhaDaAlteracao } from "./colunas";
 import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, opcoesDaLideranca, opcoesDeProfessores, serie as buscarSerie } from "./consultas";
@@ -18,6 +19,8 @@ import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, op
 export type EstadoDoEvento = EstadoFormulario & { valores?: Record<string, string>; tentativa?: number };
 
 const SEM_PERMISSAO = "42501";
+/** Uma edição que a política por linha barrou não dá erro: só não altera nada. Para o log, é falta de permissão. */
+const SEM_LINHA = { code: SEM_PERMISSAO, message: "nenhuma linha alterada" };
 
 const valoresDigitados = (dados: FormData) =>
   Object.fromEntries([...dados.entries()].filter(([, v]) => typeof v === "string")) as Record<string, string>;
@@ -86,10 +89,12 @@ export async function criarEvento(categoriaId: string, anterior: EstadoDoEvento,
   if ("erro" in lido) return falhou(lido.erro);
 
   // Com repetição, o Evento do formulário é o modelo de uma Série, criada com todas as Ocorrências de uma vez.
-  const { error } = campoTexto(dados, "repeticao")
+  const emSerie = Boolean(campoTexto(dados, "repeticao"));
+  const { error } = emSerie
     ? await criarSerie(supabase, categoria.id, lido.evento, dados)
     : await supabase.from("eventos").insert({ ...colunas(lido.evento), categoria_id: categoria.id });
   if (error && "erro" in error) return falhou(error.erro);
+  if (error) registrarFalha(supabase, emSerie ? "serie.criada" : "evento.criado", { tipo: emSerie ? "serie" : "evento", rotulo: lido.evento.titulo }, error);
   if (error?.code === SEM_PERMISSAO) return falhou("Você não tem Função na Área desta Categoria.");
   if (error) return falhou("Não foi possível criar o Evento.");
 
@@ -153,11 +158,18 @@ export async function editarEvento(id: string, anterior: EstadoDoEvento, dados: 
     });
     if ("erro" in edicao) return falhou(edicao.erro);
 
-    const { error } = await supabase.rpc("editar_eventos", { alteracoes: edicao.alteracoes.map(linhaDaAlteracao) });
+    // `editar_serie` grava como `editar_eventos` e registra a operação num log só, com o escopo.
+    const { error } = await supabase.rpc("editar_serie", {
+      serie: gravado.serieId,
+      escopo,
+      alteracoes: edicao.alteracoes.map(linhaDaAlteracao),
+    });
+    if (error) registrarFalha(supabase, "serie.editada", { tipo: "serie", id: gravado.serieId, rotulo: gravado.titulo }, error);
     if (error?.code === SEM_PERMISSAO) return falhou("Você não pode alterar todas essas Ocorrências.");
     if (error) return falhou("Não foi possível salvar o Evento.");
   } else {
     const { data, error } = await supabase.from("eventos").update(colunas(lido.evento)).eq("id", id).select("id");
+    if (error || data?.length === 0) registrarFalha(supabase, "evento.editado", { tipo: "evento", id, rotulo: gravado.titulo }, error ?? SEM_LINHA);
     if (error?.code === SEM_PERMISSAO || data?.length === 0) return falhou("Você não pode fazer esta alteração.");
     if (error) return falhou("Não foi possível salvar o Evento.");
   }
@@ -181,6 +193,7 @@ export async function editarObservacoes(id: string, _anterior: EstadoFormulario,
   }
 
   const { data, error } = await supabase.from("eventos").update({ observacoes: campoTexto(dados, "observacoes") }).eq("id", id).select("id");
+  if (error || data?.length === 0) registrarFalha(supabase, "evento.editado", { tipo: "evento", id, rotulo: gravado.titulo }, error ?? SEM_LINHA);
   if (error?.code === SEM_PERMISSAO || data?.length === 0) return { erro: "Você não pode fazer esta alteração." };
   if (error) return { erro: "Não foi possível salvar as observações." };
 
@@ -192,7 +205,10 @@ export async function editarObservacoes(id: string, _anterior: EstadoFormulario,
 export async function excluirEvento(id: string): Promise<EstadoFormulario> {
   const supabase = await supabaseDoServidor();
   const { data, error } = await supabase.from("eventos").delete().eq("id", id).select("id");
-  if (error || data.length === 0) return { erro: "Não foi possível excluir o Evento." };
+  if (error || data.length === 0) {
+    registrarFalha(supabase, "evento.excluido", { tipo: "evento", id }, error ?? SEM_LINHA);
+    return { erro: "Não foi possível excluir o Evento." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/");
@@ -224,6 +240,7 @@ export async function mudarChecklistDoEvento(
   else delete campos[campoId];
 
   const { data, error } = await supabase.from("eventos").update({ campos }).eq("id", eventoId).select("id");
+  if (error || data?.length === 0) registrarFalha(supabase, "evento.editado", { tipo: "evento", id: eventoId, rotulo: gravado.titulo }, error ?? SEM_LINHA);
   if (error?.code === SEM_PERMISSAO || data?.length === 0) return { erro: "Você não pode fazer esta alteração." };
   if (error) return { erro: "Não foi possível salvar o checklist." };
 

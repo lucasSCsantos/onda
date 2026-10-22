@@ -161,12 +161,31 @@ test("painel do Admin: indicadores, cartões e navegação; o Líder não entra"
   await expect(page.getByRole("link", { name: "Usuários" })).toBeVisible();
 });
 
+test("Logs: o Admin vê a própria entrada em frase legível, abre os detalhes e filtra os alertas", async ({ page }) => {
+  await cadastrar(page, "Logs de Fumaça", await novoConviteDeAdmin());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await page.goto("/admin/logs");
+  await expect(page.getByRole("heading", { name: "Logs", exact: true })).toBeVisible();
+
+  const cadastro = page.getByText("Logs de Fumaça criou uma conta com um convite, como Admin").first();
+  await expect(cadastro).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hoje" })).toBeVisible();
+  await cadastro.click();
+  await expect(page.getByText("Detalhe técnico").first()).toBeVisible();
+
+  await page.getByRole("link", { name: "Alertas e erros" }).click();
+  await expect(page).toHaveURL(/aba=alertas/);
+  await expect(page.getByText("Logs de Fumaça criou uma conta")).toHaveCount(0);
+});
+
 test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page }) => {
   await cadastrar(page, "Líder Barrado", await novoConvite());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/admin/usuarios");
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/admin/logs");
   await expect(page).toHaveURL(/\/$/);
 });
 
