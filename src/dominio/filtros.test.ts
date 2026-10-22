@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Status } from "./eventos";
-import { alertas, envolvidosDoEvento, filtrar, haFiltros, lerFiltros, parametrosDosFiltros, proximosEventos, SEM_FILTROS, type EventoFiltravel } from "./filtros";
+import { alertas, contarFiltrosAvancados, envolvidosDoEvento, filtrar, haFiltros, lerFiltros, parametrosDosFiltros, proximosEventos, SEM_FILTROS, type EventoFiltravel } from "./filtros";
 
 // 2026-10-21 é uma quarta-feira; a semana vai de 19/10 a 25/10 (fuso America/Bahia, UTC-3)
 const agora = new Date("2026-10-21T15:00:00Z");
@@ -301,3 +301,12 @@ describe("atalhos de filtro", () => {
 function porInicio(a: { inicio: Date }, b: { inicio: Date }) {
   return a.inicio.getTime() - b.inicio.getTime();
 }
+
+describe("contarFiltrosAvancados", () => {
+  it("conta Dia, Status e várias Categorias; Área, Categoria única e atalhos ficam de fora", () => {
+    expect(contarFiltrosAvancados(SEM_FILTROS)).toBe(0);
+    expect(contarFiltrosAvancados({ ...SEM_FILTROS, meus: true, area: "Louvor", categorias: ["a"] })).toBe(0);
+    expect(contarFiltrosAvancados({ ...SEM_FILTROS, dia: "2026-10-21" })).toBe(1);
+    expect(contarFiltrosAvancados({ ...SEM_FILTROS, dia: "2026-10-21", status: "adiado", categorias: ["a", "b"] })).toBe(3);
+  });
+});

@@ -1,8 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
-import { haFiltros, parametrosDosFiltros, PARAMETROS_DE_FILTRO, SEM_FILTROS, type Filtros } from "@/dominio/filtros";
+import { haFiltros, SEM_FILTROS, type Filtros } from "@/dominio/filtros";
+import { useAplicarFiltros } from "./aplicar-filtros";
 
 type Atalho = { rotulo: string; ligado: (f: Filtros) => boolean; alternar: (f: Filtros) => Filtros; soNoCalendario?: boolean };
 
@@ -26,18 +25,7 @@ const ATALHOS: Atalho[] = [
  * dia do calendário, ficam). Uma linha que rola na horizontal no celular. "Próximos" só existe no Calendário.
  */
 export function AtalhosDeFiltro({ filtros, calendario = false }: { filtros: Filtros; calendario?: boolean }) {
-  const caminho = usePathname();
-  const router = useRouter();
-  const atual = useSearchParams();
-  const [pendente, comecar] = useTransition();
-
-  const ir = (novos: Filtros) => {
-    const parametros = new URLSearchParams(atual);
-    for (const nome of PARAMETROS_DE_FILTRO) parametros.delete(nome);
-    for (const [nome, valor] of parametrosDosFiltros(novos)) parametros.append(nome, valor);
-    const busca = parametros.toString();
-    comecar(() => router.push(busca ? `${caminho}?${busca}` : caminho, { scroll: false }));
-  };
+  const { aplicar: ir, pendente } = useAplicarFiltros();
 
   return (
     <div aria-label="Atalhos de filtro" role="group" aria-busy={pendente} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">

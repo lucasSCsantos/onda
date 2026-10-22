@@ -87,6 +87,10 @@ export function lerFiltros(parametros: Parametros): Filtros {
   };
 }
 
+/** Quantos filtros ligados moram no painel "Filtros avançados": o Dia, o Status e a seleção de várias Categorias. */
+export const contarFiltrosAvancados = (filtros: Filtros) =>
+  (filtros.dia !== null ? 1 : 0) + (filtros.status !== null ? 1 : 0) + (filtros.categorias.length > 1 ? 1 : 0);
+
 export const haFiltros = (filtros: Filtros) =>
   ATALHOS.some(([chave]) => filtros[chave]) || filtros.dia !== null || filtros.categorias.length > 0 || filtros.area !== null || filtros.status !== null;
 

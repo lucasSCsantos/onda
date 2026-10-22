@@ -131,7 +131,7 @@ export default async function Inicio(props: PageProps<"/">) {
                 </Link>
               </div>
               <AtalhosDeFiltro filtros={filtros} />
-              <FiltrosDeEventos caminho="/" filtros={filtros} categorias={doCatalogo} />
+              <FiltrosDeEventos filtros={filtros} categorias={doCatalogo} />
               {GRUPOS.every(({ chave }) => proximos[chave].length === 0) ? (
                 <p className="text-texto-suave">
                   {haFiltros(filtros) ? "Nenhum Evento com esses filtros." : "Nenhum Evento por vir."}

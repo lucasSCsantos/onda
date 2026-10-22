@@ -141,12 +141,7 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
         )}
 
         <div className="mt-4">
-          <FiltrosDeEventos
-            caminho="/calendario"
-            filtros={filtros}
-            categorias={doCatalogo}
-            ocultos={{ ...(visao ? { visao } : {}), ...(dia === hoje ? {} : { dia }) }}
-          />
+          <FiltrosDeEventos filtros={filtros} categorias={doCatalogo} />
         </div>
 
         <div className="mt-6">

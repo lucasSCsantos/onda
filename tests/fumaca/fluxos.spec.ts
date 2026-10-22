@@ -107,6 +107,36 @@ test("menu hambúrguer: abre, mostra os destinos, fecha com Esc e ao navegar", a
   await expect(page.getByRole("link", { name: "Calendário" })).toHaveAttribute("aria-current", "page");
 });
 
+test("Painel do dia: tocar num dia abre o painel com a URL refletindo o dia, e fecha", async ({ page }) => {
+  await cadastrar(page, "Painel de Fumaça", await novoConvite());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+
+  await page.goto("/calendario?visao=mes");
+  const painel = page.getByRole("dialog");
+  await expect(painel).toBeHidden();
+
+  await page.locator(`a[href*="abrir=${hoje()}"]`).first().click();
+  await expect(page).toHaveURL(new RegExp(`abrir=${hoje()}`));
+  await expect(painel).toBeVisible();
+  await expect(painel.getByRole("button", { name: "Fechar" })).toBeVisible();
+
+  await painel.getByRole("button", { name: "Fechar" }).click();
+  await expect(painel).toBeHidden();
+  await expect(page).not.toHaveURL(/abrir=/);
+
+  // Esc fecha, e o voltar do navegador também.
+  await page.locator(`a[href*="abrir=${hoje()}"]`).first().click();
+  await expect(painel).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(painel).toBeHidden();
+  await expect(page).not.toHaveURL(/abrir=/);
+
+  await page.locator(`a[href*="abrir=${hoje()}"]`).first().click();
+  await expect(painel).toBeVisible();
+  await page.goBack();
+  await expect(painel).toBeHidden();
+});
+
 test("painel do Admin: indicadores, cartões e navegação; o Líder não entra", async ({ page }) => {
   await cadastrar(page, "Admin de Fumaça", await novoConviteDeAdmin());
   await page.getByRole("button", { name: "Abrir menu" }).click();
@@ -170,6 +200,32 @@ test("atalhos de filtro: ligar muda a lista e a URL sem botão, e Limpar desliga
   await expect(page.getByRole("group", { name: "Atalhos de filtro" }).getByRole("button", { name: "Próximos" })).toBeVisible();
   await page.getByRole("link", { name: "Hoje", exact: true }).click();
   await expect(page).toHaveURL(/atrasados=1/);
+});
+
+test("filtros avançados: abrem com contador, aplicam na hora e abrem sozinhos pela URL", async ({ page }) => {
+  await cadastrar(page, "Avançados de Fumaça", await novoConvite());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filtrar", exact: true })).toHaveCount(0);
+
+  const botao = page.getByRole("button", { name: /Filtros avançados/ });
+  await expect(botao).toHaveAttribute("aria-expanded", "false");
+  await botao.click();
+  await expect(botao).toHaveAttribute("aria-expanded", "true");
+  const painel = page.getByRole("group", { name: "Filtros avançados" });
+  await expect(painel).toBeVisible();
+  expect((await painel.getByLabel("Status", { exact: true }).locator("option").allTextContents()).length).toBe(7);
+
+  await painel.getByLabel("Status", { exact: true }).selectOption("adiado");
+  await expect(page).toHaveURL(/status=adiado/);
+  await expect(botao).toContainText("1");
+  await painel.getByLabel("Dia", { exact: true }).fill("2026-10-21");
+  await expect(page).toHaveURL(/data=2026-10-21/);
+  await expect(page).toHaveURL(/status=adiado/);
+
+  // Fecha com Esc, e a URL com filtro avançado abre o painel sozinha.
+  await page.goto("/calendario?status=adiado");
+  await expect(page.getByRole("button", { name: /Filtros avançados/ })).toHaveAttribute("aria-expanded", "true");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test("sem internet, a navegação mostra a tela offline", async ({ page, context }) => {

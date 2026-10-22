@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { execSync } from "node:child_process";
 
-const PORTA = 3100;
+const PORTA = Number(process.env.PORTA_FUMACA ?? 3100);
 
 /** URL e chave pública do Supabase local, as mesmas que o app lê no build. */
 function ambienteDoApp() {
