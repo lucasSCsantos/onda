@@ -6,8 +6,11 @@ import { IconeDaMarcacao } from "@/components/icone-da-marcacao";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { FUSO } from "@/dominio/fuso";
 import { historicoDoAdolescente } from "@/dominio/presenca";
+import { classificar, lerAno } from "@/dominio/ranking";
 import { exigirLideranca } from "@/lib/contas/perfil";
+import { configuracoes } from "@/lib/configuracoes/consultas";
 import { marcacoes, presencasDoPeriodo } from "@/lib/presenca/consultas";
+import { pontosDoAno } from "@/lib/ranking/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
 // Dados de menores: fora de buscadores (o layout já diz o mesmo; aqui fica explícito).
@@ -20,7 +23,8 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
   const eu = await exigirLideranca();
   const { id } = await props.params;
   const supabase = await supabaseDoServidor();
-  const [{ data: adolescente }, todas, periodo] = await Promise.all([
+  const ano = lerAno(undefined, new Date());
+  const [{ data: adolescente }, todas, periodo, pontos, config] = await Promise.all([
     supabase
       .from("adolescentes")
       .select("id, nome, ativo, criado_em")
@@ -29,6 +33,8 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
       .overrideTypes<{ id: string; nome: string; ativo: boolean; criado_em: string }, { merge: false }>(),
     marcacoes(supabase),
     presencasDoPeriodo(supabase),
+    pontosDoAno(supabase, ano),
+    configuracoes(supabase),
   ]);
   if (!adolescente) notFound();
 
@@ -45,6 +51,7 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
     todas,
   );
   const presencas = historico.filter((h) => h.presente).length;
+  const noRanking = classificar(pontos, config.desempatePor).find((r) => r.adolescente.id === adolescente.id);
   const totais = todas
     .map((m) => ({ marcacao: m, quantos: historico.filter((h) => h.marcacoes.some((x) => x.id === m.id)).length }))
     .filter(({ marcacao, quantos }) => !marcacao.contaPresenca && (marcacao.ativa || quantos > 0));
@@ -63,6 +70,12 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
           </h1>
           <p className="text-sm text-texto-suave">
             Presente em {presencas} de {historico.length} {historico.length === 1 ? "aula" : "aulas"} com chamada desde o cadastro.
+          </p>
+          <p className="text-sm">
+            <Link href={`/ranking?ano=${ano}`} className="underline">
+              Ranking {ano}
+            </Link>
+            : {noRanking ? `${noRanking.pontos} ${noRanking.pontos === 1 ? "ponto" : "pontos"}, ${noRanking.posicao}º lugar` : "ainda sem pontos"}
           </p>
         </div>
 

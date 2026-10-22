@@ -135,6 +135,11 @@ describe("fraseDoLog", () => {
     expect(linkDoObjeto(pontos)).toBe("/admin/marcacoes");
   });
 
+  it("o desempate do ranking aparece pelo nome da Marcação", () => {
+    const desempate = log({ acao: "ranking.desempate_alterado", modulo: "ranking", detalhes: { chave: "desempate_por", antes: "Presente", depois: null } });
+    expect(frase(desempate)).toBe("Carol Leal mudou o desempate do ranking de quem tem mais “Presente” para nenhum (o empate divide a posição)");
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);

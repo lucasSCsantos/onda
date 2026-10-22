@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Trophy, Users, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
@@ -12,6 +12,7 @@ type Destino = { href: string; rotulo: string; icone: LucideIcon };
 const CALENDARIO: Destino = { href: "/calendario", rotulo: "Calendário", icone: CalendarDays };
 const ADOLESCENTES: Destino = { href: "/adolescentes", rotulo: "Adolescentes", icone: Users };
 const PRESENCA: Destino = { href: "/presenca", rotulo: "Presença", icone: ClipboardCheck };
+const RANKING: Destino = { href: "/ranking", rotulo: "Ranking", icone: Trophy };
 const PROFESSORES: Destino = { href: "/professores", rotulo: "Professores", icone: GraduationCap };
 const ADMINISTRACAO: Destino = { href: "/admin", rotulo: "Administração", icone: LayoutDashboard };
 
@@ -32,7 +33,7 @@ export function MenuDoCabecalho({
 }) {
   const destinos = [
     ...(calendario ? [CALENDARIO] : []),
-    ...(lideranca ? [ADOLESCENTES, PRESENCA] : []),
+    ...(lideranca ? [ADOLESCENTES, PRESENCA, RANKING] : []),
     // O Admin chega a Professores pelo painel de administração.
     ...(professores && !admin ? [PROFESSORES] : []),
     ...(admin ? [ADMINISTRACAO] : []),

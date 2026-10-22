@@ -13,6 +13,7 @@ export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData):
     retencao: campoTexto(dados, "retencao"),
     lideresVeemHistorico: campoTexto(dados, "lideres_veem_historico"),
     faltasParaAlerta: campoTexto(dados, "faltas_para_alerta"),
+    desempate: campoTexto(dados, "desempate"),
   });
   if ("erro" in lidas) return lidas;
 

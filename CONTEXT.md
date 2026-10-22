@@ -92,6 +92,9 @@ _Avoid_: Critério, item
 **Alerta de ausência**:
 Aviso, na tela de Presença, de quem faltou a um número configurável de aulas com Chamada seguidas.
 
+**Ranking**:
+A classificação anual dos Adolescentes pela soma dos pontos das Marcações nas aulas do ano, calculada na hora com a pontuação atual (mudar os pontos refaz também os anos anteriores). No empate, fica na frente quem tem mais da Marcação de desempate (padrão: Presente). Só a Liderança vê.
+
 ### Administração
 
 **Log**:

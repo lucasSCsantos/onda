@@ -200,6 +200,10 @@ function valorDaConfiguracao(chave: string, valor: unknown): string {
   return valor === null || valor === undefined ? VAZIO : String(valor);
 }
 
+/** "quem tem mais “Presente”", ou "nenhum" quando o empate divide a posição. */
+const desempateDoLog = (marcacao: unknown) =>
+  typeof marcacao === "string" && marcacao ? `quem tem mais “${marcacao}”` : "nenhum (o empate divide a posição)";
+
 const NOMES_DAS_TABELAS: Record<string, string> = { eventos: "Eventos", adolescentes: "Adolescentes", usuarios: "Usuários", logs: "Logs" };
 
 const ESCOPOS_DA_SERIE: Record<string, (serie: Trecho, n: number) => Trecho[]> = {
@@ -374,6 +378,14 @@ export const ACOES: Record<string, Definicao> = {
       ` de ${plural(numero(log.detalhes, "antes"), "ponto", "pontos")} para ${plural(numero(log.detalhes, "depois"), "ponto", "pontos")}`,
     ],
     tentativa: "mudar os pontos da Marcação",
+  },
+  "ranking.desempate_alterado": {
+    nome: "Desempate do ranking alterado",
+    visual: "edicao",
+    feito: (log) => [
+      `mudou o desempate do ranking de ${desempateDoLog(log.detalhes.antes)} para ${desempateDoLog(log.detalhes.depois)}`,
+    ],
+    tentativa: "mudar o desempate do ranking",
   },
 
   // Administração

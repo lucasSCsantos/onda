@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens } from "@/components/formulario";
+import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import { FALTAS_MAXIMAS, FALTAS_MINIMAS, RETENCAO_MAXIMA, RETENCAO_MINIMA } from "@/dominio/configuracoes";
 import { salvarConfiguracoes } from "@/lib/configuracoes/acoes";
 
-export type ValoresDasConfiguracoes = { retencaoDosLogsMeses: number; lideresVeemHistoricoDoEvento: boolean; faltasParaAlerta: number };
+export type ValoresDasConfiguracoes = {
+  retencaoDosLogsMeses: number;
+  lideresVeemHistoricoDoEvento: boolean;
+  faltasParaAlerta: number;
+  desempatePor: string | null;
+};
 
-export function FormularioDeConfiguracoes({ valores }: { valores: ValoresDasConfiguracoes }) {
+/** `marcacoes`: as opções do desempate do ranking. */
+export function FormularioDeConfiguracoes({ valores, marcacoes }: { valores: ValoresDasConfiguracoes; marcacoes: Opcao[] }) {
   const [estado, acao] = useActionState(salvarConfiguracoes, {});
   return (
     <form action={acao} className="flex flex-col gap-6">
@@ -50,6 +56,15 @@ export function FormularioDeConfiguracoes({ valores }: { valores: ValoresDasConf
           </Link>
           .
         </p>
+      </fieldset>
+      <fieldset className="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4">
+        <legend className="px-1 font-semibold">Ranking</legend>
+        <Selecao
+          rotulo="Desempate: no empate de pontos, fica na frente quem tem mais"
+          name="desempate"
+          defaultValue={valores.desempatePor ?? ""}
+          opcoes={[...marcacoes, { valor: "", texto: "Nenhum: o empate divide a posição" }]}
+        />
       </fieldset>
       <div className="flex flex-col gap-2">
         <BotaoEnviar pendente="Salvando…">Salvar</BotaoEnviar>

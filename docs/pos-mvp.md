@@ -9,7 +9,7 @@ Tudo o que ficou deliberadamente fora do MVP. Usa o vocabulário de `CONTEXT.md`
 - Fica para depois: o **Professor** e o **Auxiliar** fazerem a Chamada das aulas em que estão.
 
 ### Ranking anual
-- Ranking geral anual dos Adolescentes, calculado a partir das marcações, com pontos configuráveis.
+- Feito na fase de Logs, presença e ranking (ADR 0005). Fica para depois: mostrar aos próprios Adolescentes.
 
 ### Pequenos grupos
 - Hoje existe um único Pequeno grupo. Ele será dividido em dois (meninos e meninas).
