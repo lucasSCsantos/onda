@@ -81,9 +81,9 @@ export function CartaoDeEvento({
   const meu = eu !== undefined && evento.envolvidos.includes(eu);
   return (
     <li
-      className={`relative flex gap-3 rounded-2xl border bg-superficie p-4 hover:border-marca ${visualDoStatus(evento.status).borda} ${meu ? "ring-2 ring-marca" : ""}`}
+      style={{ borderLeftColor: evento.categoria.cor, borderLeftStyle: "solid" }}
+      className={`relative flex min-h-11 gap-3 rounded-2xl border border-l-4 bg-superficie p-4 transition-colors hover:border-marca active:bg-borda ${visualDoStatus(evento.status).borda} ${meu ? "ring-2 ring-marca" : ""}`}
     >
-      <span aria-hidden className="mt-1.5 size-3 shrink-0 rounded-full" style={{ backgroundColor: evento.categoria.cor }} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <Link
           href={`/eventos/${evento.id}`}
@@ -92,7 +92,7 @@ export function CartaoDeEvento({
           {evento.titulo}
         </Link>
         <p className="text-sm text-texto-suave">
-          {quando(evento)} · {evento.categoria.nome}
+          <span className="font-semibold text-texto">{quando(evento)}</span> · {evento.categoria.nome}
           {evento.local && ` · ${evento.local}`}
         </p>
         {mostraResponsavel && (

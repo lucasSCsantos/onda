@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { visualDoStatus } from "@/components/status-do-evento";
+import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
 import { AniversarioNoDia } from "@/components/aniversarios";
 import type { Aniversario } from "@/dominio/aniversarios";
 import { eventosPorDia, type DiaDaGrade } from "@/dominio/calendario";
@@ -10,30 +10,42 @@ import { hora } from "../lista-de-eventos";
 
 const DIAS_DA_SEMANA = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
-/** Quantos Eventos cabem num dia da visão mensal; o resto fica na semana daquele dia. */
-const LIMITE_POR_DIA = 3;
+/** Quantos Eventos cabem num dia da visão mensal no desktop; o resto fica na semana daquele dia. */
+const LIMITE_POR_DIA = 4;
+
+/** Quantos pontos de Categoria cabem num dia da visão mensal no celular; depois deles vem um "+". */
+const LIMITE_DE_PONTOS = 3;
 
 const numeroDoDia = (dia: string) => Number(dia.slice(8));
 const diaDaSemanaPorExtenso = (dia: string) =>
   new Date(`${dia}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: FUSO, weekday: "long", day: "numeric", month: "short" });
 
-/** Um Evento dentro de um dia: a cor da Categoria na borda, o Status no visual e a hora, se houver. */
-function ChipDoEvento({ evento, comHora }: { evento: EventoListado; comHora: boolean }) {
+/**
+ * Um Evento dentro de um dia, como link para ele: a cor da Categoria na borda, o Status no visual e a hora, se houver.
+ * No mês, `grande` traz a hora e o selo de Status; a área de toque passa um pouco da borda sem mudar o desenho.
+ */
+function ChipDoEvento({ evento, comHora, grande, cartao }: { evento: EventoListado; comHora: boolean; grande?: boolean; cartao?: boolean }) {
   const visual = visualDoStatus(evento.status);
+  const horaDoEvento = !evento.diaInteiro && (comHora || grande);
   return (
     <li
       title={`${evento.titulo} · ${evento.categoria.nome} · ${NOMES_DOS_STATUS[evento.status]}`}
-      className={`rounded-md border border-l-4 bg-superficie px-1.5 py-0.5 text-xs leading-snug ${visual.borda}`}
+      className={`relative rounded-md border border-l-4 bg-superficie leading-snug transition-colors hover:border-marca active:bg-borda ${cartao ? "min-h-11 px-2.5 py-2 text-base md:px-1.5 md:py-1 md:text-sm" : "px-1.5 py-1"} ${grande ? (cartao ? "" : "text-sm") : "text-xs"} ${visual.borda}`}
       style={{ borderLeftColor: evento.categoria.cor, borderLeftStyle: "solid" }}
     >
-      <span className={`block ${comHora ? "break-words" : "truncate"} ${visual.titulo}`}>
+      <Link href={`/eventos/${evento.id}`} className={`block after:absolute after:-inset-1 ${comHora ? "break-words" : "truncate"} ${visual.titulo}`}>
         {visual.marca && <span className="text-aviso">{visual.marca} </span>}
-        {comHora && !evento.diaInteiro && <span className="text-texto-suave">{hora(evento.inicio)} </span>}
+        {horaDoEvento && <span className="font-semibold text-texto-suave">{hora(evento.inicio)} </span>}
         {evento.titulo}
-      </span>
-      <span className="sr-only">
-        , {evento.categoria.nome}, {NOMES_DOS_STATUS[evento.status]}
-      </span>
+        <span className="sr-only">
+          , {evento.categoria.nome}, {NOMES_DOS_STATUS[evento.status]}
+        </span>
+      </Link>
+      {grande && evento.status !== "planejado" && (
+        <span aria-hidden className="mt-0.5 block">
+          <SeloDoStatus status={evento.status} />
+        </span>
+      )}
     </li>
   );
 }
@@ -49,12 +61,12 @@ function Aniversarios({ aniversarios, compacto }: { aniversarios: Aniversario[];
   );
 }
 
-function EventosDoDia({ eventos, comHora }: { eventos: EventoListado[]; comHora: boolean }) {
+function EventosDoDia({ eventos, comHora, grande, cartao }: { eventos: EventoListado[]; comHora: boolean; grande?: boolean; cartao?: boolean }) {
   if (eventos.length === 0) return null;
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col gap-1.5">
       {eventos.map((evento) => (
-        <ChipDoEvento key={evento.id} evento={evento} comHora={comHora} />
+        <ChipDoEvento key={evento.id} evento={evento} comHora={comHora} grande={grande} cartao={cartao} />
       ))}
     </ul>
   );
@@ -84,26 +96,56 @@ export function GradeDoMes({
       </div>
       {semanas.map((semana) => (
         <div key={semana[0].dia} className="grid grid-cols-7 border-b border-borda last:border-b-0">
-          {semana.map(({ dia, doPeriodo }) => (
-            <div
-              key={dia}
-              className={`flex min-h-24 min-w-0 flex-col gap-1 border-r border-borda p-1 last:border-r-0 ${doPeriodo ? "" : "bg-fundo opacity-60"}`}
-            >
-              <span
-                className={`self-end rounded-full px-1.5 text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
+          {semana.map(({ dia, doPeriodo }) => {
+            const doDia = porDia[dia];
+            const aniversariosDoDia = aniversarios[dia] ?? [];
+            const semanaDoDia = `/calendario?visao=semana&dia=${dia}`;
+            return (
+              <div
+                key={dia}
+                className={`flex min-h-28 min-w-0 flex-col gap-1 border-r border-borda p-1 last:border-r-0 md:min-h-36 ${doPeriodo ? "" : "bg-fundo opacity-60"}`}
               >
-                {numeroDoDia(dia)}
-              </span>
-              <Aniversarios aniversarios={aniversarios[dia]} compacto />
-              <EventosDoDia eventos={porDia[dia].slice(0, LIMITE_POR_DIA)} comHora={false} />
-              {porDia[dia].length > LIMITE_POR_DIA && (
-                <Link href={`/calendario?visao=semana&dia=${dia}`} className="px-1 text-xs text-texto-suave hover:text-texto">
-                  +{porDia[dia].length - LIMITE_POR_DIA}
-                  <span className="sr-only"> Eventos neste dia</span>
-                </Link>
-              )}
-            </div>
-          ))}
+                <span
+                  className={`self-end rounded-full px-1.5 text-base md:text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
+                >
+                  {numeroDoDia(dia)}
+                </span>
+
+                {/* Celular: pontos de Categoria; o toque leva à semana do dia até o Painel do dia (ticket 07). */}
+                {(doDia.length > 0 || aniversariosDoDia.length > 0) && (
+                  <Link
+                    href={semanaDoDia}
+                    className="relative flex flex-wrap items-center justify-center gap-1 py-1 before:absolute before:-inset-1 md:hidden"
+                  >
+                    {doDia.slice(0, LIMITE_DE_PONTOS).map((e) => (
+                      <span key={e.id} aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: e.categoria.cor }} />
+                    ))}
+                    {doDia.length > LIMITE_DE_PONTOS && (
+                      <span aria-hidden className="text-xs leading-none text-texto-suave">
+                        +
+                      </span>
+                    )}
+                    {aniversariosDoDia.length > 0 && <span aria-hidden>🎂</span>}
+                    <span className="sr-only">
+                      {doDia.length} Evento(s) e {aniversariosDoDia.length} aniversário(s) neste dia
+                    </span>
+                  </Link>
+                )}
+
+                {/* Desktop: chips maiores, com hora e selo de Status. */}
+                <div className="hidden flex-col gap-1.5 md:flex">
+                  <Aniversarios aniversarios={aniversariosDoDia} compacto />
+                  <EventosDoDia eventos={doDia.slice(0, LIMITE_POR_DIA)} comHora={false} grande />
+                  {doDia.length > LIMITE_POR_DIA && (
+                    <Link href={semanaDoDia} className="px-1 text-xs text-texto-suave hover:text-texto">
+                      +{doDia.length - LIMITE_POR_DIA}
+                      <span className="sr-only"> Eventos neste dia</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
@@ -137,7 +179,7 @@ export function GradeDaSemana({
           {porDia[dia].length === 0 && aniversarios[dia].length === 0 ? (
             <p className="text-xs text-texto-suave md:sr-only">Nada neste dia.</p>
           ) : (
-            <EventosDoDia eventos={porDia[dia]} comHora />
+            <EventosDoDia eventos={porDia[dia]} comHora grande cartao />
           )}
         </li>
       ))}
