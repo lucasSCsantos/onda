@@ -5,9 +5,8 @@ Tudo o que ficou deliberadamente fora do MVP. Usa o vocabulário de `CONTEXT.md`
 ## Planejado
 
 ### Presença na EBD
-- Registro de presença por aula, com marcações configuráveis (presença, trouxe bíblia, trouxe visitante, fez atividade), não colunas fixas.
-- O **Professor** e o **Auxiliar** poderão fazer a chamada das aulas em que estão.
-- Depende do cadastro de Adolescentes ativo/inativo, que já guarda o histórico.
+- Feito na fase de Logs, presença e ranking (`.scratch/logs-presenca-ranking`): Chamada por aula com Marcações configuráveis, feita pela Liderança.
+- Fica para depois: o **Professor** e o **Auxiliar** fazerem a Chamada das aulas em que estão.
 
 ### Ranking anual
 - Ranking geral anual dos Adolescentes, calculado a partir das marcações, com pontos configuráveis.

@@ -64,7 +64,7 @@ export async function salvarCategoria(id: string | null, _: EstadoFormulario, da
   if (erro) return { erro };
 
   const supabase = await supabaseDoServidor();
-  const linha = { nome: categoria.nome, area_id: categoria.area, cor: categoria.cor };
+  const linha = { nome: categoria.nome, area_id: categoria.area, cor: categoria.cor, tem_chamada: dados.get("tem_chamada") === "on" };
   const { data, error } = id
     ? await supabase.from("categorias").update(linha).eq("id", id).select("id").single()
     : await supabase.from("categorias").insert(linha).select("id").single();

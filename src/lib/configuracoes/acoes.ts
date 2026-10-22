@@ -9,7 +9,11 @@ import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
 /** Só o Admin altera (a política de `configuracoes` confere); cada mudança vira um log pelo gatilho do banco. */
 export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
-  const lidas = lerConfiguracoes({ retencao: campoTexto(dados, "retencao"), lideresVeemHistorico: campoTexto(dados, "lideres_veem_historico") });
+  const lidas = lerConfiguracoes({
+    retencao: campoTexto(dados, "retencao"),
+    lideresVeemHistorico: campoTexto(dados, "lideres_veem_historico"),
+    faltasParaAlerta: campoTexto(dados, "faltas_para_alerta"),
+  });
   if ("erro" in lidas) return lidas;
 
   const supabase = await supabaseDoServidor();

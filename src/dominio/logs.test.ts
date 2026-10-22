@@ -111,6 +111,30 @@ describe("fraseDoLog", () => {
     expect(frase(opcao)).toBe("Carol Leal mudou a configuração Líderes veem o histórico dos Eventos de não para sim");
   });
 
+  it("a Chamada: registrada uma vez por aula, e cada correção com o Adolescente e o que mudou", () => {
+    expect(frase(log({ acao: "presenca.chamada_registrada", modulo: "presenca" }))).toBe(
+      "Carol Leal fez a chamada da aula EBD · A parábola do semeador (25/10, 9h)",
+    );
+    const correcao = log({
+      acao: "presenca.chamada_corrigida",
+      modulo: "presenca",
+      detalhes: {
+        categoria: "EBD",
+        inicio: "2026-10-25T12:00:00Z",
+        adolescente: "Ana",
+        mudancas: [{ rotulo: "Ana", tipo: "lista", antes: ["Presente"], depois: ["Presente", "Fez atividade"] }],
+      },
+    });
+    expect(frase(correcao)).toBe("Carol Leal corrigiu a chamada de Ana na aula EBD · A parábola do semeador (25/10, 9h)");
+    expect(detalhesDoLog(correcao)).toEqual(["Ana: Presente → Presente, Fez atividade"]);
+  });
+
+  it("a pontuação de uma Marcação diz de quanto para quanto", () => {
+    const pontos = log({ acao: "ranking.pontuacao_alterada", modulo: "ranking", objetoTipo: "marcacao", objetoRotulo: "Trouxe visitante", detalhes: { antes: 3, depois: 1 } });
+    expect(frase(pontos)).toBe("Carol Leal mudou os pontos da Marcação Trouxe visitante de 3 pontos para 1 ponto");
+    expect(linkDoObjeto(pontos)).toBe("/admin/marcacoes");
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);
@@ -218,7 +242,7 @@ describe("linha do tempo", () => {
 
   it("leva ao objeto quando há para onde levar", () => {
     expect(linkDoObjeto(log())).toBe("/eventos/e1");
-    expect(linkDoObjeto(log({ objetoTipo: "adolescente", objetoRotulo: "Ana Lu" }))).toBe("/adolescentes?q=Ana%20Lu&inativos=1");
+    expect(linkDoObjeto(log({ objetoTipo: "adolescente", objetoId: "a1" }))).toBe("/adolescentes/a1");
     expect(linkDoObjeto(log({ objetoTipo: "serie" }))).toBeNull();
     expect(linkDoObjeto(log({ objetoId: null }))).toBeNull();
   });

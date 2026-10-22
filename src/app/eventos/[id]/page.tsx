@@ -1,3 +1,4 @@
+import { ClipboardCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -181,6 +182,12 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
           {edita && (
             <Link href={`/eventos/${evento.id}/editar`} className="botao-primario">
               Editar
+            </Link>
+          )}
+          {lideranca && evento.categoria.temChamada && (
+            <Link href={`/eventos/${evento.id}/chamada`} className="botao-secundario">
+              <ClipboardCheck aria-hidden className="size-5" />
+              Chamada
             </Link>
           )}
           {podeExcluirEvento(eu) && <BotaoExcluir id={evento.id} />}

@@ -33,6 +33,7 @@ export default async function PainelDeAdmin() {
       .or("resultado.eq.falha,severidade.neq.info"),
     configuracoes(supabase),
   ]);
+  const { count: marcacoesAtivas } = await supabase.from("marcacoes").select("id", { count: "exact", head: true }).eq("ativa", true);
   const perfis = pessoas ?? [];
   const indicadores = indicadoresDoPainel({
     pessoas: perfis,
@@ -59,6 +60,7 @@ export default async function PainelDeAdmin() {
     "/professores": `${professores.filter((p) => p.ativo).length} cadastrados`,
     "/admin/exportar": `${TABELAS_EXPORTADAS.length} tabelas`,
     "/admin/logs": alertasDaSemana ? `${alertasDaSemana} ${alertasDaSemana === 1 ? "alerta" : "alertas"} em 7 dias` : "Sem alertas em 7 dias",
+    "/admin/marcacoes": `${marcacoesAtivas} ativas`,
     "/admin/configuracoes": `Logs por ${config.retencaoDosLogsMeses} ${config.retencaoDosLogsMeses === 1 ? "mês" : "meses"}`,
   };
 

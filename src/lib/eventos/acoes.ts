@@ -19,6 +19,7 @@ import { areasDaPessoa, categoria as buscarCategoria, evento as buscarEvento, op
 export type EstadoDoEvento = EstadoFormulario & { valores?: Record<string, string>; tentativa?: number };
 
 const SEM_PERMISSAO = "42501";
+const REFERENCIADO = "23503";
 /** Uma edição que a política por linha barrou não dá erro: só não altera nada. Para o log, é falta de permissão. */
 const SEM_LINHA = { code: SEM_PERMISSAO, message: "nenhuma linha alterada" };
 
@@ -207,6 +208,8 @@ export async function excluirEvento(id: string): Promise<EstadoFormulario> {
   const { data, error } = await supabase.from("eventos").delete().eq("id", id).select("id");
   if (error || data.length === 0) {
     registrarFalha(supabase, "evento.excluido", { tipo: "evento", id }, error ?? SEM_LINHA);
+    // A presença da aula prende o Evento (o ranking perderia pontos).
+    if (error?.code === REFERENCIADO) return { erro: "Esta aula já tem chamada. Em vez de excluir, mude o Status para Cancelado." };
     return { erro: "Não foi possível excluir o Evento." };
   }
 

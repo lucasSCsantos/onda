@@ -79,6 +79,19 @@ _Avoid_: Docente, instrutor
 Pessoa atendida pelo ministério, existente só como cadastro (nome, data de nascimento, ativo/inativo); sem login.
 _Avoid_: Membro, jovem
 
+### Presença
+
+**Chamada**:
+A lista de presença de uma aula de uma Categoria com chamada (a EBD): para cada Adolescente ativo, as Marcações daquele dia. Quem faz é o Admin e quem tem Função na Área da Categoria, a partir do dia da aula; pode ser corrigida depois. Uma aula com Chamada não é excluída, só cancelada.
+_Avoid_: Lista, frequência
+
+**Marcação**:
+O que se marca para um Adolescente na Chamada (Presente, Trouxe bíblia, Trouxe visitante, Fez atividade), com ícone e pontos, cadastrada pelo Admin. Marcar qualquer uma marca também a de presença. Não se apaga, desativa-se.
+_Avoid_: Critério, item
+
+**Alerta de ausência**:
+Aviso, na tela de Presença, de quem faltou a um número configurável de aulas com Chamada seguidas.
+
 ### Administração
 
 **Log**:

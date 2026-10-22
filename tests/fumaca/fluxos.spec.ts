@@ -178,6 +178,45 @@ test("Logs: o Admin vê a própria entrada em frase legível, abre os detalhes e
   await expect(page.getByText("Logs de Fumaça criou uma conta")).toHaveCount(0);
 });
 
+test("Chamada: um toque marca e salva na hora, e a marcação continua depois de recarregar", async ({ page }) => {
+  const nome = `Chamada ${crypto.randomUUID().slice(0, 6)}`;
+  await cadastrar(page, nome, await novoConviteDeAdmin());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+
+  const { data: eu } = await admin.from("perfis").select("id").eq("nome", nome).single();
+  const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
+  const tema = (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === "Tema")!.id;
+  const aluno = `Ana ${crypto.randomUUID().slice(0, 6)}`;
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  const { data: aula } = await admin
+    .from("eventos")
+    .insert({
+      titulo: "EBD de fumaça",
+      categoria_id: ebd.data!.id,
+      inicio: `${hoje()}T00:01:00-03:00`,
+      responsavel_id: eu!.id,
+      status: "planejado",
+      campos: { [tema]: "Semeador" },
+      criado_por: eu!.id,
+    })
+    .select("id")
+    .single()
+    .throwOnError();
+
+  await page.goto(`/eventos/${aula.id}`);
+  await page.getByRole("link", { name: "Chamada" }).click();
+  await expect(page.getByRole("heading", { name: "Chamada" })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Procurar Adolescente" }).fill(aluno);
+  const marcacoes = page.getByRole("group", { name: `Marcações de ${aluno}` });
+  await marcacoes.getByRole("button", { name: "Trouxe bíblia" }).click();
+  await expect(page.getByText("Salvo")).toBeVisible();
+  await expect(marcacoes.getByRole("button", { name: "Presente" })).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  await page.getByRole("searchbox", { name: "Procurar Adolescente" }).fill(aluno);
+  await expect(page.getByRole("group", { name: `Marcações de ${aluno}` }).getByRole("button", { name: "Trouxe bíblia" })).toHaveAttribute("aria-pressed", "true");
+});
+
 test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page }) => {
   await cadastrar(page, "Líder Barrado", await novoConvite());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();

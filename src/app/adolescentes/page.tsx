@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
 import { Campo, Selecao } from "@/components/formulario";
 import { podeGerenciarContas } from "@/dominio/acesso";
@@ -72,7 +73,9 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold">
-                        {a.nome}
+                        <Link href={`/adolescentes/${a.id}`} className="underline-offset-2 hover:underline">
+                          {a.nome}
+                        </Link>
                         {!a.ativo && <span className="ml-2 text-sm font-normal text-texto-suave">(inativo)</span>}
                       </p>
                       <p className="text-sm text-texto-suave">

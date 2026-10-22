@@ -11,7 +11,7 @@ import { FormularioCampo, FormularioCategoria } from "../formularios";
 export const metadata: Metadata = { title: "Categoria" };
 
 type CampoListado = { id: string; nome: string; tipo: TipoDeCampo; obrigatorio: boolean; opcoes: string[]; ordem: number };
-type CategoriaEditada = { id: string; nome: string; area_id: string; cor: string; campos_das_categorias: CampoListado[] };
+type CategoriaEditada = { id: string; nome: string; area_id: string; cor: string; tem_chamada: boolean; campos_das_categorias: CampoListado[] };
 
 export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/[id]">) {
   await exigirAdmin();
@@ -20,7 +20,7 @@ export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/
   const [{ data: categoria }, areas] = await Promise.all([
     supabase
       .from("categorias")
-      .select("id, nome, area_id, cor, campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)")
+      .select("id, nome, area_id, cor, tem_chamada, campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)")
       .eq("id", id)
       .order("ordem", { referencedTable: "campos_das_categorias" })
       .maybeSingle()

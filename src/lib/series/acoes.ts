@@ -79,6 +79,7 @@ export async function excluirASerie(serieId: string): Promise<EstadoFormulario> 
   const { data, error } = await supabase.from("series").delete().eq("id", serieId).select("id");
   if (error || data.length === 0) {
     registrarFalha(supabase, "serie.excluida", { tipo: "serie", id: serieId }, error ?? { code: SEM_PERMISSAO, message: "nenhuma linha alterada" });
+    if (error?.code === "23503") return { erro: "Alguma aula desta Série já tem chamada. Em vez de excluir, encerre a Série." };
     return { erro: "Não foi possível excluir a Série." };
   }
 

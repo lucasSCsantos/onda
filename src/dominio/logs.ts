@@ -185,10 +185,12 @@ const plural = (n: number, singular: string, varios: string) => `${n} ${n === 1 
 export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
   retencao_dos_logs_meses: "Por quanto tempo guardar os logs",
   lideres_veem_historico_do_evento: "Líderes veem o histórico dos Eventos",
+  faltas_para_alerta: "Faltas seguidas para o alerta de ausência",
 };
 
 const UNIDADES_DAS_CONFIGURACOES: Record<string, [string, string]> = {
   retencao_dos_logs_meses: ["mês", "meses"],
+  faltas_para_alerta: ["aula", "aulas"],
 };
 
 function valorDaConfiguracao(chave: string, valor: unknown): string {
@@ -338,6 +340,41 @@ export const ACOES: Record<string, Definicao> = {
   "adolescente.editado": { nome: "Adolescente editado", visual: "edicao", feito: (log) => ["editou o cadastro de ", objeto(log)], tentativa: "editar o cadastro de" },
   "adolescente.inativado": { nome: "Adolescente inativado", visual: "exclusao", feito: (log) => ["inativou o Adolescente ", objeto(log)], tentativa: "inativar o Adolescente" },
   "adolescente.reativado": { nome: "Adolescente reativado", visual: "aprovacao", feito: (log) => ["reativou o Adolescente ", objeto(log)], tentativa: "reativar o Adolescente" },
+
+  // Presença
+  "presenca.chamada_registrada": {
+    nome: "Chamada registrada",
+    visual: "criacao",
+    feito: (log) => ["fez a chamada da aula ", eventoDoLog(log), quandoDoLog(log)],
+    tentativa: "fazer a chamada da aula",
+  },
+  "presenca.chamada_corrigida": {
+    nome: "Chamada corrigida",
+    visual: "edicao",
+    feito: (log) => ["corrigiu a chamada de ", { destaque: texto(log.detalhes, "adolescente") || "(sem nome)" }, " na aula ", eventoDoLog(log), quandoDoLog(log)],
+    tentativa: "corrigir a chamada da aula",
+  },
+  "marcacao.criada": {
+    nome: "Marcação criada",
+    visual: "criacao",
+    feito: (log) => ["criou a Marcação ", objeto(log), `, que vale ${plural(numero(log.detalhes, "pontos"), "ponto", "pontos")}`],
+    tentativa: "criar a Marcação",
+  },
+  "marcacao.editada": { nome: "Marcação editada", visual: "edicao", feito: (log) => ["editou a Marcação ", objeto(log)], tentativa: "editar a Marcação" },
+  "marcacao.desativada": { nome: "Marcação desativada", visual: "exclusao", feito: (log) => ["desativou a Marcação ", objeto(log)], tentativa: "desativar a Marcação" },
+  "marcacao.reativada": { nome: "Marcação reativada", visual: "aprovacao", feito: (log) => ["reativou a Marcação ", objeto(log)], tentativa: "reativar a Marcação" },
+
+  // Ranking
+  "ranking.pontuacao_alterada": {
+    nome: "Pontuação de Marcação alterada",
+    visual: "edicao",
+    feito: (log) => [
+      "mudou os pontos da Marcação ",
+      objeto(log),
+      ` de ${plural(numero(log.detalhes, "antes"), "ponto", "pontos")} para ${plural(numero(log.detalhes, "depois"), "ponto", "pontos")}`,
+    ],
+    tentativa: "mudar os pontos da Marcação",
+  },
 
   // Administração
   "funcao.criada": {
@@ -528,7 +565,7 @@ export function linkDoObjeto(log: Log): string | null {
     case "evento":
       return `/eventos/${log.objetoId}`;
     case "adolescente":
-      return `/adolescentes?q=${encodeURIComponent(log.objetoRotulo ?? "")}&inativos=1`;
+      return `/adolescentes/${log.objetoId}`;
     case "conta":
       return "/admin/usuarios";
     case "convite":
@@ -541,6 +578,8 @@ export function linkDoObjeto(log: Log): string | null {
       return "/admin/configuracoes";
     case "exportacao":
       return "/admin/exportar";
+    case "marcacao":
+      return "/admin/marcacoes";
     default:
       return null;
   }

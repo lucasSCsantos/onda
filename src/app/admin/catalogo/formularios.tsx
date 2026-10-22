@@ -20,12 +20,12 @@ export function FormularioFuncao({ funcao, areas }: { funcao?: { id: string; nom
   );
 }
 
-/** Cria (sem `categoria`) ou edita nome, Área e cor de uma Categoria. */
+/** Cria (sem `categoria`) ou edita nome, Área, cor e se a Categoria tem Chamada. */
 export function FormularioCategoria({
   categoria,
   areas,
 }: {
-  categoria?: { id: string; nome: string; area_id: string; cor: string };
+  categoria?: { id: string; nome: string; area_id: string; cor: string; tem_chamada: boolean };
   areas: Opcao[];
 }) {
   const [estado, acao] = useActionState(salvarCategoria.bind(null, categoria?.id ?? null), {});
@@ -35,6 +35,9 @@ export function FormularioCategoria({
       <Selecao rotulo="Área" name="area" opcoes={areas} defaultValue={categoria?.area_id} vazia={categoria ? undefined : "Escolha a Área"} required />
       <Campo rotulo="Cor" name="cor" type="color" defaultValue={categoria?.cor ?? "#459ac8"} required />
       <BotaoEnviar pendente="Salvando…">{categoria ? "Salvar" : "Criar"}</BotaoEnviar>
+      <div className="sm:col-span-4">
+        <CaixaDeMarcar rotulo="Tem Chamada: as aulas desta Categoria ganham a lista de presença" name="tem_chamada" defaultChecked={categoria?.tem_chamada ?? false} />
+      </div>
       <div className="sm:col-span-4">
         <Mensagens estado={estado} />
       </div>

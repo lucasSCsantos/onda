@@ -28,23 +28,25 @@ export async function opcoesDeProfessores(supabase: SupabaseClient): Promise<Opc
   return (data ?? []).map((p) => ({ valor: p.id as string, texto: `${(p.nome as string) || "(sem nome)"} (Professor)` }));
 }
 
-export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string };
+export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string; temChamada: boolean };
 
 type CategoriaDoBanco = {
   id: string;
   nome: string;
   cor: string;
+  tem_chamada: boolean;
   areas: { nome: string };
   campos_das_categorias: CategoriaDoEvento["campos"];
 };
 
-const comArea = ({ areas, campos_das_categorias, ...categoria }: CategoriaDoBanco): CategoriaComArea => ({
+const comArea = ({ areas, campos_das_categorias, tem_chamada, ...categoria }: CategoriaDoBanco): CategoriaComArea => ({
   ...categoria,
+  temChamada: tem_chamada,
   area: areas.nome,
   campos: campos_das_categorias,
 });
 
-const SELECAO_DA_CATEGORIA = "id, nome, cor, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)";
+const SELECAO_DA_CATEGORIA = "id, nome, cor, tem_chamada, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)";
 
 export async function categorias(supabase: SupabaseClient): Promise<CategoriaComArea[]> {
   const { data } = await supabase
