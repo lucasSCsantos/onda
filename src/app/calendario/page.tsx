@@ -6,7 +6,8 @@ import { AtalhosDeFiltro } from "@/components/atalhos-de-filtro";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { aniversariosPorDia } from "@/dominio/aniversarios";
-import { eventosPorDia, lerAbrir, lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
+import { enderecoDoNovoEvento, eventosPorDia, lerAbrir, lerPosicao, navegar, periodoDaVisao, type Visao } from "@/dominio/calendario";
+import { podeCriarAlgumEvento } from "@/dominio/catalogo";
 import { diaDe } from "@/dominio/eventos";
 import { filtrar, lerFiltros, parametrosDosFiltros, type Filtros } from "@/dominio/filtros";
 import { FUSO } from "@/dominio/fuso";
@@ -95,6 +96,7 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
   const [daLista, doMes, daSemana] = periodosLidos.map((lidos) => filtrar(lidos, filtros, { eu: eu.id, agora }));
   const eventosDoPainel = aberto ? eventosPorDia(filtrar(doPainel, filtros, { eu: eu.id, agora }), [aberto])[aberto] : [];
   const aniversariosDoPainel = aberto ? (aniversariosPorDia(quemFazAnos, [aberto])[aberto] ?? []) : [];
+  const podeCriar = podeCriarAlgumEvento(eu, areas, doCatalogo);
   const abrir = (diaAberto: string) => endereco(filtros, visao, diaDaUrl, diaAberto);
   const aniversarios = (v: Visao) => aniversariosPorDia(quemFazAnos, periodos[v].semanas.flat().map((d) => d.dia));
 
@@ -185,6 +187,12 @@ export default async function PaginaCalendario(props: PageProps<"/calendario">) 
 
         {aberto && (
           <PainelDoDia titulo={dataPorExtenso(aberto)} fechar={endereco(filtros, visao, diaDaUrl)}>
+            {podeCriar && (
+              <Link href={enderecoDoNovoEvento(aberto)} className="botao-primario">
+                <Plus aria-hidden className="size-5" />
+                Novo Evento neste dia
+              </Link>
+            )}
             {eventosDoPainel.length === 0 && aniversariosDoPainel.length === 0 ? (
               <p className="text-texto-suave">Nenhum Evento neste dia.</p>
             ) : (
