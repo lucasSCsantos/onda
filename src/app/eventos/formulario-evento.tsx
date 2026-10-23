@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { BotaoEnviar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
+import { nativosDe } from "@/dominio/campos-nativos";
 import type { CampoCadastrado } from "@/dominio/catalogo";
 import { camposDaCriacao, NOMES_DOS_STATUS, type Status } from "@/dominio/eventos";
 import { eCampoDeAula } from "@/dominio/professores";
@@ -44,6 +45,9 @@ export function FormularioEvento({
   const [estado, acao] = useActionState<EstadoDoEvento, FormData>(enviar, {});
   // Depois de um erro, o formulário volta com o que foi digitado.
   const valor = (nome: string) => estado.valores?.[nome] ?? iniciais[nome] ?? "";
+  // Cada Categoria oculta, mostra ou exige os campos comuns que quiser (ADR 0008).
+  const nativos = nativosDe(categoria);
+  const exige = (campo: keyof typeof nativos) => nativos[campo] === "obrigatorio";
 
   return (
     <form key={estado.tentativa ?? 0} action={acao} className="flex flex-col gap-4">
@@ -52,16 +56,24 @@ export function FormularioEvento({
       <Campo rotulo="Título" name="titulo" defaultValue={valor("titulo")} required />
 
       <fieldset className="grid grid-cols-2 gap-3">
-        <legend className="mb-1.5 text-sm text-texto-suave">Sem hora, o Evento é de dia inteiro. O fim é opcional.</legend>
+        <legend className="mb-1.5 text-sm text-texto-suave">
+          {nativos.fim === "oculto"
+            ? "Sem hora, o Evento é de dia inteiro."
+            : `Sem hora, o Evento é de dia inteiro. O fim é ${exige("fim") ? "obrigatório" : "opcional"}.`}
+        </legend>
         <Campo rotulo={rotuloDaData} name="data" type="date" defaultValue={valor("data")} required />
         <Campo rotulo="Hora" name="hora" type="time" defaultValue={valor("hora")} />
-        <Campo rotulo="Fim (data)" name="data_fim" type="date" defaultValue={valor("data_fim")} />
-        <Campo rotulo="Fim (hora)" name="hora_fim" type="time" defaultValue={valor("hora_fim")} />
+        {nativos.fim !== "oculto" && (
+          <>
+            <Campo rotulo="Fim (data)" name="data_fim" type="date" defaultValue={valor("data_fim")} />
+            <Campo rotulo="Fim (hora)" name="hora_fim" type="time" defaultValue={valor("hora_fim")} />
+          </>
+        )}
       </fieldset>
 
       {repete && <Repeticao valor={valor} />}
 
-      <Campo rotulo="Local" name="local" defaultValue={valor("local")} />
+      {nativos.local !== "oculto" && <Campo rotulo="Local" name="local" defaultValue={valor("local")} required={exige("local")} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <Selecao
           rotulo="Responsável"
@@ -88,8 +100,12 @@ export function FormularioEvento({
         />
       ))}
 
-      <Campo rotulo="Link" name="link" type="url" placeholder="https://" defaultValue={valor("link")} />
-      <CampoDeTextoLongo rotulo="Observações" name="observacoes" rows={3} defaultValue={valor("observacoes")} />
+      {nativos.link !== "oculto" && (
+        <Campo rotulo="Link" name="link" type="url" placeholder="https://" defaultValue={valor("link")} required={exige("link")} />
+      )}
+      {nativos.observacoes !== "oculto" && (
+        <CampoDeTextoLongo rotulo="Observações" name="observacoes" rows={3} defaultValue={valor("observacoes")} required={exige("observacoes")} />
+      )}
 
       <Mensagens estado={estado} />
       <BotaoEnviar pendente={botao.pendente}>{botao.texto}</BotaoEnviar>

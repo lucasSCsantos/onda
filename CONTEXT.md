@@ -19,7 +19,7 @@ Um Evento que nasceu de uma Série e pode ser editado ou cancelado individualmen
 _Avoid_: Instância, repetição
 
 **Categoria**:
-O tipo de um Evento (EBD, pequeno grupo, culto, ensaio de louvor, reunião de liderança, postagem, evento extra, acampamento, serviço); define os campos específicos do Evento.
+O tipo de um Evento (EBD, pequeno grupo, culto, ensaio de louvor, reunião de liderança, postagem, evento extra, acampamento, serviço); define os campos específicos do Evento e quais dos campos comuns (local, fim, observações, link) ele oculta, mostra ou exige; o que fica oculto não é apagado dos Eventos que já o tinham.
 _Avoid_: Tipo
 
 **Área**:

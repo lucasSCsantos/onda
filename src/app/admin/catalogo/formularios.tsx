@@ -2,6 +2,14 @@
 
 import { useActionState } from "react";
 import { BotaoEnviar, CaixaDeMarcar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
+import {
+  CAMPOS_NATIVOS,
+  NATIVOS_VISIVEIS,
+  NOMES_DAS_VISIBILIDADES,
+  NOMES_DOS_NATIVOS,
+  VISIBILIDADES,
+  type NativosDaCategoria,
+} from "@/dominio/campos-nativos";
 import type { CampoDaCategoria } from "@/dominio/catalogo";
 import { salvarCampo, salvarCategoria, salvarFuncao } from "@/lib/catalogo/acoes";
 
@@ -20,12 +28,14 @@ export function FormularioFuncao({ funcao, areas }: { funcao?: { id: string; nom
   );
 }
 
-/** Cria (sem `categoria`) ou edita nome, Área, cor e se a Categoria tem Chamada. */
+const OPCOES_DE_VISIBILIDADE: Opcao[] = VISIBILIDADES.map((v) => ({ valor: v, texto: NOMES_DAS_VISIBILIDADES[v] }));
+
+/** Cria (sem `categoria`) ou edita nome, Área, cor, se a Categoria tem Chamada e quais campos comuns do Evento ela usa. */
 export function FormularioCategoria({
   categoria,
   areas,
 }: {
-  categoria?: { id: string; nome: string; area_id: string; cor: string; tem_chamada: boolean };
+  categoria?: { id: string; nome: string; area_id: string; cor: string; tem_chamada: boolean; nativos: NativosDaCategoria };
   areas: Opcao[];
 }) {
   const [estado, acao] = useActionState(salvarCategoria.bind(null, categoria?.id ?? null), {});
@@ -38,6 +48,21 @@ export function FormularioCategoria({
       <div className="sm:col-span-4">
         <CaixaDeMarcar rotulo="Tem Chamada: as aulas desta Categoria ganham a lista de presença" name="tem_chamada" defaultChecked={categoria?.tem_chamada ?? false} />
       </div>
+      <fieldset className="grid gap-3 sm:col-span-4 sm:grid-cols-4">
+        <legend className="mb-1.5 text-sm text-texto-suave">
+          Campos comuns do Evento nesta Categoria. Oculto some do formulário e das telas, sem apagar o que já foi digitado.
+        </legend>
+        {CAMPOS_NATIVOS.map((campo) => (
+          <Selecao
+            key={campo}
+            rotulo={NOMES_DOS_NATIVOS[campo]}
+            name={`nativo_${campo}`}
+            opcoes={OPCOES_DE_VISIBILIDADE}
+            defaultValue={(categoria?.nativos ?? NATIVOS_VISIVEIS)[campo]}
+            required
+          />
+        ))}
+      </fieldset>
       <div className="sm:col-span-4">
         <Mensagens estado={estado} />
       </div>

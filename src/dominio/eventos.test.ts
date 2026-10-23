@@ -252,7 +252,7 @@ describe("Status", () => {
 
 describe("Postagem", () => {
   it("a data do Evento é a data de publicação", () => {
-    expect(rotuloDaData({ nome: "Postagem" })).toBe("Data de publicação");
+    expect(rotuloDaData({ nome: "Postagem" })).toBe("Publicação");
     expect(rotuloDaData({ nome: "Culto" })).toBe("Data");
   });
 

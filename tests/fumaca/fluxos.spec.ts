@@ -198,6 +198,37 @@ test("Professores fora do Admin: o líder de Ensino abre pelo menu e continua em
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("o formulário de Evento mostra só os campos da Categoria", async ({ page }) => {
+  await cadastrar(page, "Campos de Fumaça", await novoConviteDeAdmin());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  const { data: categorias } = await admin.from("categorias").select("id, nome").in("nome", ["Postagem", "Evento extra", "Culto"]);
+  const id = (nome: string) => categorias!.find((c) => c.nome === nome)!.id;
+
+  // Postagem: só a Publicação, sem fim, local nem link.
+  await page.goto(`/eventos/novo/${id("Postagem")}`);
+  await expect(page.getByLabel("Publicação", { exact: true })).toBeVisible();
+  for (const oculto of ["Local", "Fim (data)", "Fim (hora)", "Link"]) await expect(page.getByLabel(oculto, { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Observações")).toBeVisible();
+
+  // Evento extra: o local é obrigatório, e o navegador barra o envio sem ele.
+  await page.goto(`/eventos/novo/${id("Evento extra")}`);
+  await expect(page.getByLabel("Local", { exact: true })).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Fim (data)")).toBeVisible();
+
+  // Culto: local e link opcionais; as observações já estão na liturgia.
+  await page.goto(`/eventos/novo/${id("Culto")}`);
+  await expect(page.getByLabel("Local", { exact: true })).not.toHaveAttribute("required", "");
+  await expect(page.getByLabel("Link", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Observações", { exact: true })).toHaveCount(0);
+
+  // O Admin configura isso na tela da Categoria, e não há rolagem lateral no celular.
+  await page.goto(`/admin/catalogo/${id("Postagem")}`);
+  await expect(page.getByLabel(/^Local/)).toHaveValue("oculto");
+  await expect(page.getByLabel(/^Fim/)).toHaveValue("oculto");
+  const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
 test("Logs: o Admin vê a própria entrada em frase legível, abre os detalhes e filtra os alertas", async ({ page }) => {
   await cadastrar(page, "Logs de Fumaça", await novoConviteDeAdmin());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();

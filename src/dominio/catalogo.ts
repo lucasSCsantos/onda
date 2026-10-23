@@ -79,7 +79,12 @@ export const CATALOGO_INICIAL = {
       nome: "Pequeno grupo",
       area: "Ensino",
       cor: "#2a9d8f",
-      campos: [campo("Grupo", "escolha", true, ["Grupo único"]), campo("Anfitrião", "texto_curto"), campo("Tema", "texto_curto")],
+      campos: [
+        campo("Grupo", "escolha", true, ["Grupo único"]),
+        campo("Anfitrião", "texto_curto"),
+        campo("Tema", "texto_curto"),
+        campo("Link do material", "link"),
+      ],
     },
     {
       nome: "Culto",
