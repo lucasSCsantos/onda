@@ -120,7 +120,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-2.5 size-3 shrink-0 rounded-full" style={{ backgroundColor: evento.categoria.cor }} />
-          <h1 className={`min-w-0 flex-1 text-2xl font-semibold break-words ${visualDoStatus(status).titulo}`}>{evento.titulo}</h1>
+          <h1 className={`min-w-0 flex-1 text-2xl font-semibold break-words ${visualDoStatus(status).titulo}`}>{evento.tituloDeExibicao}</h1>
           <SeloDoStatus status={status} />
         </div>
 
@@ -184,7 +184,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
               Editar
             </Link>
           )}
-          {lideranca && evento.categoria.temChamada && (
+          {(lideranca || soObservacoes) && evento.categoria.temChamada && (
             <Link href={`/eventos/${evento.id}/chamada`} className="botao-secundario">
               <ClipboardCheck aria-hidden className="size-5" />
               Chamada

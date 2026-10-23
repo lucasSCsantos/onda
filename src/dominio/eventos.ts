@@ -52,7 +52,13 @@ export type Evento = {
   link: string | null;
   /** Do id do campo específico ao valor; os opcionais vazios ficam de fora. */
   campos: Record<string, ValorDeCampo>;
+  /** O número da Ocorrência na Série, na ordem das datas; vazio nos Eventos avulsos. Só o banco o grava. */
+  numero?: number | null;
 };
+
+/** O título como as telas o mostram: "Título · número" numa Ocorrência de Série, e só o título digitado num Evento avulso. */
+export const tituloDeExibicao = ({ titulo, numero }: { titulo: string; numero?: number | null }) =>
+  numero ? `${titulo} · ${numero}` : titulo;
 
 /**
  * Como cada tipo de campo é guardado: textos, links, escolhas e pessoas (o id) como texto; o valor em reais

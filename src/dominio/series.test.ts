@@ -10,6 +10,7 @@ import {
   expandirSerie,
   lerDiaDeEncerramento,
   lerRegra,
+  MAXIMO_DE_OCORRENCIAS,
   resumoDosCancelamentos,
   ocorrenciasDe,
   type EntradaDeRegra,
@@ -21,8 +22,6 @@ import { meiaNoite } from "./fuso";
 const entrada = (mudancas: Partial<EntradaDeRegra> = {}): EntradaDeRegra => ({
   frequencia: "semanal",
   dias: [],
-  posicao: "",
-  diaDaSemana: "",
   terminoPor: "contagem",
   terminoData: "",
   terminoOcorrencias: "4",
@@ -41,30 +40,23 @@ function datas(mudancas: Partial<EntradaDeRegra>, primeiroDia: string): string[]
   return lidas.datas;
 }
 
-describe("expandir Séries", () => {
-  it("semanal: os dias escolhidos de cada semana, a partir do primeiro dia", () => {
-    // 2026-10-21 é quarta-feira.
-    expect(datas({ dias: [DOMINGO, QUARTA], terminoOcorrencias: "5" }, "2026-10-21")).toEqual([
-      "2026-10-21",
-      "2026-10-25",
-      "2026-10-28",
-      "2026-11-01",
-      "2026-11-04",
-    ]);
-  });
+/** O erro de ler a regra e expandi-la, ou null se a Série é aceita. */
+function erroDe(mudancas: Partial<EntradaDeRegra>, primeiroDia = "2026-10-21"): string | null {
+  const regra = lerRegra(entrada(mudancas), primeiroDia);
+  if ("erro" in regra) return regra.erro;
+  const lidas = expandirSerie(regra.regra, primeiroDia);
+  return "erro" in lidas ? lidas.erro : null;
+}
 
-  it("sem dias escolhidos, repete no dia da semana do primeiro dia", () => {
+describe("expandir Séries", () => {
+  it("sem dia escolhido, repete toda semana no dia da semana do primeiro dia", () => {
     expect(datas({}, "2026-10-25")).toEqual(["2026-10-25", "2026-11-01", "2026-11-08", "2026-11-15"]);
   });
 
-  it("quinzenal: pula uma semana, contando a partir da semana do primeiro dia", () => {
-    expect(datas({ frequencia: "quinzenal", dias: [QUARTA, DOMINGO], terminoOcorrencias: "5" }, "2026-10-21")).toEqual([
-      "2026-10-21",
-      "2026-11-01",
-      "2026-11-04",
-      "2026-11-15",
-      "2026-11-18",
-    ]);
+  it("com um dia escolhido, começa no primeiro desses dias, a partir da data", () => {
+    // 2026-10-21 é quarta-feira.
+    expect(datas({ dias: [DOMINGO], terminoOcorrencias: "2" }, "2026-10-21")).toEqual(["2026-10-25", "2026-11-01"]);
+    expect(datas({ dias: [QUARTA], terminoOcorrencias: "2" }, "2026-10-21")).toEqual(["2026-10-21", "2026-10-28"]);
   });
 
   it("termina por data, inclusive nela", () => {
@@ -75,59 +67,42 @@ describe("expandir Séries", () => {
     ]);
   });
 
-  it("mensal: o N-ésimo dia da semana de cada mês", () => {
-    expect(datas({ frequencia: "mensal", posicao: "1", diaDaSemana: DOMINGO, terminoOcorrencias: "4" }, "2026-10-01")).toEqual([
-      "2026-10-04",
-      "2026-11-01",
-      "2026-12-06",
-      "2027-01-03",
-    ]);
+  it("recusa repetição mais frequente que semanal, com a mensagem do limite", () => {
+    const limite = /repete no máximo toda semana, por até 6 meses/i;
+    expect(erroDe({ frequencia: "diaria" })).toMatch(limite);
+    expect(erroDe({ frequencia: "quinzenal" })).toMatch(limite);
+    expect(erroDe({ frequencia: "mensal" })).toMatch(limite);
+    expect(erroDe({ frequencia: "" })).toMatch(limite);
+    // Dois dias na semana é mais frequente que semanal.
+    expect(erroDe({ dias: [DOMINGO, QUARTA] })).toMatch(limite);
   });
 
-  it("mensal: o primeiro dia já passou no mês, então começa no mês seguinte", () => {
-    expect(datas({ frequencia: "mensal", posicao: "1", diaDaSemana: DOMINGO, terminoOcorrencias: "2" }, "2026-10-05")).toEqual([
-      "2026-11-01",
-      "2026-12-06",
-    ]);
+  it("aceita Série de até 6 meses a partir do primeiro dia, inclusive no último dia", () => {
+    expect(erroDe({ terminoPor: "data", terminoData: "2027-04-21" })).toBeNull();
+    expect(datas({ terminoPor: "data", terminoData: "2027-04-21" }, "2026-10-21")).toHaveLength(27);
   });
 
-  it("mensal: o último dia da semana do mês, inclusive com cinco no mês", () => {
-    // Outubro de 2026 tem cinco sextas (2, 9, 16, 23, 30); fevereiro de 2027 termina num domingo, dia 28.
-    expect(datas({ frequencia: "mensal", posicao: "ultimo", diaDaSemana: "5", terminoOcorrencias: "2" }, "2026-10-01")).toEqual([
-      "2026-10-30",
-      "2026-11-27",
-    ]);
-    expect(datas({ frequencia: "mensal", posicao: "ultimo", diaDaSemana: DOMINGO, terminoOcorrencias: "1" }, "2027-02-01")).toEqual([
-      "2027-02-28",
-    ]);
+  it("recusa período maior que 6 meses, por data ou por número de Ocorrências", () => {
+    const limite = /repete no máximo toda semana, por até 6 meses/i;
+    expect(erroDe({ terminoPor: "data", terminoData: "2027-04-22" })).toMatch(limite);
+    expect(erroDe({ terminoPor: "data", terminoData: "2040-12-31" })).toMatch(limite);
+    // 28 semanais a partir de 21/10 terminam em 28/04/2027, depois dos 6 meses.
+    expect(erroDe({ terminoOcorrencias: "28" })).toMatch(limite);
+    expect(erroDe({ terminoOcorrencias: "27" })).toBeNull();
   });
 
-  it("mensal: o quarto dia da semana não confunde com o último", () => {
-    expect(datas({ frequencia: "mensal", posicao: "4", diaDaSemana: "5", terminoOcorrencias: "1" }, "2026-10-01")).toEqual([
-      "2026-10-23",
-    ]);
+  it("recusa mais de 52 Ocorrências", () => {
+    expect(MAXIMO_DE_OCORRENCIAS).toBe(52);
+    expect(erroDe({ terminoOcorrencias: "53" })).toMatch(/de 1 a 52 Ocorrências/);
   });
 
   it("recusa regra incompleta ou impossível", () => {
-    const erro = (e: Partial<EntradaDeRegra>, dia = "2026-10-21") => {
-      const lida = lerRegra(entrada(e), dia);
-      return "erro" in lida ? lida.erro : null;
-    };
-    expect(erro({ frequencia: "diaria" })).toMatch(/frequência/i);
-    expect(erro({ dias: ["7"] })).toMatch(/dia da semana/i);
-    expect(erro({ frequencia: "mensal", posicao: "", diaDaSemana: DOMINGO })).toMatch(/posição/i);
-    expect(erro({ frequencia: "mensal", posicao: "1", diaDaSemana: "" })).toMatch(/dia da semana/i);
-    expect(erro({ terminoOcorrencias: "0" })).toMatch(/Ocorrências/);
-    expect(erro({ terminoOcorrencias: "" })).toMatch(/Ocorrências/);
-    expect(erro({ terminoPor: "data", terminoData: "" })).toMatch(/data/i);
-    expect(erro({ terminoPor: "data", terminoData: "2026-10-01" })).toMatch(/antes/i);
-    expect(erro({ terminoPor: "nunca" })).toMatch(/término/i);
-  });
-
-  it("não gera Séries sem fim prático", () => {
-    const regra = lerRegra(entrada({ terminoPor: "data", terminoData: "2040-12-31" }), "2026-10-25");
-    if ("erro" in regra) throw new Error(regra.erro);
-    expect(expandirSerie(regra.regra, "2026-10-25")).toEqual({ erro: expect.stringMatching(/Ocorrências/) });
+    expect(erroDe({ dias: ["7"] })).toMatch(/dia da semana/i);
+    expect(erroDe({ terminoOcorrencias: "0" })).toMatch(/Ocorrências/);
+    expect(erroDe({ terminoOcorrencias: "" })).toMatch(/Ocorrências/);
+    expect(erroDe({ terminoPor: "data", terminoData: "" })).toMatch(/data/i);
+    expect(erroDe({ terminoPor: "data", terminoData: "2026-10-01" })).toMatch(/antes/i);
+    expect(erroDe({ terminoPor: "nunca" })).toMatch(/término/i);
   });
 });
 
@@ -150,6 +125,11 @@ describe("Ocorrências de uma Série", () => {
     const todas = ocorrenciasDe(evento(), ["2026-10-25", "2026-11-01"]);
     expect(todas.map((o) => o.inicio.toISOString())).toEqual(["2026-10-25T12:00:00.000Z", "2026-11-01T12:00:00.000Z"]);
     expect(todas[1].fim?.toISOString()).toBe("2026-11-01T13:30:00.000Z");
+  });
+
+  it("numera as Ocorrências na ordem das datas, a partir de 1", () => {
+    const todas = ocorrenciasDe(evento(), ["2026-10-25", "2026-11-01", "2026-11-08"]);
+    expect(todas.map((o) => o.numero)).toEqual([1, 2, 3]);
   });
 
   it("um Evento de vários dias mantém a duração em dias", () => {
@@ -176,6 +156,7 @@ function serie(extras: Record<string, Partial<OcorrenciaGravada>> = {}): Ocorren
       inicio: dia(d),
       fim: new Date(dia(d).getTime() + 90 * 60 * 1000),
       status: i < 2 ? "realizado" : "planejado",
+      numero: i + 1,
     }),
     ...extras[String(i + 1)],
   }));
@@ -225,6 +206,15 @@ describe("editar só esta", () => {
   it("uma Realizada ou Cancelada só é editada, individualmente, pelo Admin", () => {
     expect(editar(serie(), "1", "esta", { observacoes: "Faltou som" }, mariana)).toMatchObject({ erro: expect.any(String) });
     expect(ok(editar(serie(), "1", "esta", { observacoes: "Faltou som" }, lucas))[0].id).toBe("1");
+  });
+});
+
+describe("números nas edições", () => {
+  it("editar esta, esta e as seguintes ou toda a série mantém os números", () => {
+    for (const escopo of ["esta", "esta_e_seguintes", "toda"] as const) {
+      const alteracoes = ok(editar(serie(), "3", escopo, { local: "Quadra" }));
+      expect(alteracoes.every((a) => a.evento.numero === Number(a.id))).toBe(true);
+    }
   });
 });
 
@@ -332,6 +322,13 @@ describe("encerrar a Série e cancelar as futuras", () => {
     expect(alteracoes.every((a) => a.evento.status === "cancelado" && a.editada === undefined)).toBe(true);
   });
 
+  it("cancelar não renumera: cada Ocorrência guarda o número que tinha", () => {
+    const alteracoes = cancelarFuturas(serie(), AGORA);
+    expect(alteracoes.map((a) => [a.id, a.evento.numero])).toEqual([["3", 3], ["4", 4]]);
+    const encerradas = encerrarSerie(serie(), "2026-11-01", AGORA);
+    expect(encerradas.map((a) => [a.id, a.evento.numero])).toEqual([["3", 3], ["4", 4]]);
+  });
+
   it("não cancela de novo as já Canceladas", () => {
     const ocorrencias = serie();
     ocorrencias[2].evento.status = "cancelado";
@@ -348,8 +345,15 @@ describe("lerSerie", () => {
     expect(lida.ocorrencias.every((o) => o.fim && o.fim.getTime() - o.inicio.getTime() === 90 * 60 * 1000)).toBe(true);
   });
 
+  it("numera as Ocorrências geradas, e o Evento avulso fica sem número", () => {
+    const lida = lerSerie(evento(), entrada({ terminoOcorrencias: "3" }));
+    if ("erro" in lida) throw new Error(lida.erro);
+    expect(lida.ocorrencias.map((o) => o.numero)).toEqual([1, 2, 3]);
+    expect(evento().numero ?? null).toBeNull();
+  });
+
   it("devolve o erro da regra", () => {
-    expect(lerSerie(evento(), entrada({ frequencia: "" }))).toMatchObject({ erro: expect.stringMatching(/frequência/i) });
+    expect(lerSerie(evento(), entrada({ frequencia: "" }))).toMatchObject({ erro: expect.stringMatching(/toda semana/i) });
   });
 });
 
@@ -361,11 +365,8 @@ describe("descrever a regra", () => {
   };
 
   it("em português", () => {
-    expect(regra({ dias: [DOMINGO, QUARTA], terminoOcorrencias: "8" })).toBe("Toda semana, domingos e quartas, por 8 Ocorrências");
-    expect(regra({ frequencia: "quinzenal", terminoPor: "data", terminoData: "2026-12-20" })).toBe(
-      "A cada duas semanas, domingos, até 20/12/2026",
-    );
-    expect(regra({ frequencia: "mensal", posicao: "ultimo", diaDaSemana: "5" })).toBe("Todo mês, última sexta, por 4 Ocorrências");
+    expect(regra({ terminoOcorrencias: "8" })).toBe("Toda semana, domingos, por 8 Ocorrências");
+    expect(regra({ dias: [QUARTA], terminoPor: "data", terminoData: "2026-12-20" })).toBe("Toda semana, quartas, até 20/12/2026");
   });
 });
 

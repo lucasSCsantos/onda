@@ -31,7 +31,7 @@ export async function tabelaParaExportar(supabase: SupabaseClient, tabela: Tabel
           supabase
             .from("eventos")
             .select(
-              "titulo, inicio, fim, dia_inteiro, local, status, observacoes, link, serie_id, criado_em, categorias(nome), responsavel:perfis!eventos_responsavel_id_fkey(nome)",
+              "titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, status, observacoes, link, serie_id, criado_em, categorias(nome), responsavel:perfis!eventos_responsavel_id_fkey(nome)",
             )
             .order("inicio")
             .order("id")

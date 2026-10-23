@@ -34,7 +34,7 @@ async function umaSerie() {
   const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
   const culto = await categoria("Culto");
   const { data } = await mariana.cliente
-    .rpc("criar_serie", { categoria: culto.id, regra: REGRA, primeiro_dia: "2026-11-01", ocorrencias: tresDomingos(mariana.id) })
+    .rpc("criar_serie", { categoria: culto.id, regra: REGRA, primeiro_dia: daqui(24).slice(0, 10), ocorrencias: tresDomingos(mariana.id) })
     .throwOnError();
   const id = data as string;
   return { mariana, culto, id, ocorrencias: await ocorrenciasDa(id) };
@@ -48,7 +48,7 @@ describe("criar Série", () => {
     const { data: id, error } = await beythel.cliente.rpc("criar_serie", {
       categoria: ensaio.id,
       regra: REGRA,
-      primeiro_dia: "2026-11-01",
+      primeiro_dia: daqui(24).slice(0, 10),
       ocorrencias: tresDomingos(beythel.id),
     });
     expect(error).toBeNull();
@@ -66,7 +66,7 @@ describe("criar Série", () => {
     const { error } = await beythel.cliente.rpc("criar_serie", {
       categoria: culto.id,
       regra: REGRA,
-      primeiro_dia: "2026-11-01",
+      primeiro_dia: daqui(24).slice(0, 10),
       ocorrencias: tresDomingos(beythel.id).map((o) => ({ ...o, titulo })),
     });
     expect(error).not.toBeNull();
@@ -85,7 +85,7 @@ describe("criar Série", () => {
     const { error } = await mariana.cliente.rpc("criar_serie", {
       categoria: culto.id,
       regra: REGRA,
-      primeiro_dia: "2026-11-01",
+      primeiro_dia: daqui(24).slice(0, 10),
       ocorrencias,
     });
     expect(error).not.toBeNull();
@@ -99,13 +99,97 @@ describe("criar Série", () => {
     const reuniao = await categoria("Reunião de liderança");
     const { data: serie } = await admin
       .from("series")
-      .insert({ categoria_id: culto.id, regra: REGRA, primeiro_dia: "2026-11-01", criado_por: mariana.id })
+      .insert({ categoria_id: culto.id, regra: REGRA, primeiro_dia: daqui(24).slice(0, 10), criado_por: mariana.id })
       .select("id")
       .single()
       .throwOnError();
 
     const { error } = await admin.from("eventos").insert({ ...eventoDe(reuniao.id, mariana.id), serie_id: serie.id, criado_por: mariana.id });
     expect(error).not.toBeNull();
+  });
+});
+
+describe("limites e numeração da Série", () => {
+  const LIMITE = /no máximo toda semana, por até 6 meses/;
+
+  /** `n` Ocorrências semanais a partir de amanhã. */
+  const semanais = (responsavel: string | null, n: number) =>
+    Array.from({ length: n }, (_, i) => ocorrencia(responsavel, { inicio: daqui(24 * (1 + 7 * i)), fim: null }));
+
+  const criarComo = async (n: number, regra: Record<string, unknown> = REGRA, primeiroDia = daqui(24).slice(0, 10)) => {
+    const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
+    const culto = await categoria("Culto");
+    return mariana.cliente.rpc("criar_serie", {
+      categoria: culto.id,
+      regra,
+      primeiro_dia: primeiroDia,
+      ocorrencias: semanais(mariana.id, n),
+    });
+  };
+
+  it("numera as Ocorrências na ordem das datas, mesmo se chegarem fora de ordem", async () => {
+    const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
+    const culto = await categoria("Culto");
+    const { data } = await mariana.cliente
+      .rpc("criar_serie", {
+        categoria: culto.id,
+        regra: REGRA,
+        primeiro_dia: daqui(24).slice(0, 10),
+        ocorrencias: [...semanais(mariana.id, 3)].reverse().map((o) => ({ ...o, numero_da_ocorrencia: 99 })),
+      })
+      .throwOnError();
+    const criadas = await ocorrenciasDa(data as string);
+    expect(criadas.map((o) => o.numero_da_ocorrencia)).toEqual([1, 2, 3]);
+  });
+
+  it("cancelar uma Ocorrência não renumera as outras", async () => {
+    const { mariana, ocorrencias } = await umaSerie();
+    await mariana.cliente.rpc("editar_eventos", { alteracoes: [alteracao(ocorrencias[1], { status: "cancelado" })] }).throwOnError();
+    const { data } = await admin.from("eventos").select("numero_da_ocorrencia").eq("serie_id", ocorrencias[0].serie_id).order("inicio").throwOnError();
+    expect(data.map((o) => o.numero_da_ocorrencia)).toEqual([1, 2, 3]);
+  });
+
+  it("Evento avulso fica sem número", async () => {
+    const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
+    const culto = await categoria("Culto");
+    const { data } = await admin.from("eventos").insert({ ...eventoDe(culto.id, mariana.id), criado_por: mariana.id }).select("numero_da_ocorrencia").single().throwOnError();
+    expect(data.numero_da_ocorrencia).toBeNull();
+  });
+
+  it("só uma Ocorrência de Série leva número", async () => {
+    const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
+    const culto = await categoria("Culto");
+    const { error } = await admin.from("eventos").insert({ ...eventoDe(culto.id, mariana.id), criado_por: mariana.id, numero_da_ocorrencia: 1 });
+    expect(error).not.toBeNull();
+  });
+
+  it("aceita até 6 meses a partir do primeiro dia", async () => {
+    const { error } = await criarComo(26); // a 26ª semanal começa 25 semanas depois do primeiro dia
+    expect(error).toBeNull();
+  });
+
+  it("recusa Ocorrência além de 6 meses, e nada fica gravado", async () => {
+    const { error } = await criarComo(30);
+    expect(error?.message).toMatch(LIMITE);
+  });
+
+  it("recusa mais de 52 Ocorrências", async () => {
+    const mariana = await comFuncoes("Mariana", "lider", [MARIANA]);
+    const culto = await categoria("Culto");
+    const mesmoDia = Array.from({ length: 53 }, (_, i) => ocorrencia(mariana.id, { inicio: daqui(24 + i), fim: null }));
+    const { error } = await mariana.cliente.rpc("criar_serie", { categoria: culto.id, regra: REGRA, primeiro_dia: daqui(24).slice(0, 10), ocorrencias: mesmoDia });
+    expect(error?.message).toMatch(LIMITE);
+  });
+
+  it("recusa repetição mais frequente que semanal", async () => {
+    for (const regra of [
+      { frequencia: "quinzenal", dias: [0], termino: { ocorrencias: 3 } },
+      { frequencia: "mensal", posicao: 1, diaDaSemana: 0, termino: { ocorrencias: 3 } },
+      { frequencia: "semanal", dias: [0, 3], termino: { ocorrencias: 3 } },
+    ]) {
+      const { error } = await criarComo(3, regra);
+      expect(error, JSON.stringify(regra)).not.toBeNull();
+    }
   });
 });
 

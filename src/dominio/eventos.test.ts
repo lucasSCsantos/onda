@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Pessoa } from "./acesso";
 import { CATALOGO_INICIAL, type CampoCadastrado, type CampoDaCategoria } from "./catalogo";
-import { agruparPorDia, camposDaCriacao, lerEvento, podeVerTodosOsEventos, rotuloDaData, type EntradaDeEvento } from "./eventos";
+import { agruparPorDia, camposDaCriacao, lerEvento, podeVerTodosOsEventos, rotuloDaData, tituloDeExibicao, type EntradaDeEvento } from "./eventos";
 
 const campo = (id: string, tipo: CampoDaCategoria["tipo"], obrigatorio = false, opcoes: string[] = []): CampoCadastrado => ({
   id,
@@ -296,5 +296,16 @@ describe("lista cronológica", () => {
   it("um Evento de dia inteiro vem antes de um à meia-noite do mesmo dia", () => {
     const [dia] = agruparPorDia([em("2026-10-25T00:00:00-03:00"), em("2026-10-25T00:00:00.000-03:00", true)]);
     expect(dia.eventos.map((e) => e.diaInteiro)).toEqual([true, false]);
+  });
+});
+
+describe("título de exibição", () => {
+  it("a Ocorrência de uma Série mostra o título e o número", () => {
+    expect(tituloDeExibicao({ titulo: "Aula de EBD", numero: 3 })).toBe("Aula de EBD · 3");
+  });
+
+  it("o Evento avulso mostra só o título digitado", () => {
+    expect(tituloDeExibicao({ titulo: "Culto de jovens", numero: null })).toBe("Culto de jovens");
+    expect(tituloDeExibicao({ titulo: "Culto de jovens" })).toBe("Culto de jovens");
   });
 });

@@ -4,11 +4,11 @@ import { dataLocal, meiaNoite } from "./fuso";
 
 /**
  * Uma Série é o molde recorrente: a regra abaixo gera as Ocorrências, que são Eventos comuns e passam a viver por
- * conta própria. Os dias são datas civis `AAAA-MM-DD` no fuso do Mural; o dia da semana vai de 0 (domingo) a 6.
+ * conta própria. Repete no máximo toda semana, por até 6 meses a partir do primeiro dia. Os dias são datas civis
+ * `AAAA-MM-DD` no fuso do Mural; o dia da semana vai de 0 (domingo) a 6.
  */
-export type Repeticao =
-  | { frequencia: "semanal" | "quinzenal"; dias: number[] }
-  | { frequencia: "mensal"; posicao: 1 | 2 | 3 | 4 | "ultimo"; diaDaSemana: number };
+/** `dias` é uma lista só para manter o formato da regra gravada; a regra aceita no máximo um dia da semana. */
+export type Repeticao = { frequencia: "semanal"; dias: number[] };
 
 export type Termino = { data: string } | { ocorrencias: number };
 
@@ -18,20 +18,23 @@ export type RegraDaSerie = Repeticao & { termino: Termino };
 export type EntradaDeRegra = {
   frequencia: string;
   dias: string[];
-  posicao: string;
-  diaDaSemana: string;
   terminoPor: string;
   terminoData: string;
   terminoOcorrencias: string;
 };
 
-/** Teto de Ocorrências por Série, para uma regra mal escolhida não encher o calendário. */
-export const MAXIMO_DE_OCORRENCIAS = 260;
+/** Teto de segurança de Ocorrências por Série; o limite de 6 meses costuma chegar antes. */
+export const MAXIMO_DE_OCORRENCIAS = 52;
+
+/** Quantos meses, a partir do primeiro dia, uma Série pode durar. */
+export const MAXIMO_DE_MESES = 6;
+
+/** A mensagem de todo bloqueio de frequência ou de período, a mesma que o formulário mostra de antemão. */
+export const LIMITE_DA_SERIE = `A Série repete no máximo toda semana, por até ${MAXIMO_DE_MESES} meses.`;
 
 export const NOMES_DOS_DIAS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 
 const DIA_MS = 24 * 60 * 60 * 1000;
-const POSICOES = ["1", "2", "3", "4", "ultimo"] as const;
 const DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Dias civis como contagem de dias desde 1970, para somar e comparar sem fuso. */
@@ -47,36 +50,32 @@ function numeroDoDia(dia: string): number | null {
 const diaDoNumero = (numero: number) => new Date(numero * DIA_MS).toISOString().slice(0, 10);
 const diaDaSemana = (numero: number) => new Date(numero * DIA_MS).getUTCDay();
 
+/** O último dia que a Série pode ter: o mesmo dia, 6 meses depois (num mês mais curto, o último dia dele). */
+function ultimoDiaPermitido(primeiro: number): number {
+  const inicio = new Date(primeiro * DIA_MS);
+  const alvo = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + MAXIMO_DE_MESES, 1));
+  const ultimoDoMes = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(inicio.getUTCDate(), ultimoDoMes));
+  return alvo.getTime() / DIA_MS;
+}
+
 /** Confere o que veio do formulário e monta a regra. `primeiroDia` é a data do Evento modelo. */
 export function lerRegra(entrada: EntradaDeRegra, primeiroDia: string): { regra: RegraDaSerie } | { erro: string } {
+  if (entrada.frequencia !== "semanal") return { erro: LIMITE_DA_SERIE };
+
   const termino = lerTermino(entrada, primeiroDia);
   if ("erro" in termino) return termino;
 
-  switch (entrada.frequencia) {
-    case "semanal":
-    case "quinzenal": {
-      const dias = [...new Set(entrada.dias.map(Number))].sort((a, b) => a - b);
-      if (dias.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) return { erro: "Escolha um dia da semana válido." };
-      // Sem dia escolhido, repete no dia da semana da data do Evento.
-      if (dias.length === 0) {
-        const numero = numeroDoDia(primeiroDia);
-        if (numero === null) return { erro: "Informe a data do Evento." };
-        dias.push(diaDaSemana(numero));
-      }
-      return { regra: { frequencia: entrada.frequencia, dias, termino: termino.termino } };
-    }
-    case "mensal": {
-      const posicao = POSICOES.find((p) => p === entrada.posicao);
-      if (!posicao) return { erro: "Escolha a posição do dia no mês, como primeiro ou último." };
-      const dia = Number(entrada.diaDaSemana);
-      if (entrada.diaDaSemana === "" || !Number.isInteger(dia) || dia < 0 || dia > 6) return { erro: "Escolha o dia da semana." };
-      return {
-        regra: { frequencia: "mensal", posicao: posicao === "ultimo" ? posicao : (Number(posicao) as 1 | 2 | 3 | 4), diaDaSemana: dia, termino: termino.termino },
-      };
-    }
-    default:
-      return { erro: "Escolha a frequência da Série." };
+  const dias = [...new Set(entrada.dias.map(Number))];
+  if (dias.length > 1) return { erro: LIMITE_DA_SERIE };
+  if (dias.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) return { erro: "Escolha um dia da semana válido." };
+  // Sem dia escolhido, repete no dia da semana da data do Evento.
+  if (dias.length === 0) {
+    const numero = numeroDoDia(primeiroDia);
+    if (numero === null) return { erro: "Informe a data do Evento." };
+    dias.push(diaDaSemana(numero));
   }
+  return { regra: { frequencia: "semanal", dias, termino: termino.termino } };
 }
 
 function lerTermino(entrada: EntradaDeRegra, primeiroDia: string): { termino: Termino } | { erro: string } {
@@ -96,47 +95,22 @@ function lerTermino(entrada: EntradaDeRegra, primeiroDia: string): { termino: Te
   return { erro: "Escolha o término da Série: por data ou por número de Ocorrências." };
 }
 
-/** O dia cai na regra? `primeiro` ancora a contagem das semanas da quinzenal. */
-function casa(regra: Repeticao, numero: number, primeiro: number): boolean {
-  const semana = diaDaSemana(numero);
-  switch (regra.frequencia) {
-    case "semanal":
-      return regra.dias.includes(semana);
-    case "quinzenal": {
-      // As semanas começam no domingo; conta-se a partir da semana do primeiro dia.
-      const semanas = Math.floor((numero - semana - (primeiro - diaDaSemana(primeiro))) / 7);
-      return semanas % 2 === 0 && regra.dias.includes(semana);
-    }
-    case "mensal": {
-      if (semana !== regra.diaDaSemana) return false;
-      const data = new Date(numero * DIA_MS);
-      const dia = data.getUTCDate();
-      if (regra.posicao === "ultimo") {
-        const ultimo = new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 0)).getUTCDate();
-        return dia + 7 > ultimo;
-      }
-      return Math.ceil(dia / 7) === regra.posicao;
-    }
-  }
-}
-
-/** Os dias das Ocorrências, a partir de `primeiroDia` (inclusive) até o término. */
+/** Os dias das Ocorrências, a partir de `primeiroDia` (inclusive) até o término, dentro dos 6 meses. */
 export function expandirSerie(regra: RegraDaSerie, primeiroDia: string): { datas: string[] } | { erro: string } {
   const primeiro = numeroDoDia(primeiroDia);
   if (primeiro === null) return { erro: "Informe a data do Evento." };
+  const limite = ultimoDiaPermitido(primeiro);
   const ate = "data" in regra.termino ? numeroDoDia(regra.termino.data) : null;
-  // Por data, junta uma além do teto só para saber se a Série passa dele.
-  const quantas = "ocorrencias" in regra.termino ? regra.termino.ocorrencias : MAXIMO_DE_OCORRENCIAS + 1;
-  const horizonte = ate ?? primeiro + 30 * 366;
+  if (ate !== null && ate > limite) return { erro: LIMITE_DA_SERIE };
 
+  const quantas = "ocorrencias" in regra.termino ? regra.termino.ocorrencias : MAXIMO_DE_OCORRENCIAS;
   const datas: string[] = [];
-  for (let dia = primeiro; dia <= horizonte && datas.length < quantas; dia++) {
-    if (casa(regra, dia, primeiro)) datas.push(diaDoNumero(dia));
+  for (let dia = primeiro; dia <= (ate ?? limite) && datas.length < quantas; dia++) {
+    if (regra.dias.includes(diaDaSemana(dia))) datas.push(diaDoNumero(dia));
   }
 
-  if (datas.length > MAXIMO_DE_OCORRENCIAS) {
-    return { erro: `Uma Série tem no máximo ${MAXIMO_DE_OCORRENCIAS} Ocorrências. Termine a Série antes.` };
-  }
+  // Contando Ocorrências, o último dia pedido tem de caber nos 6 meses.
+  if ("ocorrencias" in regra.termino && datas.length < quantas) return { erro: LIMITE_DA_SERIE };
   if (datas.length === 0) return { erro: "Nenhuma data cai nessa regra." };
   return { datas };
 }
@@ -157,9 +131,11 @@ function diaCivil(instante: Date): [number, number, number] {
   return [ano, mes, dia];
 }
 
-/** Uma Ocorrência por dia, a partir do Evento modelo. */
+/** Uma Ocorrência por dia, a partir do Evento modelo, numeradas de 1 na ordem das datas. */
 export function ocorrenciasDe(modelo: Evento, dias: string[]): Evento[] {
-  return dias.map((dia) => noDia(modelo, dia));
+  return [...dias]
+    .sort()
+    .map((dia, i) => ({ ...noDia(modelo, dia), numero: i + 1 }));
 }
 
 /**
@@ -175,27 +151,12 @@ export function lerSerie(modelo: Evento, entrada: EntradaDeRegra): { regra: Regr
   return { regra: lida.regra, primeiroDia, ocorrencias: ocorrenciasDe(modelo, dias.datas) };
 }
 
-const POSICOES_POR_EXTENSO = {
-  1: ["primeiro", "primeira"],
-  2: ["segundo", "segunda"],
-  3: ["terceiro", "terceira"],
-  4: ["quarto", "quarta"],
-  ultimo: ["último", "última"],
-} as const;
 const NOMES_NO_PLURAL = ["domingos", "segundas", "terças", "quartas", "quintas", "sextas", "sábados"];
 
-/** Segunda a sexta são femininas; domingo e sábado, masculinos. */
-const ehFeminino = (dia: number) => (dia >= 1 && dia <= 5 ? 1 : 0);
-
-/** A regra em português, para a tela: "Toda semana, aos domingos e quartas, por 8 Ocorrências". */
+/** A regra em português, para a tela: "Toda semana, domingos, por 8 Ocorrências". */
 export function descreverRegra(regra: RegraDaSerie): string {
   const termino = "data" in regra.termino ? `até ${formatarDia(regra.termino.data)}` : `por ${regra.termino.ocorrencias} Ocorrências`;
-  if (regra.frequencia === "mensal") {
-    return `Todo mês, ${POSICOES_POR_EXTENSO[regra.posicao][ehFeminino(regra.diaDaSemana)]} ${NOMES_DOS_DIAS[regra.diaDaSemana].replace("-feira", "")}, ${termino}`;
-  }
-  const dias = regra.dias.map((d) => NOMES_NO_PLURAL[d]);
-  const lista = dias.length > 1 ? `${dias.slice(0, -1).join(", ")} e ${dias.at(-1)}` : dias[0];
-  return `${regra.frequencia === "semanal" ? "Toda semana" : "A cada duas semanas"}, ${lista}, ${termino}`;
+  return `Toda semana, ${regra.dias.map((d) => NOMES_NO_PLURAL[d]).join(", ")}, ${termino}`;
 }
 
 // Edição ---------------------------------------------------------------------

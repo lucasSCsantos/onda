@@ -50,7 +50,7 @@ export default async function PaginaEditarEvento(props: PageProps<"/eventos/[id]
       <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
         <Link href={`/eventos/${evento.id}`} className="text-sm text-texto-suave hover:text-texto">
-          ‹ {evento.titulo}
+          ‹ {evento.tituloDeExibicao}
         </Link>
         <h1 className="flex items-center gap-3 text-2xl font-semibold">
           <span aria-hidden className="size-3 rounded-full" style={{ backgroundColor: evento.categoria.cor }} />

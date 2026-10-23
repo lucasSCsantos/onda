@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import { envolvidosDoEvento } from "@/dominio/filtros";
-import { semResponsavel, statusNoMomento, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
+import { semResponsavel, statusNoMomento, tituloDeExibicao, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 import { semProfessor } from "@/dominio/professores";
 import type { OcorrenciaGravada, RegraDaSerie } from "@/dominio/series";
 
@@ -96,6 +96,7 @@ type EventoDoBanco = {
   local: string;
   status: Status;
   responsavel_id: string | null;
+  numero_da_ocorrencia: number | null;
   campos: Evento["campos"];
   categorias: { id: string; nome: string; cor: string; areas: { nome: string }; campos_das_categorias: { id: string; nome: string; tipo: string }[] };
   responsavel: { nome: string; ativo: boolean } | null;
@@ -110,7 +111,7 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
   let consulta = supabase
     .from("eventos")
     .select(
-      `id, titulo, inicio, fim, dia_inteiro, local, status, responsavel_id, campos,
+      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, status, responsavel_id, campos,
       categorias(id, nome, cor, areas(nome), campos_das_categorias(id, nome, tipo)),
       responsavel:perfis!eventos_responsavel_id_fkey(nome, ativo)`,
     );
@@ -124,7 +125,7 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
     const periodo = { inicio: new Date(e.inicio), fim: e.fim ? new Date(e.fim) : null, diaInteiro: e.dia_inteiro };
     return {
       id: e.id,
-      titulo: e.titulo,
+      titulo: tituloDeExibicao({ titulo: e.titulo, numero: e.numero_da_ocorrencia }),
       ...periodo,
       local: e.local,
       status: statusNoMomento({ ...periodo, status: e.status }, agora),
@@ -142,6 +143,8 @@ type PessoaGravada = { id: string; nome: string; ativo: boolean };
 
 export type EventoCompleto = Evento & {
   id: string;
+  /** "Título · número" nas Ocorrências de Série; o `titulo` é o digitado, para a edição. */
+  tituloDeExibicao: string;
   categoria: CategoriaComArea;
   /** O Responsável gravado, mesmo desativado; `semResponsavel` decide se ele ainda conta. */
   pessoaResponsavel: PessoaGravada | null;
@@ -175,7 +178,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
   const { data: e } = await supabase
     .from("eventos")
     .select(
-      `id, titulo, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada,
+      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada,
       categorias(${SELECAO_DA_CATEGORIA}),
       responsavel:perfis!eventos_responsavel_id_fkey(id, nome, ativo),
       criador:perfis!eventos_criado_por_fkey(nome),
@@ -189,6 +192,8 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
   return {
     id: e.id,
     titulo: e.titulo,
+    numero: e.numero_da_ocorrencia,
+    tituloDeExibicao: tituloDeExibicao({ titulo: e.titulo, numero: e.numero_da_ocorrencia }),
     inicio: new Date(e.inicio),
     fim: e.fim ? new Date(e.fim) : null,
     diaInteiro: e.dia_inteiro,
@@ -249,7 +254,7 @@ export async function serie(supabase: SupabaseClient, id: string): Promise<Serie
 
   const { data } = await supabase
     .from("eventos")
-    .select("id, titulo, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, editada")
+    .select("id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, editada")
     .eq("serie_id", id)
     .order("inicio")
     .overrideTypes<OcorrenciaDoBanco[], { merge: false }>();
@@ -263,6 +268,7 @@ export async function serie(supabase: SupabaseClient, id: string): Promise<Serie
       editada: e.editada,
       evento: {
         titulo: e.titulo,
+        numero: e.numero_da_ocorrencia,
         inicio: new Date(e.inicio),
         fim: e.fim ? new Date(e.fim) : null,
         diaInteiro: e.dia_inteiro,

@@ -1,6 +1,6 @@
 import { NOMES_DOS_NIVEIS, type NivelDeAcesso } from "./acesso";
 import type { Celula } from "./csv";
-import { NOMES_DOS_STATUS, statusNoMomento, type Status } from "./eventos";
+import { NOMES_DOS_STATUS, statusNoMomento, tituloDeExibicao, type Status } from "./eventos";
 import { dataLocal, horaLocal } from "./fuso";
 
 export const TABELAS_EXPORTADAS = ["eventos", "adolescentes", "usuarios"] as const;
@@ -42,6 +42,7 @@ const dataEHora = (iso: string) => {
 
 type EventoDoBanco = {
   titulo: string;
+  numero_da_ocorrencia?: number | null;
   categorias: { nome: string };
   inicio: string;
   fim: string | null;
@@ -63,7 +64,7 @@ export function tabelaDeEventos(eventos: EventoDoBanco[], agora: Date): TabelaCs
       const periodo = { inicio: new Date(e.inicio), fim: e.fim ? new Date(e.fim) : null, diaInteiro: e.dia_inteiro };
       const status = statusNoMomento({ ...periodo, status: e.status as Status }, agora);
       return [
-        e.titulo,
+        tituloDeExibicao({ titulo: e.titulo, numero: e.numero_da_ocorrencia }),
         e.categorias.nome,
         quando(e.inicio, e.dia_inteiro),
         e.fim ? quando(e.fim, e.dia_inteiro) : "",

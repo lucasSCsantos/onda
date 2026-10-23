@@ -45,9 +45,7 @@ function entradaDoFormulario(dados: FormData, categoria: CategoriaDoEvento): Ent
 function entradaDaRegra(dados: FormData): EntradaDeRegra {
   return {
     frequencia: campoTexto(dados, "repeticao"),
-    dias: dados.getAll("repete_dias").map(String),
-    posicao: campoTexto(dados, "repete_posicao"),
-    diaDaSemana: campoTexto(dados, "repete_dia_da_semana"),
+    dias: [],
     terminoPor: campoTexto(dados, "termino_por"),
     terminoData: campoTexto(dados, "termino_data"),
     terminoOcorrencias: campoTexto(dados, "termino_ocorrencias"),
@@ -69,8 +67,7 @@ const soOEvento = (e: Evento): Evento => ({
 });
 
 export async function criarEvento(categoriaId: string, anterior: EstadoDoEvento, dados: FormData): Promise<EstadoDoEvento> {
-  // Os dias da regra vêm em várias caixas de marcar com o mesmo nome; o formulário os recebe de volta numa lista.
-  const valores = { ...valoresDigitados(dados), repete_dias: dados.getAll("repete_dias").join(",") };
+  const valores = valoresDigitados(dados);
   const falhou = (erro: string): EstadoDoEvento => ({ erro, valores, tentativa: (anterior.tentativa ?? 0) + 1 });
 
   const supabase = await supabaseDoServidor();

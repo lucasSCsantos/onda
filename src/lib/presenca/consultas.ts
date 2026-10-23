@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { tituloDeExibicao } from "@/dominio/eventos";
 import type { AulaComChamada, IconeDeMarcacao, Marcacao, PresencaNaAula } from "@/dominio/presenca";
 
 type MarcacaoDoBanco = {
@@ -66,7 +67,7 @@ export async function adolescentes(supabase: SupabaseClient): Promise<{ id: stri
 
 type PresencaComAulaDoBanco = PresencaDoBanco & {
   evento_id: string;
-  eventos: { id: string; titulo: string; inicio: string; categorias: { nome: string } };
+  eventos: { id: string; titulo: string; numero_da_ocorrencia: number | null; inicio: string; categorias: { nome: string } };
 };
 
 export type PresencasDoPeriodo = {
@@ -91,7 +92,7 @@ export async function presencasDoPeriodo(
   for (let de = 0; ; de += PAGINA) {
     let consulta = supabase
       .from("presencas")
-      .select("id, evento_id, adolescente_id, marcacoes_das_presencas(marcacao_id, visitante), eventos!inner(id, titulo, inicio, status, categorias(nome))")
+      .select("id, evento_id, adolescente_id, marcacoes_das_presencas(marcacao_id, visitante), eventos!inner(id, titulo, numero_da_ocorrencia, inicio, status, categorias(nome))")
       .neq("eventos.status", "cancelado");
     if (periodo.desde) consulta = consulta.gte("eventos.inicio", periodo.desde.toISOString());
     if (periodo.ate) consulta = consulta.lt("eventos.inicio", periodo.ate.toISOString());
@@ -107,7 +108,7 @@ export async function presencasDoPeriodo(
     if (!aulas.has(linha.evento_id)) {
       aulas.set(linha.evento_id, {
         id: linha.eventos.id,
-        titulo: linha.eventos.titulo,
+        titulo: tituloDeExibicao({ titulo: linha.eventos.titulo, numero: linha.eventos.numero_da_ocorrencia }),
         inicio: new Date(linha.eventos.inicio),
         categoria: linha.eventos.categorias.nome,
       });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
 import { IconeDaMarcacao } from "@/components/icone-da-marcacao";
 import { podeGerenciarContas } from "@/dominio/acesso";
+import { tituloDeExibicao } from "@/dominio/eventos";
 import { FUSO, somarDias } from "@/dominio/fuso";
 import { alertasDeAusencia, estevePresente, resumoDaAula } from "@/dominio/presenca";
 import { configuracoes } from "@/lib/configuracoes/consultas";
@@ -16,7 +17,7 @@ export const metadata: Metadata = { title: "Presença", robots: { index: false, 
 
 const dia = (instante: Date) => instante.toLocaleDateString("pt-BR", { timeZone: FUSO, weekday: "short", day: "numeric", month: "short" });
 
-type AulaRecente = { id: string; titulo: string; inicio: string; categorias: { nome: string } };
+type AulaRecente = { id: string; titulo: string; numero_da_ocorrencia: number | null; inicio: string; categorias: { nome: string } };
 
 export default async function PaginaDePresenca() {
   const eu = await exigirLideranca();
@@ -31,7 +32,7 @@ export default async function PaginaDePresenca() {
     // As aulas das Categorias com chamada até o fim de hoje, com ou sem chamada feita.
     supabase
       .from("eventos")
-      .select("id, titulo, inicio, categorias!inner(nome)")
+      .select("id, titulo, numero_da_ocorrencia, inicio, categorias!inner(nome)")
       .eq("categorias.tem_chamada", true)
       .neq("status", "cancelado")
       .gte("inicio", somarDias(agora, -60).toISOString())
@@ -109,7 +110,7 @@ export default async function PaginaDePresenca() {
                       className="toque flex flex-col gap-2 rounded-2xl border border-borda bg-superficie p-4 shadow-sm hover:bg-fundo"
                     >
                       <span className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold">{aula.titulo}</span>
+                        <span className="font-semibold">{tituloDeExibicao({ titulo: aula.titulo, numero: aula.numero_da_ocorrencia })}</span>
                         <span className="shrink-0 text-sm text-texto-suave">{dia(new Date(aula.inicio))}</span>
                       </span>
                       {resumo ? (

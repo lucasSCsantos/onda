@@ -44,12 +44,12 @@ export default async function PaginaDaChamada(props: PageProps<"/eventos/[id]/ch
       <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6">
         <Link href={`/eventos/${evento.id}`} className="text-sm text-texto-suave hover:text-texto">
-          ‹ {evento.titulo}
+          ‹ {evento.tituloDeExibicao}
         </Link>
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Chamada</h1>
           <p className="text-sm text-texto-suave first-letter:uppercase">
-            {evento.categoria.nome} · {evento.titulo} · {data(evento.inicio)}
+            {evento.categoria.nome} · {evento.tituloDeExibicao} · {data(evento.inicio)}
           </p>
         </div>
         {pode ? (

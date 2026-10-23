@@ -35,6 +35,11 @@ describe("tabelaDeEventos", () => {
     criado_em: "2026-10-20T12:00:00Z",
   };
 
+  it("a Ocorrência de Série sai com o título de exibição; o avulso, com o digitado", () => {
+    const titulos = tabelaDeEventos([{ ...evento, numero_da_ocorrencia: 3 }, { ...evento, numero_da_ocorrencia: null }], agora).linhas.map((l) => l[0]);
+    expect(titulos).toEqual(["EBD · 3", "EBD"]);
+  });
+
   it("mostra datas e horas no fuso do Mural e o Status por extenso", () => {
     const { cabecalho, linhas } = tabelaDeEventos([evento], agora);
     expect(cabecalho).toEqual([

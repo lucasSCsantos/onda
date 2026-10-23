@@ -127,7 +127,7 @@ describe("logs de Séries", () => {
       .rpc("criar_serie", {
         categoria: culto.id,
         regra: { frequencia: "semanal", dias: [0], termino: { ocorrencias: 3 } },
-        primeiro_dia: "2026-11-01",
+        primeiro_dia: daqui(24).slice(0, 10),
         ocorrencias: [24, 24 * 8, 24 * 15].map((h) => ocorrencia(mariana.id, daqui(h))),
       })
       .throwOnError();
@@ -159,7 +159,7 @@ describe("logs de Séries", () => {
       .rpc("criar_serie", {
         categoria: culto.id,
         regra: { frequencia: "semanal", dias: [0], termino: { ocorrencias: 2 } },
-        primeiro_dia: "2026-11-01",
+        primeiro_dia: daqui(24).slice(0, 10),
         ocorrencias: [24, 24 * 8].map((h) => ocorrencia(mariana.id, daqui(h))),
       })
       .throwOnError();
@@ -181,7 +181,7 @@ describe("logs de Séries", () => {
       .rpc("criar_serie", {
         categoria: culto.id,
         regra: { frequencia: "semanal", dias: [0], termino: { ocorrencias: 1 } },
-        primeiro_dia: "2026-11-01",
+        primeiro_dia: daqui(24).slice(0, 10),
         ocorrencias: [ocorrencia(mariana.id, daqui(24))],
       })
       .throwOnError();

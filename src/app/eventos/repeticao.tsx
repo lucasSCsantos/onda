@@ -1,24 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CaixaDeMarcar, Campo, Selecao } from "@/components/formulario";
-import { MAXIMO_DE_OCORRENCIAS, NOMES_DOS_DIAS } from "@/dominio/series";
-
-const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-const POSICOES = [
-  { valor: "1", texto: "Primeiro" },
-  { valor: "2", texto: "Segundo" },
-  { valor: "3", texto: "Terceiro" },
-  { valor: "4", texto: "Quarto" },
-  { valor: "ultimo", texto: "Último" },
-];
+import { Campo, Selecao } from "@/components/formulario";
+import { MAXIMO_DE_MESES, MAXIMO_DE_OCORRENCIAS } from "@/dominio/series";
 
 /** A repetição de um Evento novo: com ela, o Evento vira uma Série. `valor` devolve o que foi digitado, depois de um erro. */
 export function Repeticao({ valor }: { valor: (nome: string) => string }) {
   const [frequencia, setFrequencia] = useState(valor("repeticao"));
   const [terminoPor, setTerminoPor] = useState(valor("termino_por") || "contagem");
-  const diasMarcados = valor("repete_dias").split(",");
 
   return (
     <fieldset className="flex flex-col gap-3 rounded-lg border border-borda p-3">
@@ -31,39 +20,15 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
         opcoes={[
           { valor: "", texto: "Não repete" },
           { valor: "semanal", texto: "Toda semana" },
-          { valor: "quinzenal", texto: "A cada duas semanas" },
-          { valor: "mensal", texto: "Todo mês, num dia da semana" },
         ]}
       />
 
       {frequencia && (
         <>
           <p className="text-sm text-texto-suave">
-            Cada data vira um Evento que você pode editar à parte. A primeira é o primeiro dia, a partir da data acima, que cai na regra.
+            A Série repete no máximo toda semana, por até {MAXIMO_DE_MESES} meses, no dia da semana da data acima. Cada data vira um Evento
+            numerado, na ordem das datas, que você pode editar à parte.
           </p>
-
-          {(frequencia === "semanal" || frequencia === "quinzenal") && (
-            <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-              <legend className="mb-1.5 text-sm text-texto-suave">Nos dias (sem nenhum marcado, repete no dia da semana da data)</legend>
-              {DIAS_CURTOS.map((nome, dia) => (
-                <CaixaDeMarcar key={dia} rotulo={nome} name="repete_dias" value={dia} defaultChecked={diasMarcados.includes(String(dia))} />
-              ))}
-            </fieldset>
-          )}
-
-          {frequencia === "mensal" && (
-            <div className="grid grid-cols-2 gap-3">
-              <Selecao rotulo="Posição" name="repete_posicao" opcoes={POSICOES} vazia="Escolha" defaultValue={valor("repete_posicao")} required />
-              <Selecao
-                rotulo="Dia da semana"
-                name="repete_dia_da_semana"
-                opcoes={NOMES_DOS_DIAS.map((nome, dia) => ({ valor: String(dia), texto: nome }))}
-                vazia="Escolha"
-                defaultValue={valor("repete_dia_da_semana")}
-                required
-              />
-            </div>
-          )}
 
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1.5 text-sm text-texto-suave">Termina</legend>
@@ -78,7 +43,7 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
                 className="mb-3.5 size-4 accent-marca"
               />
               <Campo
-                rotulo={`Depois de quantas Ocorrências (até ${MAXIMO_DE_OCORRENCIAS})`}
+                rotulo={`Depois de quantas Ocorrências (até ${MAXIMO_DE_OCORRENCIAS}, dentro de ${MAXIMO_DE_MESES} meses)`}
                 name="termino_ocorrencias"
                 type="number"
                 min={1}
