@@ -3,11 +3,15 @@ import { execSync } from "node:child_process";
 
 const PORTA = Number(process.env.PORTA_FUMACA ?? 3100);
 
-/** URL e chave pública do Supabase local, as mesmas que o app lê no build. */
+/** URL e chaves do Supabase local, as mesmas que o app lê: a pública no build e a service-role (só do servidor) em execução. */
 function ambienteDoApp() {
   const saida = execSync("pnpm exec supabase status -o env", { encoding: "utf8" });
   const valor = (nome: string) => saida.match(new RegExp(`^${nome}="?([^"\r\n]*)"?`, "m"))?.[1] ?? "";
-  return { NEXT_PUBLIC_SUPABASE_URL: valor("API_URL"), NEXT_PUBLIC_SUPABASE_ANON_KEY: valor("ANON_KEY") };
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: valor("API_URL"),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: valor("ANON_KEY"),
+    SUPABASE_SERVICE_ROLE_KEY: valor("SERVICE_ROLE_KEY"),
+  };
 }
 
 // Testes de fumaça: o app já compilado (o service worker só existe em produção) falando com o Supabase local,

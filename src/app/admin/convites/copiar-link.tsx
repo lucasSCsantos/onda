@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 
-export function CopiarLink({ link }: { link: string }) {
+export function CopiarLink({ link, rotulo = "Link do convite" }: { link: string; rotulo?: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
     <>
       <input
         readOnly
         value={link}
-        aria-label="Link do convite"
+        aria-label={rotulo}
         onFocus={(e) => e.currentTarget.select()}
         className="min-h-11 min-w-0 flex-1 rounded-lg border border-borda bg-fundo px-3 py-1.5 text-sm"
       />

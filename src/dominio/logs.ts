@@ -445,6 +445,24 @@ export const ACOES: Record<string, Definicao> = {
     ],
     tentativa: "apagar os logs antigos",
   },
+  "calendario.gerado": {
+    nome: "Assinatura de calendário gerada",
+    visual: "criacao",
+    feito: () => ["gerou o endereço da própria Assinatura de calendário"],
+    tentativa: "gerar a Assinatura de calendário",
+  },
+  "calendario.regerado": {
+    nome: "Assinatura de calendário regerada",
+    visual: "edicao",
+    feito: () => ["regerou o endereço da própria Assinatura de calendário (o anterior deixou de valer)"],
+    tentativa: "regerar a Assinatura de calendário",
+  },
+  "calendario.revogado": {
+    nome: "Assinatura de calendário revogada",
+    visual: "exclusao",
+    feito: () => ["revogou a própria Assinatura de calendário"],
+    tentativa: "revogar a Assinatura de calendário",
+  },
   "dados.exportados": {
     nome: "Dados exportados",
     visual: "acesso",

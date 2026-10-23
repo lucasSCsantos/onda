@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./ambiente";
 
-/** Rotas abertas a quem não entrou. */
-const ROTAS_PUBLICAS = ["/entrar", "/cadastro", "/recuperar-senha", "/auth/confirmar"];
+/** Rotas abertas a quem não entrou. O feed do calendário se autentica pelo token do endereço, não pela sessão. */
+const ROTAS_PUBLICAS = ["/entrar", "/cadastro", "/recuperar-senha", "/auth/confirmar", "/feed"];
 
 /** Renova a sessão nos cookies e manda quem não entrou para a tela de entrada. */
 export async function atualizarSessao(request: NextRequest) {

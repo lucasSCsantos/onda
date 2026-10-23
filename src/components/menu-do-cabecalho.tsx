@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Trophy, Users, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Trophy, UserRound, Users, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
@@ -15,6 +15,7 @@ const ADOLESCENTES: Destino = { href: "/adolescentes", rotulo: "Adolescentes", i
 const PRESENCA: Destino = { href: "/presenca", rotulo: "Presença", icone: ClipboardCheck };
 const RANKING: Destino = { href: "/ranking", rotulo: "Ranking", icone: Trophy };
 const PROFESSORES: Destino = { href: CAMINHO_DOS_PROFESSORES, rotulo: "Professores", icone: GraduationCap };
+const MINHA_CONTA: Destino = { href: "/conta", rotulo: "Minha conta", icone: UserRound };
 const ADMINISTRACAO: Destino = { href: "/admin", rotulo: "Administração", icone: LayoutDashboard };
 
 /**
@@ -38,6 +39,7 @@ export function MenuDoCabecalho({
     // O Admin chega a Professores pelo menu da administração, dentro do Admin.
     ...(professores && !admin ? [PROFESSORES] : []),
     ...(admin ? [ADMINISTRACAO] : []),
+    MINHA_CONTA,
   ];
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);

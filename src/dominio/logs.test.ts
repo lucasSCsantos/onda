@@ -140,6 +140,11 @@ describe("fraseDoLog", () => {
     expect(frase(desempate)).toBe("Carol Leal mudou o desempate do ranking de quem tem mais “Presente” para nenhum (o empate divide a posição)");
   });
 
+  it("a Assinatura de calendário aparece sem endereço nem token", () => {
+    expect(frase(log({ acao: "calendario.gerado", objetoTipo: "assinatura" }))).toBe("Carol Leal gerou o endereço da própria Assinatura de calendário");
+    expect(frase(log({ acao: "calendario.revogado", objetoTipo: "assinatura" }))).toBe("Carol Leal revogou a própria Assinatura de calendário");
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);
