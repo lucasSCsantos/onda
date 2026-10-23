@@ -1,0 +1,3 @@
+# O Drive é acessado por uma service account que só cria e lê, nunca apaga
+
+O app fala com o Drive do ministério por uma service account com acesso de editora a uma pasta compartilhada comum (o ministério ainda não tem Google Workspace, então não há Drive compartilhado). O app cria as Pastas dos Eventos e lê os Arquivos, e nunca apaga nem sobrescreve nada; toda leitura valida que o item está dentro da pasta raiz. Como a pasta é comum, as pastas criadas ficam com a service account como dona, e o ministério não as apaga ou move pela conta pessoal; trocar por um Drive compartilhado, quando existir, resolve isso sem mudar o app.

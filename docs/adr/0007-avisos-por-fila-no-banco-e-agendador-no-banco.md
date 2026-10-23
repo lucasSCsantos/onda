@@ -1,0 +1,3 @@
+# Notificações, pastas e feeds saem de filas no banco acionadas pelo `pg_cron`
+
+O envio de push e a criação de pastas no Drive precisam de código Node, mas o app não tem processo permanente nem depende do plano de cron da hospedagem. Por isso o app grava o que é devido em tabelas de fila (idempotentes), e o `pg_cron` do Supabase, que já agenda as outras tarefas, chama com `pg_net` uma rota do app protegida por segredo. Essa rota, o feed do calendário e o envio usam uma chave service-role guardada só no servidor, a primeira do projeto; a alternativa de fazer tudo em funções `security definer` do banco foi descartada por ser mais difícil de testar.

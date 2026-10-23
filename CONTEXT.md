@@ -11,7 +11,7 @@ Qualquer item do calendário (uma EBD, uma gincana, uma postagem), com categoria
 _Avoid_: Atividade, compromisso
 
 **Série**:
-O molde recorrente que gera Ocorrências (a "EBD semanal"); editar "esta e as seguintes" ou "toda a série" altera as Ocorrências afetadas sem dividir a Série nem tirá-las dela.
+O molde recorrente que gera Ocorrências (a "EBD semanal"); editar "esta e as seguintes" ou "toda a série" altera as Ocorrências afetadas sem dividir a Série nem tirá-las dela. Repete no máximo toda semana, por até 6 meses; cada Ocorrência leva um número na ordem das datas ("Aula de EBD · 3"), que não muda se outra for cancelada.
 _Avoid_: Recorrência, evento recorrente
 
 **Ocorrência**:
@@ -69,7 +69,7 @@ Nível de acesso de quem criou conta sem convite e aguarda aprovação; não vê
 O papel de uma pessoa no ministério (ex.: "Líder do louvor", "Co-líder do ministério"); pertence a uma Área, e a pessoa cria Eventos de todas as Categorias dessa Área. Uma pessoa pode ter várias Funções. A Área Geral cria todas as Categorias.
 
 **Professor**:
-Pessoa cadastrada que dá aulas de EBD; é escolhido por Ocorrência e, ao entrar no app, vê no calendário apenas as aulas em que foi colocado, podendo editar só as observações delas. Uma aula tem até dois: o Professor e o Auxiliar. Quem é Líder ou Admin também pode ser escolhido, sem outro cadastro; o nível de acesso Professor existe só para quem não é da Liderança.
+Pessoa cadastrada que dá aulas de EBD; é escolhido por Ocorrência e, ao entrar no app, vê no calendário apenas as aulas em que foi colocado, podendo editar só as observações delas e fazer a Chamada delas. Uma aula tem até dois: o Professor e o Auxiliar. Quem é Líder ou Admin também pode ser escolhido, sem outro cadastro; o nível de acesso Professor existe só para quem não é da Liderança.
 
 **Auxiliar**:
 O segundo Professor de uma aula, em apoio ao Professor principal.
@@ -82,7 +82,7 @@ _Avoid_: Membro, jovem
 ### Presença
 
 **Chamada**:
-A lista de presença de uma aula de uma Categoria com chamada (a EBD): para cada Adolescente ativo, as Marcações daquele dia. Quem faz é o Admin e quem tem Função na Área da Categoria, a partir do dia da aula; pode ser corrigida depois. Uma aula com Chamada não é excluída, só cancelada.
+A lista de presença de uma aula de uma Categoria com chamada (a EBD): para cada Adolescente ativo, as Marcações daquele dia. Quem faz é o Admin, quem tem Função na Área da Categoria e o Professor e o Auxiliar daquela aula (que, para isso, veem nome e identificador dos Adolescentes ativos, nunca a data de nascimento), a partir do dia da aula; pode ser corrigida depois. Uma aula com Chamada não é excluída, só cancelada.
 _Avoid_: Lista, frequência
 
 **Marcação**:
@@ -103,3 +103,24 @@ _Avoid_: Auditoria (o "Histórico do Evento" é o recorte dos Logs de um Evento)
 
 **Configurações**:
 O que o Admin ajusta sem mexer no sistema (por quanto tempo guardar os Logs, se líderes veem o histórico dos Eventos e o que as fases seguintes acrescentarem); cada mudança vira um Log.
+
+### Integrações e avisos
+
+**Pasta do Evento**:
+A pasta no Drive do ministério criada para um Evento de EBD ou Pequeno grupo (outras Categorias por configuração), cujo link vai para o campo "Link do material". Um link digitado à mão vale mais que a pasta automática; o app nunca apaga nada no Drive.
+_Avoid_: Diretório
+
+**Arquivos**:
+A seção, só de leitura e só para a Liderança, que mostra o Drive do ministério dentro do app, a partir de Atalhos escolhidos pelo Admin.
+_Avoid_: Biblioteca, galeria
+
+**Assinatura de calendário**:
+O endereço pessoal (.ics) com que uma pessoa vê os Eventos no calendário do celular; funciona como senha de leitura, pode ser regerado ou revogado e nunca traz Eventos Cancelados nem Rascunhos.
+_Avoid_: Exportação (já é outra coisa: o CSV do Admin)
+
+**Notificação**:
+O aviso a uma pessoa (Liderança, ou o Professor sobre as próprias aulas) sobre um Evento seu, entregue por push e guardado na central dentro do app; nunca leva dados de Adolescentes.
+_Avoid_: Alerta (o alerta é o aviso na tela, como o Alerta de ausência)
+
+**Minha conta**:
+A página de cada pessoa para ajustar suas Notificações e sua Assinatura de calendário.
