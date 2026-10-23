@@ -457,6 +457,12 @@ export const ACOES: Record<string, Definicao> = {
     feito: () => ["regerou o endereço da própria Assinatura de calendário (o anterior deixou de valer)"],
     tentativa: "regerar a Assinatura de calendário",
   },
+  "calendario.opcoes_alteradas": {
+    nome: "Opções da Assinatura de calendário alteradas",
+    visual: "edicao",
+    feito: () => ["mudou as opções da própria Assinatura de calendário"],
+    tentativa: "mudar as opções da Assinatura de calendário",
+  },
   "calendario.revogado": {
     nome: "Assinatura de calendário revogada",
     visual: "exclusao",

@@ -37,7 +37,7 @@ export async function agirNaAssinatura(_: EstadoDaAssinatura, dados: FormData): 
 
   if (acao === "salvar") {
     const { data, error } = await supabase.from("assinaturas_de_calendario").update(opcoes).eq("pessoa_id", eu.id).select("pessoa_id");
-    if (error || data.length === 0) return falhou(supabase, "calendario.regerado", error, "Não foi possível salvar as opções.");
+    if (error || data.length === 0) return falhou(supabase, "calendario.opcoes_alteradas", error, "Não foi possível salvar as opções.");
     revalidatePath("/conta");
     return { aviso: "Opções salvas. O calendário do celular atualiza sozinho." };
   }
@@ -85,6 +85,7 @@ function falhou(
   erro: { message?: string; code?: string } | null,
   mensagem: string,
 ): EstadoDaAssinatura {
-  registrarFalha(supabase, acao, { tipo: "assinatura" }, erro);
+  // Só o código vai para o Log: a mensagem do Postgres pode citar valores da linha, e o hash é segredo.
+  registrarFalha(supabase, acao, { tipo: "assinatura" }, { code: erro?.code });
   return { erro: mensagem };
 }
