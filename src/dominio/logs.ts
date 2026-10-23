@@ -469,6 +469,32 @@ export const ACOES: Record<string, Definicao> = {
     feito: () => ["revogou a própria Assinatura de calendário"],
     tentativa: "revogar a Assinatura de calendário",
   },
+  "push.ativado": {
+    nome: "Notificações ativadas em um dispositivo",
+    visual: "criacao",
+    feito: (log) => ["ativou as Notificações no dispositivo ", { destaque: log.objetoRotulo ?? "sem nome" }],
+    tentativa: "ativar as Notificações neste dispositivo",
+  },
+  "push.desativado": {
+    nome: "Notificações desativadas em um dispositivo",
+    visual: "exclusao",
+    feito: (log) => ["desativou as Notificações no dispositivo ", { destaque: log.objetoRotulo ?? "sem nome" }],
+    tentativa: "desativar as Notificações neste dispositivo",
+  },
+  "push.expirado": {
+    nome: "Inscrição de Notificações expirada",
+    visual: "exclusao",
+    feito: (log) => ["removeu a inscrição expirada do dispositivo ", { destaque: log.objetoRotulo ?? "sem nome" }, " (o serviço de push a recusou)"],
+    tentativa: "remover uma inscrição expirada",
+  },
+  "push.teste_enviado": {
+    nome: "Notificação de teste enviada",
+    visual: "acesso",
+    feito: (log) => [
+      `enviou uma Notificação de teste para si mesmo (${plural(numero(log.detalhes, "enviados"), "dispositivo recebeu", "dispositivos receberam")}${numero(log.detalhes, "falhas") > 0 ? `, ${plural(numero(log.detalhes, "falhas"), "falhou", "falharam")}` : ""})`,
+    ],
+    tentativa: "enviar uma Notificação de teste",
+  },
   "dados.exportados": {
     nome: "Dados exportados",
     visual: "acesso",

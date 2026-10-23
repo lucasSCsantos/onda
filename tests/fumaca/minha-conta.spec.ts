@@ -68,6 +68,26 @@ test("Minha conta: o endereço do calendário aparece uma vez, o feed responde, 
   expect(larguraExcedida).toBeLessThanOrEqual(0);
 });
 
+test("Minha conta: a seção Notificações aparece sem pedir permissão antes do toque", async ({ page }) => {
+  const funcao = await admin.from("funcoes").select("id").eq("nome", "Líder do louvor").single().throwOnError();
+  const convite = await admin.from("convites").insert({ nivel: "lider", funcao_id: funcao.data.id }).select("codigo").single().throwOnError();
+  await page.goto(`/cadastro?convite=${convite.data.codigo}`);
+  await page.getByLabel("Nome").fill(`Push ${crypto.randomUUID().slice(0, 8)}`);
+  await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
+  await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
+  await page.goto("/conta");
+  await expect(page.getByRole("heading", { name: "Notificações", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ativar neste aparelho" })).toBeVisible();
+  // Abrir a página não decide nada pela pessoa: a permissão continua por pedir.
+  expect(await page.evaluate(() => Notification.permission)).toBe("default");
+  const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
 test("o feed responde 404 a um endereço qualquer, sem sessão", async ({ request }) => {
   const resposta = await request.get(`/feed/${"a".repeat(43)}.ics`, { maxRedirects: 0 });
   expect(resposta.status()).toBe(404);

@@ -145,6 +145,12 @@ describe("fraseDoLog", () => {
     expect(frase(log({ acao: "calendario.revogado", objetoTipo: "assinatura" }))).toBe("Carol Leal revogou a própria Assinatura de calendário");
   });
 
+  it("push aparece com o nome do dispositivo e sem endpoint", () => {
+    expect(frase(log({ acao: "push.ativado", objetoTipo: "dispositivo", objetoRotulo: "iPhone · Safari" }))).toBe("Carol Leal ativou as Notificações no dispositivo iPhone · Safari");
+    expect(frase(log({ acao: "push.desativado", objetoTipo: "dispositivo", objetoRotulo: "Windows · Edge" }))).toBe("Carol Leal desativou as Notificações no dispositivo Windows · Edge");
+    expect(frase(log({ acao: "push.teste_enviado", detalhes: { enviados: 2, falhas: 1 } }))).toBe("Carol Leal enviou uma Notificação de teste para si mesmo (2 dispositivos receberam, 1 falhou)");
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);

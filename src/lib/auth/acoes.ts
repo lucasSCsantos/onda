@@ -1,7 +1,9 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
+import { COOKIE_DO_DISPOSITIVO } from "@/dominio/push";
 import { campoTexto } from "@/lib/campos";
 import { registrarLog, registrarLogAgora } from "@/lib/logs/registrar";
 import { origemDoApp } from "@/lib/origem";
@@ -25,6 +27,13 @@ export async function sair() {
   const supabase = await supabaseDoServidor();
   // Antes de sair: depois, a sessão já não diz quem foi.
   await registrarLogAgora(supabase, { acao: "acesso.logout" });
+  // Sair da conta tira a inscrição de push deste aparelho (o cookie guarda qual é), para a próxima pessoa não herdar os avisos.
+  const jar = await cookies();
+  const dispositivo = jar.get(COOKIE_DO_DISPOSITIVO)?.value;
+  if (dispositivo) {
+    await supabase.from("inscricoes_de_push").delete().eq("endpoint_hash", dispositivo);
+    jar.delete(COOKIE_DO_DISPOSITIVO);
+  }
   await supabase.auth.signOut();
   redirect("/entrar");
 }
