@@ -21,7 +21,7 @@ async function quemPode() {
 
 /** O aparelho só marca "este dispositivo" por um cookie do servidor com o hash do endpoint; sair da conta usa o mesmo. */
 async function lembrarDispositivo(hash: string) {
-  (await cookies()).set(COOKIE_DO_DISPOSITIVO, hash, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+  (await cookies()).set(COOKIE_DO_DISPOSITIVO, hash, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 });
 }
 
 /**

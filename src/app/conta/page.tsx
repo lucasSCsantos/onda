@@ -9,7 +9,6 @@ import { COOKIE_DO_DISPOSITIVO } from "@/dominio/push";
 import { assinaturaDa } from "@/lib/calendario/consultas";
 import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, categorias } from "@/lib/eventos/consultas";
-import { pushConfigurado, modoDeTeste } from "@/lib/push/enviador";
 import { dispositivosDa } from "@/lib/push/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { PainelDeNotificacoes } from "./painel-de-notificacoes";
@@ -54,7 +53,7 @@ export default async function PaginaMinhaConta() {
               usadoEm: d.usadoEm?.toISOString() ?? null,
             }))}
             chavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""}
-            configurado={pushConfigurado() || modoDeTeste()}
+            configurado={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)}
           />
         </section>
         <section aria-labelledby="calendario" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">

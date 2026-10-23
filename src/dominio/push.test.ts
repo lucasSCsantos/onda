@@ -59,6 +59,11 @@ describe("lerInscricao", () => {
   it("recusa o que não é HTTPS, não é endereço ou veio sem chaves", () => {
     expect(lerInscricao({ ...boa, endpoint: "http://fcm.googleapis.com/x" })).toBeNull();
     expect(lerInscricao({ ...boa, endpoint: "não é endereço" })).toBeNull();
+    // Endereço que não é de serviço de push: o servidor não chamaria (SSRF).
+    expect(lerInscricao({ ...boa, endpoint: "https://127.0.0.1/x" })).toBeNull();
+    expect(lerInscricao({ ...boa, endpoint: "https://fcm.googleapis.com.evil.test/x" })).toBeNull();
+    expect(lerInscricao({ ...boa, endpoint: "https://fcm.googleapis.com:8443/x" })).toBeNull();
+    expect(lerInscricao({ ...boa, endpoint: "https://web.push.apple.com/abc" })?.endpoint).toBe("https://web.push.apple.com/abc");
     expect(lerInscricao({ endpoint: boa.endpoint })).toBeNull();
     expect(lerInscricao({ ...boa, keys: { p256dh: "BNc", auth: "com espaço" } })).toBeNull();
     expect(lerInscricao(null)).toBeNull();

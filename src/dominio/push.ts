@@ -32,6 +32,14 @@ export function estadoDoPush(a: Ambiente): EstadoDoPush {
 
 export type InscricaoRecebida = { endpoint: string; p256dh: string; auth: string };
 
+/** Os serviços de push dos navegadores. O servidor faz um POST no endpoint, então só estes endereços valem. */
+const HOSTS_DE_PUSH = [
+  /^fcm\.googleapis\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/,
+  /^([a-z0-9-]+\.)*push\.apple\.com$/,
+  /^([a-z0-9-]+\.)*notify\.windows\.com$/,
+];
+
 const BASE64_URL = /^[A-Za-z0-9_-]+={0,2}$/;
 
 /** A inscrição que o navegador devolve (`PushSubscription.toJSON()`), conferida; `null` se não serve. */
@@ -46,7 +54,7 @@ export function lerInscricao(bruto: unknown): InscricaoRecebida | null {
     return null;
   }
   // Serviços de push falam só HTTPS; o resto seria o servidor do Mural chamando um endereço qualquer.
-  if (url.protocol !== "https:") return null;
+  if (url.protocol !== "https:" || url.port !== "" || !HOSTS_DE_PUSH.some((h) => h.test(url.hostname))) return null;
   const p256dh = keys?.p256dh;
   const auth = keys?.auth;
   if (typeof p256dh !== "string" || typeof auth !== "string") return null;

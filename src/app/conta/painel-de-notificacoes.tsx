@@ -149,8 +149,8 @@ export function PainelDeNotificacoes({
             </button>
             <button
               type="button"
-              onClick={() => tirar(dispositivos.find((d) => d.atual)?.id ?? "", true)}
-              disabled={ocupado || desativando}
+              onClick={() => tirar(dispositivos.find((d) => d.atual)!.id, true)}
+              disabled={ocupado || desativando || !esteNaLista}
               className="botao-secundario"
             >
               Desativar neste aparelho
