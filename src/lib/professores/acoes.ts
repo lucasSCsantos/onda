@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
-import { podeCadastrarProfessor } from "@/dominio/professores";
+import { CAMINHO_DOS_PROFESSORES, CAMINHO_DOS_PROFESSORES_NO_ADMIN, podeCadastrarProfessor } from "@/dominio/professores";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { perfilAtual } from "@/lib/contas/perfil";
@@ -16,6 +16,12 @@ async function quemCadastra() {
   const eu = await perfilAtual();
   const pode = eu !== null && podeCadastrarProfessor(eu, await areasDaPessoa(supabase, eu.id));
   return { supabase, pode };
+}
+
+/** A lista de Professores aparece dentro e fora do Admin; as duas telas recarregam juntas. */
+function revalidarProfessores() {
+  revalidatePath(CAMINHO_DOS_PROFESSORES);
+  revalidatePath(CAMINHO_DOS_PROFESSORES_NO_ADMIN);
 }
 
 /** Gera o convite de um Professor: nível Professor, sem Função, de uso único. */
@@ -35,7 +41,7 @@ export async function gerarConviteDeProfessor(_: EstadoFormulario, dados: FormDa
     return { erro: "Não foi possível gerar o convite." };
   }
 
-  revalidatePath("/professores");
+  revalidarProfessores();
   return { aviso: "Convite gerado. Copie o link na lista abaixo e envie para o Professor." };
 }
 
@@ -43,12 +49,12 @@ export async function revogarConviteDeProfessor(id: string) {
   const { supabase, pode } = await quemCadastra();
   if (!pode) return;
   await supabase.from("convites").update({ revogado_em: new Date().toISOString() }).eq("id", id).eq("nivel", "professor").is("usado_em", null);
-  revalidatePath("/professores");
+  revalidarProfessores();
 }
 
 /** Só o Admin inativa e reativa um Professor (podeInativarProfessor); a política de `perfis` confere. */
 export async function mudarAtivoDoProfessor(pessoa: string, ativo: boolean) {
   const supabase = await supabaseDoServidor();
   await supabase.from("perfis").update({ ativo }).eq("id", pessoa).eq("nivel", "professor");
-  revalidatePath("/professores");
+  revalidarProfessores();
 }

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { NivelDeAcesso, Pessoa } from "./acesso";
 import { lerEdicao, lerEvento, type EntradaDeEvento } from "./eventos";
 import {
+  CAMINHO_DOS_PROFESSORES,
+  CAMINHO_DOS_PROFESSORES_NO_ADMIN,
+  caminhoDosProfessores,
   eCampoDeAula,
   podeCadastrarProfessor,
   podeEditarSoAsObservacoes,
@@ -162,5 +165,17 @@ describe("escolher Professor e Auxiliar na aula", () => {
     const quem = { id: "lucas", nivel: "admin" as const, ativo: true };
     const edicao = lerEdicao(entrada({ p: "paulo" }), ebd, LIDERANCA, { anterior, quem, agora: new Date("2026-10-20T12:00:00Z") }, []);
     expect(edicao).toMatchObject({ evento: { campos: { p: "paulo" } } });
+  });
+});
+
+describe("para onde leva o link de Professores", () => {
+  it("o Admin fica dentro do Admin, com a barra lateral", () => {
+    expect(caminhoDosProfessores(pessoa("a", "admin"))).toBe(CAMINHO_DOS_PROFESSORES_NO_ADMIN);
+    expect(CAMINHO_DOS_PROFESSORES_NO_ADMIN).toBe("/admin/professores");
+  });
+
+  it("quem tem Função em Ensino, sem acesso ao Admin, continua fora dele", () => {
+    expect(caminhoDosProfessores(pessoa("l", "lider"))).toBe(CAMINHO_DOS_PROFESSORES);
+    expect(CAMINHO_DOS_PROFESSORES).toBe("/professores");
   });
 });

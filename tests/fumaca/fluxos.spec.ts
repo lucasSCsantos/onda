@@ -24,6 +24,14 @@ async function novoConvite(): Promise<string> {
   return convite.data.codigo;
 }
 
+/** Convite de Líder do ensino: a Função em Ensino que cadastra Professores sem ser Admin. */
+async function novoConviteDeEnsino(): Promise<string> {
+  const funcao = await admin.from("funcoes").select("id").eq("nome", "Líder do ensino").single();
+  const convite = await admin.from("convites").insert({ nivel: "lider", funcao_id: funcao.data!.id }).select("codigo").single();
+  if (convite.error) throw convite.error;
+  return convite.data.codigo;
+}
+
 /** Convite de Admin, sem Função. */
 async function novoConviteDeAdmin(): Promise<string> {
   const convite = await admin.from("convites").insert({ nivel: "admin" }).select("codigo").single();
@@ -159,6 +167,35 @@ test("painel do Admin: indicadores, cartões e navegação; o Líder não entra"
   await expect(page.getByRole("navigation", { name: "Administração" })).toBeHidden();
   await page.getByRole("button", { name: "Abrir menu" }).click();
   await expect(page.getByRole("link", { name: "Usuários" })).toBeVisible();
+});
+
+test("Professores no Admin: a barra lateral continua e o item fica ativo; /professores leva para dentro do Admin", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await cadastrar(page, "Admin de Professores", await novoConviteDeAdmin());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await page.goto("/admin");
+  const barra = page.getByRole("navigation", { name: "Administração" });
+  await barra.getByRole("link", { name: "Professores" }).click();
+
+  await expect(page).toHaveURL(/\/admin\/professores$/);
+  await expect(page.getByRole("heading", { name: "Novo Professor" })).toBeVisible();
+  await expect(barra).toBeVisible();
+  await expect(barra.getByRole("link", { name: "Professores" })).toHaveAttribute("aria-current", "page");
+
+  await page.goto("/professores");
+  await expect(page).toHaveURL(/\/admin\/professores$/);
+});
+
+test("Professores fora do Admin: o líder de Ensino abre pelo menu e continua em /professores", async ({ page }) => {
+  await cadastrar(page, "Líder de Ensino", await novoConviteDeEnsino());
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  await page.getByRole("link", { name: "Professores" }).click();
+
+  await expect(page).toHaveURL(/\/professores$/);
+  await expect(page.getByRole("heading", { name: "Novo Professor" })).toBeVisible();
+  await page.goto("/admin/professores");
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("Logs: o Admin vê a própria entrada em frase legível, abre os detalhes e filtra os alertas", async ({ page }) => {

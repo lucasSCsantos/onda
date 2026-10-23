@@ -1,4 +1,4 @@
-import { podeMudarAcesso, type Pessoa } from "./acesso";
+import { podeGerenciarContas, podeMudarAcesso, type Pessoa } from "./acesso";
 
 /** A Área cujas Funções cadastram Professores. */
 export const AREA_DO_ENSINO = "Ensino";
@@ -25,6 +25,14 @@ export function semProfessor(campos: Record<string, unknown>, definicoes: readon
   const vaga = definicoes.find((d) => eCampoDeAula(d) && d.nome === "Professor");
   return vaga !== undefined && typeof campos[vaga.id] !== "string";
 }
+
+/** A tela de Professores fora do Admin: o caminho de quem tem Função em Ensino e não entra no Admin. */
+export const CAMINHO_DOS_PROFESSORES = "/professores";
+/** A mesma tela dentro do Admin, com a barra lateral e o item ativo. */
+export const CAMINHO_DOS_PROFESSORES_NO_ADMIN = "/admin/professores";
+
+/** Para onde leva o link de Professores de cada pessoa: o Admin fica dentro do Admin; os líderes de Ensino, fora dele. */
+export const caminhoDosProfessores = (quem: Pessoa) => (podeGerenciarContas(quem) ? CAMINHO_DOS_PROFESSORES_NO_ADMIN : CAMINHO_DOS_PROFESSORES);
 
 /** Admin e quem tem Função em Ensino cadastram Professores e geram o convite deles. `areas` são as Áreas das Funções de quem cadastra. */
 export function podeCadastrarProfessor(quem: Pessoa, areas: readonly string[]): boolean {

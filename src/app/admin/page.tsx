@@ -4,6 +4,7 @@ import { SECOES_DE_ADMIN } from "@/components/destinos-admin";
 import { TABELAS_EXPORTADAS } from "@/dominio/exportacao";
 import { indicadoresDoPainel } from "@/dominio/painel-admin";
 import { somarDias } from "@/dominio/fuso";
+import { CAMINHO_DOS_PROFESSORES_NO_ADMIN } from "@/dominio/professores";
 import { configuracoes } from "@/lib/configuracoes/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { categorias, eventos } from "@/lib/eventos/consultas";
@@ -57,7 +58,7 @@ export default async function PainelDeAdmin() {
     "/admin/usuarios": `${indicadores.usuariosAtivos} ativos`,
     "/admin/convites": `${indicadores.convitesAtivos} ativos`,
     "/admin/catalogo": `${doCatalogo.length} Categorias`,
-    "/professores": `${professores.filter((p) => p.ativo).length} cadastrados`,
+    [CAMINHO_DOS_PROFESSORES_NO_ADMIN]: `${professores.filter((p) => p.ativo).length} cadastrados`,
     "/admin/exportar": `${TABELAS_EXPORTADAS.length} tabelas`,
     "/admin/logs": alertasDaSemana ? `${alertasDaSemana} ${alertasDaSemana === 1 ? "alerta" : "alertas"} em 7 dias` : "Sem alertas em 7 dias",
     "/admin/marcacoes": `${marcacoesAtivas} ativas`,
