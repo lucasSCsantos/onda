@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import type { NativosDaCategoria } from "@/dominio/campos-nativos";
+import type { EstadoDaPasta } from "@/dominio/drive";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, tituloDeExibicao, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 import { professoresDaAula, semProfessor } from "@/dominio/professores";
@@ -190,6 +191,8 @@ export type EventoCompleto = Evento & {
   /** A Série de que o Evento é Ocorrência, e se foi editado individualmente. */
   serieId: string | null;
   editada: boolean;
+  /** A pasta do Evento no Drive (ADR 0006); nulo quando ele não ganha pasta sozinho. */
+  pastaEstado: EstadoDaPasta | null;
   criadoPor: string;
   criadoEm: Date;
   editadoPor: string | null;
@@ -205,6 +208,7 @@ type EventoCompletoDoBanco = Omit<EventoDoBanco, "categorias" | "responsavel"> &
   editado_em: string | null;
   serie_id: string | null;
   editada: boolean;
+  pasta_estado: EstadoDaPasta | null;
   categorias: CategoriaDoBanco;
   responsavel: PessoaGravada | null;
   /** Nulo para o Professor, que não lê as outras contas. */
@@ -217,7 +221,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
   const { data: e } = await supabase
     .from("eventos")
     .select(
-      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada,
+      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada, pasta_estado,
       categorias(${SELECAO_DA_CATEGORIA}),
       responsavel:perfis!eventos_responsavel_id_fkey(id, nome, ativo),
       criador:perfis!eventos_criado_por_fkey(nome),
@@ -245,6 +249,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
     categoria: comArea(e.categorias),
     serieId: e.serie_id,
     editada: e.editada,
+    pastaEstado: e.pasta_estado,
     pessoaResponsavel: e.responsavel,
     criadoPor: e.criador?.nome ?? "",
     criadoEm: new Date(e.criado_em),

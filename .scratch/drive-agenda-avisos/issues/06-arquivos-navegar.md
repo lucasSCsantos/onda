@@ -15,4 +15,5 @@
 - [ ] Nenhum token, credencial ou URL de acesso direto ao Drive vai ao navegador
 - [ ] Drive desligado ou com erro mostra um estado claro, sem tela quebrada
 - [ ] Mobile-first, grade adequada ao celular
+- [ ] Estende o cliente do Drive do ticket 04 (hoje só acha e cria pasta) com listar, obter pais e metadados e baixar, e o Drive falso (`src/lib/drive/falso.ts`) com o mesmo
 - [ ] Testes com o Drive falso (bloqueio fora da raiz, permissão por atalho, erro da integração) e do banco (políticas dos atalhos)

@@ -11,6 +11,6 @@
 - [ ] Criar uma Série enfileira uma tarefa de pasta por Ocorrência sem esperar o Drive; as pastas usam o título de exibição (com número) no nome
 - [ ] Falhas de uma Ocorrência não impedem as outras e fazem novas tentativas
 - [ ] Mudar título ou data de um Evento (ou o número, ao editar a Série) renomeia a pasta existente por tarefa, sem apagar nada
-- [ ] "Criar pasta agora" cria a pasta de um Evento sem pasta ou com erro, respeitando um link manual já preenchido
+- [ ] "Criar pasta agora" cria a pasta de um Evento sem pasta ou com erro, respeitando um link manual já preenchido; para o Evento com erro, reabre a tarefa fechada (`tarefas_de_pasta` tem uma linha por Evento, `evento_id` é único) e zera as tentativas
 - [ ] Cancelar uma Ocorrência não toca na pasta
 - [ ] Testes com o Drive falso (uma pasta por Ocorrência, não duplicação, renomear, nova tentativa) e Logs de criação e falha

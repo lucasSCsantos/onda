@@ -11,6 +11,8 @@ function ambienteDoApp() {
     NEXT_PUBLIC_SUPABASE_URL: valor("API_URL"),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: valor("ANON_KEY"),
     SUPABASE_SERVICE_ROLE_KEY: valor("SERVICE_ROLE_KEY"),
+    // O agendador responde só a quem manda este segredo (tests/fumaca/pasta-do-evento.spec.ts); o Google fica sem credencial.
+    CRON_SECRET: "segredo-de-teste-da-fumaca",
   };
 }
 

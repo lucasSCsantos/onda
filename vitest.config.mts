@@ -6,7 +6,8 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: "dominio", include: ["src/dominio/**/*.test.ts"] },
+        // O cliente real do Drive (tests/drive) também roda aqui: fala só com um servidor HTTP de mentira, sem banco.
+        test: { name: "dominio", include: ["src/dominio/**/*.test.ts", "tests/drive/**/*.test.ts"] },
       },
       {
         extends: true,

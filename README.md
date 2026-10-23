@@ -14,9 +14,52 @@ Modelo em `.env.example`. No Supabase local, copie `API_URL`, `ANON_KEY` e `SERV
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | navegador e servidor | chave pública (anon); as políticas por linha protegem os dados |
 | `SUPABASE_SERVICE_ROLE_KEY` | **só o servidor** | chave service-role, que ignora as políticas por linha. Usada apenas pelo feed do calendário (`/feed/<token>.ics`). Nunca use o prefixo `NEXT_PUBLIC_` nela, nem a coloque em código que roda no navegador |
 | `FEED_LIMITE_POR_HORA` | servidor, opcional | consultas por hora que cada endereço de calendário aceita (padrão 60) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | **só o servidor** | o JSON da chave da service account do Google, numa linha só; usada pela rota do agendador para criar pastas no Drive |
+| `CRON_SECRET` | **só o servidor** | segredo que o banco manda em `Authorization: Bearer` ao chamar as rotas `/api/agendador/*`; sem ele, nada é processado |
 
-Em produção (Vercel), cadastre `SUPABASE_SERVICE_ROLE_KEY` como variável de ambiente do projeto, só para o servidor; a chave
-`service_role` fica no painel do Supabase, em Project Settings → API.
+Em produção (Vercel), cadastre `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON` e `CRON_SECRET` como variáveis de
+ambiente do projeto, só para Production e marcadas como Sensitive; a chave `service_role` fica no painel do Supabase, em
+Project Settings → API. Variáveis novas só valem em deploys novos. O `scripts/wizard-integracoes.sh` guia esses passos (Google
+Cloud, compartilhar a pasta, Vault do Supabase e as variáveis da Vercel).
+
+## Pastas dos Eventos no Drive
+
+Com o Drive ligado em **Admin → Configurações**, cada Evento avulso de uma Categoria marcada ali (a EBD e o Pequeno grupo, por
+padrão) ganha sozinho uma pasta `Categoria/Ano/AAAA-MM-DD · título` dentro da pasta do ministério, e o link entra no campo
+"Link do material". O Mural só cria e lê: nunca apaga nem sobrescreve nada no Drive, e um link digitado à mão vale mais que a
+pasta automática. As decisões estão nos ADRs 0006 e 0007.
+
+Como funciona:
+
+- ao criar o Evento, o banco enfileira uma tarefa (`tarefas_de_pasta`, uma por Evento); a interface não lê essa tabela;
+- todo minuto em que há tarefa devida, o `pg_cron` do Supabase chama a rota `POST /api/agendador/pastas` com `pg_net`,
+  mandando `Authorization: Bearer <CRON_SECRET>`; a URL do app e o segredo ficam no Vault do Supabase (`app_url` e `cron_secret`);
+- a rota reserva as tarefas, cria as pastas pela API v3 do Drive com a service account e devolve o resultado ao banco, que grava
+  o link e os Logs (`drive.pasta_criada` e `drive.pasta_falhou`);
+- falha passageira é refeita até 5 vezes, com espera crescente (1, 5, 15, 60 e 240 minutos); erro permanente (pasta raiz sem
+  acesso) fecha a tarefa na hora, o Evento avisa que não foi possível criar a pasta e o campo continua preenchível à mão;
+- sem `GOOGLE_SERVICE_ACCOUNT_JSON` ou `SUPABASE_SERVICE_ROLE_KEY`, a rota responde 503 e as tarefas esperam; o estado dessas
+  variáveis (só sim ou não) aparece em Configurações;
+- o Drive desligado não enfileira nada, e o Evento nasce normal;
+- tarefa que gasta as 5 tentativas sem nunca receber resposta (a rota caiu depois de reservar, de novo e de novo) fecha com
+  erro na reserva seguinte, em vez de ficar pendente para sempre;
+- uma tarefa já na fila segue mesmo se a Categoria for desmarcada depois; já um Evento criado com o Drive desligado, ou antes de
+  ligá-lo, não ganha pasta sozinho (o botão "Criar pasta agora" é do ticket 05).
+
+Limites conhecidos: se duas rodadas do agendador rodarem juntas (só se a reserva de 10 minutos vencer no meio), as pastas de
+Categoria e de ano podem sair duplicadas, porque o Drive aceita duas pastas com o mesmo nome; e dois Eventos avulsos com a mesma
+data e o mesmo título caem na mesma pasta.
+
+Para configurar em produção: compartilhe a pasta do ministério com o e-mail da service account (Editor), ligue a extensão
+`pg_net`, guarde `app_url` e `cron_secret` no Vault (`select vault.create_secret('<valor>', '<nome>')`), cadastre as variáveis na
+Vercel e, em Configurações, informe a pasta raiz e ligue o Drive. Para rotacionar o `CRON_SECRET`, troque-o na Vercel e no Vault
+(apague o segredo antigo do Vault antes de criar o novo) e faça um novo deploy.
+
+Para reverter: desligue o Drive em Configurações (nada é apagado). O passo a passo para desfazer a migração está no fim de
+`supabase/migrations/20261023040000_pasta_do_evento.sql`.
+
+Limitação: a pasta do ministério é uma pasta comum (o ministério não tem Google Workspace), então as pastas criadas pelo app
+ficam com a service account como dona e só ela as apaga ou move. Com um Drive compartilhado isso deixa de existir, sem mudar o app.
 
 ## Assinatura de calendário
 

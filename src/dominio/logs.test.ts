@@ -151,6 +151,48 @@ describe("fraseDoLog", () => {
     expect(frase(log({ acao: "push.teste_enviado", detalhes: { enviados: 2, falhas: 1 } }))).toBe("Carol Leal enviou uma Notificação de teste para si mesmo (2 dispositivos receberam, 1 falhou)");
   });
 
+  it("o Drive: a pasta criada e a que falhou são do Sistema, e a configuração mostra as Categorias pelo nome", () => {
+    const doSistema = {
+      usuarioId: null,
+      usuarioNome: null,
+      origem: "sistema" as const,
+      modulo: "drive" as const,
+      objetoTipo: "evento",
+      objetoRotulo: "Aula 3",
+      detalhes: { categoria: "EBD" },
+    };
+    expect(frase(log({ ...doSistema, acao: "drive.pasta_criada" }))).toBe("Sistema criou a pasta no Drive do Evento EBD · Aula 3");
+    expect(frase(log({ ...doSistema, acao: "drive.pasta_falhou", resultado: "falha", severidade: "aviso" }))).toBe(
+      "Sistema tentou criar a pasta no Drive do Evento EBD · Aula 3, mas não conseguiu",
+    );
+
+    const ligado = log({ acao: "drive.configuracao_alterada", modulo: "drive", objetoTipo: "configuracao", detalhes: { chave: "drive_ligado", antes: false, depois: true } });
+    expect(frase(ligado)).toBe("Carol Leal mudou a configuração Drive ligado de não para sim");
+    const categorias = log({
+      acao: "drive.configuracao_alterada",
+      modulo: "drive",
+      objetoTipo: "configuracao",
+      detalhes: { chave: "drive_categorias", antes: ["EBD", "Pequeno grupo"], depois: ["EBD"] },
+    });
+    expect(frase(categorias)).toBe("Carol Leal mudou a configuração Categorias com pasta no Drive de EBD, Pequeno grupo para EBD");
+  });
+
+  it("o Drive: os detalhes da falha dizem a tentativa, se será refeita e o motivo; o link manual mantido também aparece", () => {
+    const falha = (detalhes: Record<string, unknown>) =>
+      log({ acao: "drive.pasta_falhou", modulo: "drive", resultado: "falha", severidade: "aviso", objetoTipo: "evento", detalhes });
+    expect(detalhesDoLog(falha({ tentativa: 2, definitiva: false, erro: "Drive 503: indisponível" }))).toEqual([
+      "Tentativa 2: será refeita",
+      "Motivo: Drive 503: indisponível",
+    ]);
+    expect(detalhesDoLog(falha({ tentativa: 5, definitiva: true, erro: "Drive 404: não achei" }))).toEqual([
+      "Tentativa 5: não será refeita",
+      "Motivo: Drive 404: não achei",
+    ]);
+    expect(detalhesDoLog(log({ acao: "drive.pasta_criada", modulo: "drive", detalhes: { link_manual: true } }))).toEqual([
+      "O link digitado à mão no Evento foi mantido",
+    ]);
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);
@@ -345,6 +387,7 @@ describe("módulos", () => {
     expect(moduloDaAcao("acesso.login")).toBe("contas");
     expect(moduloDaAcao("serie.editada")).toBe("eventos");
     expect(moduloDaAcao("marcacao.criada")).toBe("presenca");
+    expect(moduloDaAcao("drive.pasta_criada")).toBe("drive");
     expect(moduloDaAcao("funcao.criada")).toBe("administracao");
   });
 });

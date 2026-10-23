@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
 import { lerConfiguracoes } from "@/dominio/configuracoes";
+import { lerConfiguracaoDoDrive } from "@/dominio/drive";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -18,8 +19,19 @@ export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData):
   });
   if ("erro" in lidas) return lidas;
 
+  const drive = lerConfiguracaoDoDrive({
+    ligado: campoTexto(dados, "drive_ligado"),
+    pastaRaiz: campoTexto(dados, "drive_pasta_raiz"),
+    categorias: dados.getAll("drive_categoria").map(String),
+  });
+  if ("erro" in drive) return drive;
+
   const supabase = await supabaseDoServidor();
-  const { data, error } = await supabase.from("configuracoes").update(lidas).eq("id", true).select("id");
+  const { data, error } = await supabase
+    .from("configuracoes")
+    .update({ ...lidas, ...drive })
+    .eq("id", true)
+    .select("id");
   if (error || !data?.length) {
     registrarFalha(supabase, "configuracao.alterada", { tipo: "configuracao" }, error ?? { code: "42501", message: "nenhuma linha alterada" });
     return { erro: "Não foi possível salvar as configurações." };

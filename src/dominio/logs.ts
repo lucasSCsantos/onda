@@ -7,7 +7,7 @@ import { descreverRegra, formatarDia, type RegraDaSerie } from "./series";
 // Os logs como a tela de Logs e a exportação os mostram: frases em português, mudanças em linguagem de gente,
 // agrupamento por dia, filtros e alertas. O banco grava (supabase/migrations/20261022000000_logs.sql); aqui só se lê.
 
-export const MODULOS = ["contas", "eventos", "adolescentes", "presenca", "ranking", "administracao"] as const;
+export const MODULOS = ["contas", "eventos", "adolescentes", "presenca", "ranking", "drive", "administracao"] as const;
 export type Modulo = (typeof MODULOS)[number];
 
 export const NOMES_DOS_MODULOS: Record<Modulo, string> = {
@@ -16,6 +16,7 @@ export const NOMES_DOS_MODULOS: Record<Modulo, string> = {
   adolescentes: "Adolescentes",
   presenca: "Presença",
   ranking: "Ranking",
+  drive: "Drive",
   administracao: "Administração",
 };
 
@@ -186,6 +187,9 @@ export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
   retencao_dos_logs_meses: "Por quanto tempo guardar os logs",
   lideres_veem_historico_do_evento: "Líderes veem o histórico dos Eventos",
   faltas_para_alerta: "Faltas seguidas para o alerta de ausência",
+  drive_ligado: "Drive ligado",
+  drive_pasta_raiz_id: "Pasta do ministério no Drive",
+  drive_categorias: "Categorias com pasta no Drive",
 };
 
 const UNIDADES_DAS_CONFIGURACOES: Record<string, [string, string]> = {
@@ -197,6 +201,7 @@ function valorDaConfiguracao(chave: string, valor: unknown): string {
   const unidade = UNIDADES_DAS_CONFIGURACOES[chave];
   if (typeof valor === "number" && unidade) return plural(valor, unidade[0], unidade[1]);
   if (typeof valor === "boolean") return valor ? "sim" : "não";
+  if (Array.isArray(valor)) return valor.length > 0 ? valor.join(", ") : VAZIO;
   return valor === null || valor === undefined ? VAZIO : String(valor);
 }
 
@@ -388,6 +393,33 @@ export const ACOES: Record<string, Definicao> = {
     tentativa: "mudar o desempate do ranking",
   },
 
+  // Drive
+  "drive.pasta_criada": {
+    nome: "Pasta do Evento criada",
+    visual: "criacao",
+    feito: (log) => ["criou a pasta no Drive do Evento ", eventoDoLog(log)],
+    tentativa: "criar a pasta no Drive do Evento",
+  },
+  "drive.pasta_falhou": {
+    nome: "Pasta do Evento não criada",
+    visual: "erro",
+    feito: (log) => ["não conseguiu criar a pasta no Drive do Evento ", eventoDoLog(log)],
+    tentativa: "criar a pasta no Drive do Evento",
+  },
+  "drive.configuracao_alterada": {
+    nome: "Configuração do Drive alterada",
+    visual: "edicao",
+    feito: (log) => {
+      const chave = texto(log.detalhes, "chave");
+      return [
+        "mudou a configuração ",
+        { destaque: NOMES_DAS_CONFIGURACOES[chave] ?? chave },
+        ` de ${valorDaConfiguracao(chave, log.detalhes.antes)} para ${valorDaConfiguracao(chave, log.detalhes.depois)}`,
+      ];
+    },
+    tentativa: "mudar a configuração do Drive",
+  },
+
   // Administração
   "funcao.criada": {
     nome: "Função criada",
@@ -523,6 +555,7 @@ export function moduloDaAcao(acao: string): Modulo {
   if (prefixo === "adolescente") return "adolescentes";
   if (prefixo === "presenca" || prefixo === "marcacao") return "presenca";
   if (prefixo === "ranking") return "ranking";
+  if (prefixo === "drive") return "drive";
   return "administracao";
 }
 
@@ -564,6 +597,13 @@ export function detalhesDoLog(log: Log): string[] {
   }
   if (log.acao === "acesso.login_falhou" && numero(d, "tentativas") > 1) {
     linhas.push(`Tentativas na última hora: ${numero(d, "tentativas")}`);
+  }
+  if (log.acao === "drive.pasta_falhou") {
+    linhas.push(`Tentativa ${numero(d, "tentativa")}: ${d.definitiva === true ? "não será refeita" : "será refeita"}`);
+    if (texto(d, "erro")) linhas.push(`Motivo: ${texto(d, "erro")}`);
+  }
+  if (log.acao === "drive.pasta_criada" && d.link_manual === true) {
+    linhas.push("O link digitado à mão no Evento foi mantido");
   }
   if (log.acao.startsWith("convite.") && typeof d.expira_em === "string") {
     linhas.push(`Validade: até ${formatarDia(diaDe(new Date(d.expira_em)))}`);

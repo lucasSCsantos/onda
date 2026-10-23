@@ -21,6 +21,7 @@ import {
   statusNoMomento,
 } from "@/dominio/eventos";
 import { eChecklist } from "@/dominio/checklist";
+import { situacaoDaPasta } from "@/dominio/drive";
 import { FUSO } from "@/dominio/fuso";
 import { podeVerHistoricoDoEvento } from "@/dominio/logs";
 import { descreverRegra, formatarDia } from "@/dominio/series";
@@ -66,6 +67,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const status = statusNoMomento(evento, agora);
   // O que a Categoria oculta não aparece, mesmo que o Evento ainda guarde o valor (ADR 0008).
   const nativos = nativosDe(evento.categoria);
+  const pasta = situacaoDaPasta(evento.pastaEstado);
   const edita = podeEditarEvento(eu, areas, evento);
   // O Professor vê a aula inteira, mas não lê as outras contas: os nomes dela vêm por `pessoas_da_aula`.
   const soObservacoes = podeEditarSoAsObservacoes(eu, { campos: evento.campos, definicoes: evento.categoria.campos });
@@ -171,6 +173,16 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
             </Item>
           )}
         </dl>
+
+        {pasta && (
+          <p
+            role="status"
+            data-pasta={evento.pastaEstado}
+            className={`rounded-xl border border-borda bg-superficie p-3 text-sm ${pasta.tom === "erro" ? "text-erro" : "text-texto-suave"}`}
+          >
+            {pasta.texto}
+          </p>
+        )}
 
         {soObservacoes && nativos.observacoes !== "oculto" && <ObservacoesDaAula eventoId={evento.id} observacoes={evento.observacoes} />}
 
