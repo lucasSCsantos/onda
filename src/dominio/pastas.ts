@@ -8,7 +8,25 @@ export interface ClienteDoDrive {
   buscarPasta(nome: string, paiId: string): Promise<{ id: string } | null>;
   criarPasta(nome: string, paiId: string): Promise<{ id: string }>;
   renomearPasta(pastaId: string, nome: string): Promise<void>;
+  /** Arquivos, só leitura: olhar um item, listar o conteúdo de uma pasta por páginas e baixar. */
+  obterItem(id: string): Promise<ItemDoDrive>;
+  listarFilhos(paiId: string, opcoes: { ordem: OrdemDaListagem; pagina: string | null; tamanho: number }): Promise<{ itens: ItemDoDrive[]; proxima: string | null }>;
+  baixar(id: string): Promise<Uint8Array>;
 }
+
+/** Um arquivo ou pasta do Drive como o Mural precisa vê-lo. `pais` são os IDs das pastas onde mora (o Drive permite mais de um). */
+export type ItemDoDrive = {
+  id: string;
+  nome: string;
+  pasta: boolean;
+  mime: string;
+  tamanho: number | null;
+  modificadoEm: Date | null;
+  pais: string[];
+};
+
+/** Como uma listagem se ordena: pastas sempre vêm antes dos arquivos. */
+export type OrdemDaListagem = "nome" | "nome-desc" | "data" | "data-desc";
 
 /** Uma tarefa de criar a pasta de um Evento. `tentativas` já conta a que está rodando. */
 export type TarefaDePasta = { categoria: string; inicio: Date; titulo: string; tentativas: number };

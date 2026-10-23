@@ -439,6 +439,24 @@ export const ACOES: Record<string, Definicao> = {
     },
     tentativa: "mudar a configuração do Drive",
   },
+  "drive.atalho_criado": {
+    nome: "Atalho de Arquivos criado",
+    visual: "criacao",
+    feito: (log) => ["criou o atalho de Arquivos ", objeto(log)],
+    tentativa: "criar o atalho de Arquivos",
+  },
+  "drive.atalho_editado": {
+    nome: "Atalho de Arquivos editado",
+    visual: "edicao",
+    feito: (log) => ["editou o atalho de Arquivos ", objeto(log)],
+    tentativa: "editar o atalho de Arquivos",
+  },
+  "drive.atalho_removido": {
+    nome: "Atalho de Arquivos removido",
+    visual: "exclusao",
+    feito: (log) => ["removeu o atalho de Arquivos ", objeto(log)],
+    tentativa: "remover o atalho de Arquivos",
+  },
 
   // Administração
   "funcao.criada": {
@@ -729,6 +747,8 @@ export function linkDoObjeto(log: Log): string | null {
       return "/admin/exportar";
     case "marcacao":
       return "/admin/marcacoes";
+    case "atalho":
+      return "/admin/arquivos";
     default:
       return null;
   }

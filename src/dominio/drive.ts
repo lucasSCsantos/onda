@@ -75,6 +75,9 @@ const escaparNaConsulta = (texto: string) => texto.replace(/\\/g, "\\\\").replac
 export const consultaDeBusca = (nome: string, paiId: string) =>
   `name = '${escaparNaConsulta(nome)}' and '${escaparNaConsulta(paiId)}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
 
+/** A consulta da API do Drive que lista o que está dentro de uma pasta (sem a lixeira). */
+export const consultaDeFilhos = (paiId: string) => `'${escaparNaConsulta(paiId)}' in parents and trashed = false`;
+
 /** Os campos de link onde a pasta mora; os mesmos nomes de `campo_da_pasta`, no banco. */
 export const NOMES_DO_CAMPO_DA_PASTA = ["Link do material", "Link dos materiais"];
 

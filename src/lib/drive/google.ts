@@ -1,6 +1,6 @@
 import { createSign } from "node:crypto";
-import { consultaDeBusca, ErroDoDrive } from "@/dominio/drive";
-import type { ClienteDoDrive } from "@/dominio/pastas";
+import { consultaDeBusca, consultaDeFilhos, ErroDoDrive } from "@/dominio/drive";
+import type { ClienteDoDrive, ItemDoDrive, OrdemDaListagem } from "@/dominio/pastas";
 
 // O cliente real do Drive: API v3 do Google, com a service account do ministério (ADR 0006). Não usa pacote do Google:
 // são três chamadas HTTP e um JWT assinado com o `node:crypto`. Recebe as credenciais de fora (quem as lê do ambiente é
@@ -13,6 +13,26 @@ const PASTA = "application/vnd.google-apps.folder";
 /** Pede o token de novo um pouco antes de vencer. */
 const MARGEM_DO_TOKEN_MS = 60_000;
 const TEMPO_LIMITE_MS = 20_000;
+
+const CAMPOS_DO_ITEM = "id,name,mimeType,size,modifiedTime,parents";
+const ORDEM_DO_GOOGLE: Record<OrdemDaListagem, string> = {
+  nome: "folder,name_natural",
+  "nome-desc": "folder,name_natural desc",
+  data: "folder,modifiedTime",
+  "data-desc": "folder,modifiedTime desc",
+};
+
+type ItemDoGoogle = { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; parents?: string[] };
+
+const doGoogle = (i: ItemDoGoogle): ItemDoDrive => ({
+  id: i.id,
+  nome: i.name,
+  pasta: i.mimeType === PASTA,
+  mime: i.mimeType,
+  tamanho: i.size === undefined ? null : Number(i.size),
+  modificadoEm: i.modifiedTime ? new Date(i.modifiedTime) : null,
+  pais: i.parents ?? [],
+});
 
 export type Credenciais = { client_email: string; private_key: string };
 
@@ -87,7 +107,7 @@ export function criarClienteDoGoogle({
   }
 
   /** Um pedido à API do Drive. 404 é permanente (a pasta não existe ou a conta não a enxerga); o resto passa. */
-  async function pedir(caminho: string, parametros: Record<string, string>, init: RequestInit = {}): Promise<unknown> {
+  async function pedirBruto(caminho: string, parametros: Record<string, string>, init: RequestInit = {}): Promise<Response> {
     const url = new URL(`${urlDaApi}${caminho}`);
     for (const [chave, valor] of Object.entries({ ...parametros, supportsAllDrives: "true" })) url.searchParams.set(chave, valor);
     const resposta = await buscar(url, {
@@ -98,7 +118,11 @@ export function criarClienteDoGoogle({
     if (!resposta.ok) {
       throw new ErroDoDrive(`Drive ${resposta.status}: ${await motivoDe(resposta)}`.trim(), { permanente: resposta.status === 404 });
     }
-    return resposta.json();
+    return resposta;
+  }
+
+  async function pedir(caminho: string, parametros: Record<string, string>, init: RequestInit = {}): Promise<unknown> {
+    return (await pedirBruto(caminho, parametros, init)).json();
   }
 
   return {
@@ -121,6 +145,23 @@ export function criarClienteDoGoogle({
     },
     async renomearPasta(pastaId, nome) {
       await pedir(`/files/${encodeURIComponent(pastaId)}`, { fields: "id" }, { method: "PATCH", body: JSON.stringify({ name: nome }) });
+    },
+    async obterItem(id) {
+      return doGoogle((await pedir(`/files/${encodeURIComponent(id)}`, { fields: CAMPOS_DO_ITEM })) as ItemDoGoogle);
+    },
+    async listarFilhos(paiId, { ordem, pagina, tamanho }) {
+      const corpo = (await pedir("/files", {
+        q: consultaDeFilhos(paiId),
+        fields: `nextPageToken, files(${CAMPOS_DO_ITEM})`,
+        orderBy: ORDEM_DO_GOOGLE[ordem],
+        pageSize: String(tamanho),
+        includeItemsFromAllDrives: "true",
+        ...(pagina ? { pageToken: pagina } : {}),
+      })) as { files?: ItemDoGoogle[]; nextPageToken?: string };
+      return { itens: (corpo.files ?? []).map(doGoogle), proxima: corpo.nextPageToken ?? null };
+    },
+    async baixar(id) {
+      return new Uint8Array(await (await pedirBruto(`/files/${encodeURIComponent(id)}`, { alt: "media" })).arrayBuffer());
     },
   };
 }

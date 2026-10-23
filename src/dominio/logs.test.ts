@@ -207,6 +207,14 @@ describe("fraseDoLog", () => {
     ]);
   });
 
+  it("conta os atalhos de Arquivos, no módulo Drive, com link para a administração", () => {
+    const atalho = (acao: string) => log({ acao, modulo: "drive", objetoTipo: "atalho", objetoId: "a1", objetoRotulo: "Identidade visual", detalhes: {} });
+    expect(frase(atalho("drive.atalho_criado"))).toBe("Carol Leal criou o atalho de Arquivos Identidade visual");
+    expect(frase(atalho("drive.atalho_editado"))).toBe("Carol Leal editou o atalho de Arquivos Identidade visual");
+    expect(frase(atalho("drive.atalho_removido"))).toBe("Carol Leal removeu o atalho de Arquivos Identidade visual");
+    expect(linkDoObjeto(atalho("drive.atalho_criado"))).toBe("/admin/arquivos");
+  });
+
   it("toda ação conhecida tem frase e tentativa, e uma desconhecida não quebra a tela", () => {
     for (const acao of Object.keys(ACOES)) {
       expect(frase(log({ acao, detalhes: {} })).length, acao).toBeGreaterThan(10);

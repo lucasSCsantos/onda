@@ -1,5 +1,5 @@
 import { CAMINHO_DOS_PROFESSORES_NO_ADMIN } from "@/dominio/professores";
-import { ClipboardCheck, Download, GraduationCap, LayoutDashboard, ScrollText, Settings, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
+import { ClipboardCheck, Download, FolderOpen, GraduationCap, LayoutDashboard, ScrollText, Settings, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
 
 export type DestinoDeAdmin = { href: string; rotulo: string; icone: LucideIcon };
 
@@ -11,6 +11,7 @@ export const SECOES_DE_ADMIN: DestinoDeAdmin[] = [
   { href: "/admin/catalogo", rotulo: "Catálogo", icone: Tags },
   { href: CAMINHO_DOS_PROFESSORES_NO_ADMIN, rotulo: "Professores", icone: GraduationCap },
   { href: "/admin/exportar", rotulo: "Exportar", icone: Download },
+  { href: "/admin/arquivos", rotulo: "Arquivos", icone: FolderOpen },
   { href: "/admin/marcacoes", rotulo: "Marcações", icone: ClipboardCheck },
   { href: "/admin/logs", rotulo: "Logs", icone: ScrollText },
   { href: "/admin/configuracoes", rotulo: "Configurações", icone: Settings },

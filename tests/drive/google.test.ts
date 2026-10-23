@@ -160,3 +160,69 @@ describe("cliente do Drive", () => {
     expect(erro.message).not.toContain(CHAVE_PRIVADA.slice(40, 80));
   });
 });
+
+describe("cliente do Drive: Arquivos (só leitura)", () => {
+  const pedidoDeGet = () => pedidos.find((p) => p.metodo === "GET" && p.caminho.startsWith("/drive/v3/files"))!;
+
+  it("olha um item e devolve só o que o Mural usa, com pasta, tamanho e data", async () => {
+    respostas.buscar = () => [
+      200,
+      { id: "ARQ1", name: "logo.png", mimeType: "image/png", size: "2048", modifiedTime: "2026-10-01T12:00:00.000Z", parents: ["PAI1"] },
+    ];
+    expect(await cliente().obterItem("ARQ/1")).toEqual({
+      id: "ARQ1",
+      nome: "logo.png",
+      pasta: false,
+      mime: "image/png",
+      tamanho: 2048,
+      modificadoEm: new Date("2026-10-01T12:00:00Z"),
+      pais: ["PAI1"],
+    });
+    expect(pedidoDeGet().caminho).toContain("/drive/v3/files/ARQ%2F1?");
+    expect(pedidoDeGet().caminho).toContain("supportsAllDrives=true");
+  });
+
+  it("uma pasta vem sem tamanho e sem pais quando o Drive não manda", async () => {
+    respostas.buscar = () => [200, { id: "P", name: "Logos", mimeType: "application/vnd.google-apps.folder" }];
+    expect(await cliente().obterItem("P")).toMatchObject({ pasta: true, tamanho: null, modificadoEm: null, pais: [] });
+  });
+
+  it("lista os filhos de uma pasta (sem lixeira), na ordem pedida, por páginas", async () => {
+    respostas.buscar = () => [
+      200,
+      { nextPageToken: "PROXIMA", files: [{ id: "A", name: "a.pdf", mimeType: "application/pdf", size: "10", parents: ["PAI'1"] }] },
+    ];
+    const pagina = await cliente().listarFilhos("PAI'1", { ordem: "data-desc", pagina: "ATUAL", tamanho: 40 });
+    expect(pagina.proxima).toBe("PROXIMA");
+    expect(pagina.itens.map((i) => i.nome)).toEqual(["a.pdf"]);
+
+    const params = new URL(base + pedidoDeGet().caminho).searchParams;
+    expect(params.get("q")).toBe("'PAI\\'1' in parents and trashed = false");
+    expect(params.get("orderBy")).toBe("folder,modifiedTime desc");
+    expect(params.get("pageSize")).toBe("40");
+    expect(params.get("pageToken")).toBe("ATUAL");
+    expect(params.get("supportsAllDrives")).toBe("true");
+  });
+
+  it("na última página não há próxima, e a primeira não manda chave de página", async () => {
+    const pagina = await cliente().listarFilhos("PAI", { ordem: "nome", pagina: null, tamanho: 40 });
+    expect(pagina).toEqual({ itens: [], proxima: null });
+    const params = new URL(base + pedidoDeGet().caminho).searchParams;
+    expect(params.has("pageToken")).toBe(false);
+    expect(params.get("orderBy")).toBe("folder,name_natural");
+  });
+
+  it("baixa o conteúdo pelo servidor", async () => {
+    respostas.buscar = () => [200, { qualquer: "coisa" }];
+    const bytes = await cliente().baixar("ARQ1");
+    expect(new TextDecoder().decode(bytes)).toBe('{"qualquer":"coisa"}');
+    expect(pedidoDeGet().caminho).toContain("alt=media");
+  });
+
+  it("item que o Drive não acha é erro permanente", async () => {
+    respostas.buscar = () => [404, { error: { message: "File not found" } }];
+    const erro = await cliente().obterItem("X").catch((e) => e);
+    expect(erro).toBeInstanceOf(ErroDoDrive);
+    expect(erro.permanente).toBe(true);
+  });
+});
