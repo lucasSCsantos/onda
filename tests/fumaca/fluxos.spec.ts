@@ -367,6 +367,51 @@ test("Chamada do Professor: faz a Chamada da própria aula, sem ver nascimento, 
   expect(resposta?.status()).toBe(404);
 });
 
+test("Cartão de Chamada: o Professor vê a Chamada da aula dele na tela principal, vai direto a ela e depois vê 'feita'", async ({ page }) => {
+  const nome = `Cartão ${crypto.randomUUID().slice(0, 6)}`;
+  const convite = await admin.from("convites").insert({ nivel: "professor" }).select("codigo").single();
+  if (convite.error) throw convite.error;
+  await cadastrar(page, nome, convite.data.codigo);
+  await expect(page).not.toHaveURL(/\/cadastro/);
+
+  const { data: eu } = await admin.from("perfis").select("id").eq("nome", nome).single();
+  const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
+  const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
+  const aluno = `Caio ${crypto.randomUUID().slice(0, 6)}`;
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável do Cartão" } });
+  if (lider.error) throw lider.error;
+  await admin.from("perfis").update({ nivel: "admin" }).eq("id", lider.data.user.id).throwOnError();
+  const aula = async (titulo: string, campos: Record<string, string>) => {
+    const { data } = await admin
+      .from("eventos")
+      .insert({ titulo, categoria_id: ebd.data!.id, inicio: `${hoje()}T00:01:00-03:00`, responsavel_id: lider.data.user.id, status: "planejado", campos: { [campo("Tema")]: "Semeador", ...campos }, criado_por: lider.data.user.id })
+      .select("id")
+      .single()
+      .throwOnError();
+    return data.id as string;
+  };
+  await aula("EBD do Cartão", { [campo("Professor")]: eu!.id });
+  await aula("EBD sem o Professor", {});
+
+  await page.goto("/");
+  const cartao = page.getByRole("region", { name: "Chamada" }).getByRole("article");
+  await expect(cartao).toHaveCount(1);
+  await expect(cartao).toContainText("Chamada pendente");
+  await expect(cartao).toContainText("EBD · EBD do Cartão · 00:01");
+
+  await cartao.getByRole("link", { name: "Fazer a Chamada" }).click();
+  await expect(page.getByRole("heading", { name: "Chamada", exact: true })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Procurar Adolescente" }).fill(aluno);
+  await page.getByRole("group", { name: `Marcações de ${aluno}` }).getByRole("button", { name: "Presente" }).click();
+  await expect(page.getByText("Salvo")).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.getByRole("region", { name: "Chamada" }).getByRole("article")).toContainText("Chamada feita ✓");
+  const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
 test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page }) => {
   await cadastrar(page, "Líder Barrado", await novoConvite());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();

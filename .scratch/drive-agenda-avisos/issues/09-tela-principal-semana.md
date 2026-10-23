@@ -6,7 +6,7 @@
 
 **Blocked by:** 03 (Séries semanais com número, para o título de exibição)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] "Meus eventos desta semana" em ordem cronológica, com o dia de hoje destacado e Categoria (cor e ícone), horário, local (quando existir) e Status em cada cartão
 - [ ] "Esta semana no ONDA" mostra todos os Eventos da semana, com a opção "só os meus"

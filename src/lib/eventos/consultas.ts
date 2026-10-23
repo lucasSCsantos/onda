@@ -4,7 +4,7 @@ import type { Opcao } from "@/components/formulario";
 import type { NativosDaCategoria } from "@/dominio/campos-nativos";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, tituloDeExibicao, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
-import { semProfessor } from "@/dominio/professores";
+import { professoresDaAula, semProfessor } from "@/dominio/professores";
 import type { OcorrenciaGravada, RegraDaSerie } from "@/dominio/series";
 
 /** Áreas das Funções de uma pessoa, para saber de quais Categorias ela cria Eventos. */
@@ -107,6 +107,10 @@ export type EventoListado = {
   envolvidos: string[];
   /** A Categoria tem a vaga de Professor e ela está vazia (alerta de aula sem Professor). */
   semProfessor: boolean;
+  /** Ids do Professor e do Auxiliar da aula (os campos pessoa com esses nomes). */
+  professores: string[];
+  /** A Categoria faz Chamada (como a EBD). */
+  temChamada: boolean;
 };
 
 type EventoDoBanco = {
@@ -124,6 +128,7 @@ type EventoDoBanco = {
     id: string;
     nome: string;
     cor: string;
+    tem_chamada: boolean;
     areas: { nome: string };
     campos_das_categorias: { id: string; nome: string; tipo: string }[];
   };
@@ -140,7 +145,7 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
     .from("eventos")
     .select(
       `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, status, responsavel_id, campos,
-      categorias(id, nome, cor, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo)),
+      categorias(id, nome, cor, tem_chamada, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo)),
       responsavel:perfis!eventos_responsavel_id_fkey(nome, ativo)`,
     );
   if (periodo) {
@@ -167,6 +172,8 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
       area: e.categorias.areas.nome,
       envolvidos: envolvidosDoEvento(e.responsavel_id, e.campos, e.categorias.campos_das_categorias),
       semProfessor: semProfessor(e.campos, e.categorias.campos_das_categorias),
+      professores: professoresDaAula(e.campos, e.categorias.campos_das_categorias),
+      temChamada: e.categorias.tem_chamada,
     };
   });
 }

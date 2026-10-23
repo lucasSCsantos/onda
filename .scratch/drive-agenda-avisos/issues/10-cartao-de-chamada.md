@@ -6,7 +6,7 @@
 
 **Blocked by:** 08 (Chamada do Professor), 09 (Tela principal: semana)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] O estado do cartão (de hoje, feita, pendente) é calculado em código puro a partir da aula, do relógio e da janela
 - [ ] Aparece só para o Professor e o Auxiliar daquela aula, e só dentro da janela

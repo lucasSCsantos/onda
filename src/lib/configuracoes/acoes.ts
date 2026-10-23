@@ -14,6 +14,7 @@ export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData):
     lideresVeemHistorico: campoTexto(dados, "lideres_veem_historico"),
     faltasParaAlerta: campoTexto(dados, "faltas_para_alerta"),
     desempate: campoTexto(dados, "desempate"),
+    janelaDaChamada: campoTexto(dados, "janela_da_chamada"),
   });
   if ("erro" in lidas) return lidas;
 

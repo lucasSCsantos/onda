@@ -5,18 +5,22 @@ import { diaEMes } from "@/components/aniversarios";
 import { Cabecalho } from "@/components/cabecalho";
 import { AtalhosDeFiltro } from "@/components/atalhos-de-filtro";
 import { FiltrosDeEventos } from "@/components/filtros-de-eventos";
+import { cartoesDeChamada, JANELA_MAXIMA } from "@/dominio/cartao-de-chamada";
 import { aniversariosVisiveis, aniversariantesDaSemana } from "@/dominio/aniversarios";
 import { podeGerenciarContas, telaInicial } from "@/dominio/acesso";
 import { diaDe, podeVerTodosOsEventos } from "@/dominio/eventos";
-import { FUSO } from "@/dominio/fuso";
+import { FUSO, somarDias } from "@/dominio/fuso";
 import { FILTRO_DO_ALERTA, haFiltros, lerFiltros, NOMES_DOS_ALERTAS, parametrosDosFiltros, proximosEventos, SEM_FILTROS } from "@/dominio/filtros";
 import { semanaDe } from "@/dominio/semana";
 import { podeCadastrarProfessor } from "@/dominio/professores";
 import { montarTelaPrincipal } from "@/dominio/tela-principal";
 import { aniversariaveis } from "@/lib/aniversarios/consultas";
+import { janelaDaChamada } from "@/lib/configuracoes/consultas";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { areasDaPessoa, categorias, eventos } from "@/lib/eventos/consultas";
+import { chamadasFeitas } from "@/lib/presenca/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
+import { CartoesDeChamada } from "./cartoes-de-chamada";
 import { CartaoDeEvento } from "./lista-de-eventos";
 import { SemanaPorDia } from "./semana-por-dia";
 
@@ -26,7 +30,7 @@ const GRUPOS = [
   { chave: "depois", titulo: "Depois" },
 ] as const;
 
-// A tela só olha da segunda desta semana em diante; o que já passou não entra na consulta (nem no teto de linhas do banco).
+// A tela só olha da segunda desta semana em diante (ou, se for antes, do começo da janela máxima do cartão de Chamada); o que já passou não entra na consulta (nem no teto de linhas do banco).
 const FIM_DOS_TEMPOS = new Date("2100-01-01T00:00:00Z");
 
 export default async function Inicio(props: PageProps<"/">) {
@@ -40,12 +44,17 @@ export default async function Inicio(props: PageProps<"/">) {
   const soMeus = parametros["so-meus"] === "1";
   const supabase = await supabaseDoServidor();
   const [todos, doCatalogo, quemFazAnos] = veEventos
-    ? await Promise.all([eventos(supabase, { inicio: semanaDe(agora).inicio, fim: FIM_DOS_TEMPOS }), categorias(supabase), aniversariaveis(supabase, perfil)])
+    ? await Promise.all([eventos(supabase, { inicio: new Date(Math.min(semanaDe(agora).inicio.getTime(), somarDias(agora, -(JANELA_MAXIMA + 1)).getTime())), fim: FIM_DOS_TEMPOS }), categorias(supabase), aniversariaveis(supabase, perfil)])
     : [[], [], []];
   // O Professor lê só as aulas em que foi colocado (as políticas por linha filtram); os demais níveis não consultam.
-  const aulas = tela === "mural" && perfil.nivel === "professor" ? proximosEventos(await eventos(supabase), agora) : null;
+  const doProfessor = tela === "mural" && perfil.nivel === "professor" ? await eventos(supabase) : null;
+  const aulas = doProfessor && proximosEventos(doProfessor, agora);
   const areas = perfil.nivel === "lider" ? await areasDaPessoa(supabase, perfil.id) : [];
   const aniversariantes = aniversariosVisiveis(perfil, aniversariantesDaSemana(quemFazAnos, agora));
+  // O cartão de Chamada é de quem é Professor ou Auxiliar da aula, seja Professor ou Líder; só as aulas dele entram na conta.
+  const candidatas = (doProfessor ?? todos).filter((e) => e.temChamada && e.professores.includes(perfil.id));
+  const [janela, feitas] = candidatas.length > 0 ? await Promise.all([janelaDaChamada(supabase), chamadasFeitas(supabase, candidatas.map((e) => e.id))]) : [0, new Set<string>()];
+  const cartoes = cartoesDeChamada(candidatas, { eu: perfil.id, agora, janelaDias: janela, feitas });
   const { meus, semana, alertas: aviso, depois } = montarTelaPrincipal(todos, { eu: perfil.id, agora, soMeus, filtros });
   const hoje = diaDe(agora);
   const alternarSoMeus = new URLSearchParams([
@@ -71,6 +80,11 @@ export default async function Inicio(props: PageProps<"/">) {
         )}
         {tela === "conta-desativada" && (
           <p className="mt-2 text-texto-suave">Sua conta foi desativada. Fale com um Admin se precisar de acesso.</p>
+        )}
+        {cartoes.length > 0 && (
+          <div className="mt-6">
+            <CartoesDeChamada cartoes={cartoes} />
+          </div>
         )}
         {aulas && (
           <section className="mt-6 flex flex-col gap-4">

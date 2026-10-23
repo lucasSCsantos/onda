@@ -55,6 +55,16 @@ export async function chamadaDaAula(supabase: SupabaseClient, eventoId: string):
   return (data ?? []).map(daPresenca);
 }
 
+/**
+ * Das aulas dadas, as ids com Chamada feita (ao menos uma presença). O banco só responde sobre as aulas cuja Chamada a
+ * pessoa pode fazer, sem ler presenças nem Adolescentes: serve ao Professor e ao Auxiliar.
+ */
+export async function chamadasFeitas(supabase: SupabaseClient, aulas: readonly string[]): Promise<Set<string>> {
+  if (aulas.length === 0) return new Set();
+  const { data } = await supabase.rpc("chamadas_feitas", { eventos: aulas });
+  return new Set((data ?? []) as string[]);
+}
+
 /** Os Adolescentes do cadastro (ativos e inativos), com quando foram cadastrados, em ordem de nome. */
 export async function adolescentes(supabase: SupabaseClient): Promise<{ id: string; nome: string; ativo: boolean; criadoEm: Date }[]> {
   const { data } = await supabase

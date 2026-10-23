@@ -1,3 +1,4 @@
+import { JANELA_MAXIMA, JANELA_MINIMA } from "./cartao-de-chamada";
 import { lerDesempate } from "./ranking";
 
 /** Por quanto tempo os logs ficam guardados, em meses. O banco confere os mesmos limites. */
@@ -16,6 +17,8 @@ export type EntradaDeConfiguracoes = {
   faltasParaAlerta: string;
   /** Id da Marcação do desempate do ranking, ou vazio para nenhum. */
   desempate: string;
+  /** Quantos dias depois do dia da aula o cartão de Chamada continua à vista. */
+  janelaDaChamada: string;
 };
 
 export type ConfiguracoesLidas = {
@@ -23,6 +26,7 @@ export type ConfiguracoesLidas = {
   lideres_veem_historico_do_evento: boolean;
   faltas_para_alerta: number;
   desempate_por: string | null;
+  janela_da_chamada_dias: number;
 };
 
 /** As configurações prontas para gravar, ou o que impede. */
@@ -35,6 +39,10 @@ export function lerConfiguracoes(entrada: EntradaDeConfiguracoes): Configuracoes
   if (!Number.isInteger(faltas) || faltas < FALTAS_MINIMAS || faltas > FALTAS_MAXIMAS) {
     return { erro: `O alerta de ausência vai de ${FALTAS_MINIMAS} a ${FALTAS_MAXIMAS} aulas seguidas.` };
   }
+  const janela = Number(entrada.janelaDaChamada);
+  if (entrada.janelaDaChamada.trim() === "" || !Number.isInteger(janela) || janela < JANELA_MINIMA || janela > JANELA_MAXIMA) {
+    return { erro: `O cartão de Chamada fica à vista de ${JANELA_MINIMA} a ${JANELA_MAXIMA} dias depois da aula.` };
+  }
   const desempate = lerDesempate(entrada.desempate);
   if (desempate !== null && typeof desempate === "object") return desempate;
   return {
@@ -42,5 +50,6 @@ export function lerConfiguracoes(entrada: EntradaDeConfiguracoes): Configuracoes
     lideres_veem_historico_do_evento: entrada.lideresVeemHistorico === "on",
     faltas_para_alerta: faltas,
     desempate_por: desempate,
+    janela_da_chamada_dias: janela,
   };
 }
