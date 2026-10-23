@@ -1,5 +1,6 @@
 import "server-only";
 import type { ClienteDoDrive } from "@/dominio/pastas";
+import { construirIndice, type Indice } from "@/dominio/arquivos";
 import { comCache } from "./cache";
 import { criarClienteDoGoogle, lerCredenciais } from "./google";
 
@@ -24,6 +25,20 @@ function driveDeArquivos() {
 }
 
 export const clienteDeArquivos = (): ClienteDoDrive | null => driveDeArquivos()?.cliente ?? null;
+
+/** Por quanto tempo o índice da busca vale. */
+const VALIDADE_DO_INDICE_MS = 5 * 60_000;
+
+/**
+ * O índice da busca de Arquivos, guardado por 5 minutos (ler a raiz inteira pesa). Cada começo de busca tem o seu: a raiz,
+ * o atalho ou a pasta atual quando o índice completo estourou o teto de pastas.
+ */
+export function indiceDeArquivos(): ((inicioId: string, recursivo: boolean) => Promise<Indice>) | null {
+  const drive = driveDeArquivos();
+  if (!drive) return null;
+  return (inicioId, recursivo) =>
+    drive.lembrar(`indice|${inicioId}|${recursivo}`, () => construirIndice({ cliente: drive.cliente, inicioId, recursivo }), VALIDADE_DO_INDICE_MS);
+}
 
 /** O botão "Atualizar" de Arquivos: esquece o que o servidor guardou do Drive. */
 export const esquecerArquivosGuardados = () => driveDeArquivos()?.limpar();

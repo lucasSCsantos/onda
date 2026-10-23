@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
+import { LIMITE_DE_DOWNLOAD_MAXIMO_MB } from "@/dominio/arquivos";
 import { JANELA_MAXIMA, JANELA_MINIMA } from "@/dominio/cartao-de-chamada";
-import { RETENCAO_DA_CENTRAL_MAXIMA, RETENCAO_DA_CENTRAL_MINIMA } from "@/dominio/notificacoes";
+import { LIMITE_DE_URGENCIA_MAXIMO, LIMITE_DE_URGENCIA_MINIMO, RETENCAO_DA_CENTRAL_MAXIMA, RETENCAO_DA_CENTRAL_MINIMA } from "@/dominio/notificacoes";
 import { FALTAS_MAXIMAS, FALTAS_MINIMAS, RETENCAO_MAXIMA, RETENCAO_MINIMA } from "@/dominio/configuracoes";
 import { salvarConfiguracoes } from "@/lib/configuracoes/acoes";
 
@@ -15,7 +16,8 @@ export type ValoresDasConfiguracoes = {
   desempatePor: string | null;
   janelaDaChamadaDias: number;
   retencaoDasNotificacoesDias: number;
-  drive: { ligado: boolean; pastaRaizId: string | null; categorias: string[] };
+  limiteDeUrgenciaHoras: number;
+  drive: { ligado: boolean; pastaRaizId: string | null; categorias: string[]; limiteDeDownloadMb: number };
 };
 
 /** O que está no ambiente do servidor para o Drive e o agendador funcionarem (só sim ou não). */
@@ -103,7 +105,18 @@ export function FormularioDeConfiguracoes({
           defaultValue={valores.retencaoDasNotificacoesDias}
           required
         />
-        <p className="text-sm text-texto-suave">Todo dia, de madrugada, as Notificações mais antigas que isso saem da central de cada pessoa.</p>
+        <p className="text-sm text-texto-suave">Todo dia, de madrugada, as Notificações mais antigas que isso saem da central de cada pessoa. Por segurança, nenhuma sai antes de 8 dias.</p>
+        <Campo
+          rotulo="Mudança ou cancelamento é urgente se o Evento começa em menos de (horas)"
+          name="limite_de_urgencia"
+          type="number"
+          inputMode="numeric"
+          min={LIMITE_DE_URGENCIA_MINIMO}
+          max={LIMITE_DE_URGENCIA_MAXIMO}
+          defaultValue={valores.limiteDeUrgenciaHoras}
+          required
+        />
+        <p className="text-sm text-texto-suave">Os avisos urgentes chegam na hora, mesmo fora do horário que cada pessoa escolheu.</p>
       </fieldset>
       <fieldset className="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4">
         <legend className="px-1 font-semibold">Ranking</legend>
@@ -129,6 +142,19 @@ export function FormularioDeConfiguracoes({
           autoComplete="off"
           spellCheck={false}
         />
+        <Campo
+          rotulo="Limite de download em Arquivos (MB)"
+          name="drive_limite_de_download"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={LIMITE_DE_DOWNLOAD_MAXIMO_MB}
+          defaultValue={valores.drive.limiteDeDownloadMb}
+          required
+        />
+        <p className="-mt-2 text-xs text-texto-suave">
+          Arquivos maiores que isso só têm &ldquo;Abrir no Drive&rdquo;. A hospedagem costuma limitar a resposta a cerca de 4,5 MB, então acima de 4 MB o download pode falhar.
+        </p>
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium">Categorias com pasta automática</legend>
           {categoriasDoDrive.map((categoria) => (

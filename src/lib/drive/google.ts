@@ -14,6 +14,7 @@ const PASTA = "application/vnd.google-apps.folder";
 const MARGEM_DO_TOKEN_MS = 60_000;
 const TEMPO_LIMITE_MS = 20_000;
 
+const TAMANHO_DA_MINIATURA = 400;
 const CAMPOS_DO_ITEM = "id,name,mimeType,size,modifiedTime,parents";
 const ORDEM_DO_GOOGLE: Record<OrdemDaListagem, string> = {
   nome: "folder,name_natural",
@@ -53,6 +54,8 @@ export type OpcoesDoGoogle = {
   urlDaApi?: string;
   urlDoToken?: string;
   fetch?: typeof fetch;
+  /** Quais endereços de miniatura o servidor aceita buscar; o padrão são só os do Google (os testes abrem a própria porta). */
+  aceitaMiniatura?: (url: URL) => boolean;
   /** Relógio em milissegundos; os testes o adiantam. */
   agora?: () => number;
 };
@@ -86,6 +89,7 @@ export function criarClienteDoGoogle({
   urlDoToken = TOKEN_PADRAO,
   fetch: buscar = fetch,
   agora = Date.now,
+  aceitaMiniatura = (url) => url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com"),
 }: OpcoesDoGoogle): ClienteDoDrive {
   let token: { valor: string; venceEm: number } | null = null;
 
@@ -159,6 +163,22 @@ export function criarClienteDoGoogle({
         ...(pagina ? { pageToken: pagina } : {}),
       })) as { files?: ItemDoGoogle[]; nextPageToken?: string };
       return { itens: (corpo.files ?? []).map(doGoogle), proxima: corpo.nextPageToken ?? null };
+    },
+    async miniatura(id) {
+      const corpo = (await pedir(`/files/${encodeURIComponent(id)}`, { fields: "thumbnailLink" })) as { thumbnailLink?: string };
+      if (!corpo.thumbnailLink) return null;
+      let url: URL;
+      try {
+        url = new URL(corpo.thumbnailLink.replace(/=s\d+$/, `=s${TAMANHO_DA_MINIATURA}`));
+      } catch {
+        return null;
+      }
+      // O endereço vem do Drive, mas só se busca o que é do Google: nada de pedir a um endereço qualquer.
+      if (!aceitaMiniatura(url)) return null;
+      const resposta = await buscar(url, { signal: AbortSignal.timeout(TEMPO_LIMITE_MS) });
+      const mime = resposta.headers.get("content-type")?.split(";")[0].trim() ?? "";
+      if (!resposta.ok || !mime.startsWith("image/")) return null;
+      return { bytes: new Uint8Array(await resposta.arrayBuffer()), mime };
     },
     async baixar(id) {
       return new Uint8Array(await (await pedirBruto(`/files/${encodeURIComponent(id)}`, { alt: "media" })).arrayBuffer());

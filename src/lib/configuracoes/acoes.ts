@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
 import { lerConfiguracoes } from "@/dominio/configuracoes";
+import { lerLimiteDeDownload } from "@/dominio/arquivos";
 import { lerConfiguracaoDoDrive } from "@/dominio/drive";
 import { lerConfiguracaoDasNotificacoes } from "@/dominio/notificacoes";
 import { campoTexto } from "@/lib/campos";
@@ -27,13 +28,16 @@ export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData):
   });
   if ("erro" in drive) return drive;
 
-  const notificacoes = lerConfiguracaoDasNotificacoes({ retencaoDias: campoTexto(dados, "retencao_das_notificacoes") });
+  const limiteDeDownload = lerLimiteDeDownload(campoTexto(dados, "drive_limite_de_download"));
+  if ("erro" in limiteDeDownload) return limiteDeDownload;
+
+  const notificacoes = lerConfiguracaoDasNotificacoes({ retencaoDias: campoTexto(dados, "retencao_das_notificacoes"), limiteDeUrgenciaHoras: campoTexto(dados, "limite_de_urgencia") });
   if ("erro" in notificacoes) return notificacoes;
 
   const supabase = await supabaseDoServidor();
   const { data, error } = await supabase
     .from("configuracoes")
-    .update({ ...lidas, ...drive, ...notificacoes })
+    .update({ ...lidas, ...drive, ...limiteDeDownload, ...notificacoes })
     .eq("id", true)
     .select("id");
   if (error || !data?.length) {

@@ -1,4 +1,5 @@
 import { autorizadoPeloAgendador } from "@/dominio/drive";
+import { gerarNotificacoes } from "@/lib/notificacoes/gerar";
 import { processarFila } from "@/lib/notificacoes/processar";
 import { criarEnviador, modoDeTeste, pushConfigurado } from "@/lib/push/enviador";
 import { supabaseDeServico } from "@/lib/supabase/servico";
@@ -8,7 +9,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 /**
- * O agendador do banco (`pg_cron` + `pg_net`, ADR 0007) chama esta rota a cada minuto em que há Notificação devida, com
+ * O agendador do banco (`pg_cron` + `pg_net`, ADR 0007) chama esta rota a cada 5 minutos (para gerar o que ficou devido) e a cada minuto em que há Notificação pendente, com
  * `Authorization: Bearer <CRON_SECRET>`. Sem o segredo certo, nada acontece. Sem a chave de serviço ou as chaves VAPID
  * (e fora do modo de teste), responde 503 sem reservar nada: as Notificações esperam a configuração ficar pronta.
  */
@@ -21,8 +22,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resumo = await processarFila(supabaseDeServico(), { enviar: criarEnviador(), simulado: modoDeTeste() });
-    return Response.json({ processado: true, ...resumo });
+    const db = supabaseDeServico();
+    // Primeiro o que ficou devido com o passar do tempo vira fila; em seguida a fila é enviada.
+    const geradas = await gerarNotificacoes(db);
+    const resumo = await processarFila(db, { enviar: criarEnviador(), simulado: modoDeTeste() });
+    return Response.json({ processado: true, geradas, ...resumo });
   } catch (erro) {
     // Só a mensagem: nada de endpoint ou chave nos logs da hospedagem.
     console.error("agendador de notificações:", erro instanceof Error ? erro.message : "erro desconhecido");

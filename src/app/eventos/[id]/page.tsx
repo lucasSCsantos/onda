@@ -1,4 +1,4 @@
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, FolderOpen } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,6 +26,7 @@ import { FUSO } from "@/dominio/fuso";
 import { podeVerHistoricoDoEvento } from "@/dominio/logs";
 import { descreverRegra, formatarDia } from "@/dominio/series";
 import { podeEditarSoAsObservacoes } from "@/dominio/professores";
+import { arquivosDaPastaDoEvento } from "@/lib/arquivos/consultas";
 import { configuracoes } from "@/lib/configuracoes/consultas";
 import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, evento as buscarEvento, pessoas, pessoasDaAula, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
@@ -76,6 +77,8 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   // O Professor vê a aula inteira, mas não lê as outras contas: os nomes dela vêm por `pessoas_da_aula`.
   const soObservacoes = podeEditarSoAsObservacoes(eu, { campos: evento.campos, definicoes: evento.categoria.campos });
   const lideranca = podeVerTodosOsEventos(eu);
+  // A pasta só é oferecida em Arquivos para a Liderança e quando está dentro da raiz do Drive.
+  const pastaEmArquivos = lideranca && config.drive.ligado ? await arquivosDaPastaDoEvento(evento.pastaId, config.drive.pastaRaizId) : null;
   const campos = camposDaCriacao(evento.categoria).filter((c) => evento.campos[c.id] !== undefined);
   const nomes = lideranca
     ? await pessoas(
@@ -186,6 +189,12 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
           >
             {pasta.texto}
           </p>
+        )}
+        {pastaEmArquivos && (
+          <Link href={pastaEmArquivos} className="toque inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-borda bg-superficie px-3 text-sm">
+            <FolderOpen aria-hidden className="size-4" />
+            Abrir em Arquivos
+          </Link>
         )}
         {pedePasta && <BotaoCriarPasta id={evento.id} />}
 

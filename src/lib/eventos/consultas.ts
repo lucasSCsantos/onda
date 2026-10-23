@@ -193,6 +193,8 @@ export type EventoCompleto = Evento & {
   editada: boolean;
   /** A pasta do Evento no Drive (ADR 0006); nulo quando ele não ganha pasta sozinho. */
   pastaEstado: EstadoDaPasta | null;
+  /** A pasta do Evento no Drive, quando existe; só serve para o link "Abrir em Arquivos". */
+  pastaId: string | null;
   criadoPor: string;
   criadoEm: Date;
   editadoPor: string | null;
@@ -209,6 +211,7 @@ type EventoCompletoDoBanco = Omit<EventoDoBanco, "categorias" | "responsavel"> &
   serie_id: string | null;
   editada: boolean;
   pasta_estado: EstadoDaPasta | null;
+  pasta_id: string | null;
   categorias: CategoriaDoBanco;
   responsavel: PessoaGravada | null;
   /** Nulo para o Professor, que não lê as outras contas. */
@@ -221,7 +224,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
   const { data: e } = await supabase
     .from("eventos")
     .select(
-      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada, pasta_estado,
+      `id, titulo, numero_da_ocorrencia, inicio, fim, dia_inteiro, local, responsavel_id, status, observacoes, link, campos, criado_em, editado_em, serie_id, editada, pasta_estado, pasta_id,
       categorias(${SELECAO_DA_CATEGORIA}),
       responsavel:perfis!eventos_responsavel_id_fkey(id, nome, ativo),
       criador:perfis!eventos_criado_por_fkey(nome),
@@ -250,6 +253,7 @@ export async function evento(supabase: SupabaseClient, id: string): Promise<Even
     serieId: e.serie_id,
     editada: e.editada,
     pastaEstado: e.pasta_estado,
+    pastaId: e.pasta_id,
     pessoaResponsavel: e.responsavel,
     criadoPor: e.criador?.nome ?? "",
     criadoEm: new Date(e.criado_em),

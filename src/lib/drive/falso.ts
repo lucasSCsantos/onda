@@ -3,7 +3,7 @@ import type { ClienteDoDrive, ItemDoDrive, OrdemDaListagem } from "@/dominio/pas
 
 const PASTA = "application/vnd.google-apps.folder";
 
-type Item = { id: string; nome: string; pai: string; pasta: boolean; mime: string; tamanho: number | null; modificadoEm: Date | null; conteudo: Uint8Array };
+type Item = { id: string; nome: string; pai: string; pasta: boolean; mime: string; tamanho: number | null; modificadoEm: Date | null; conteudo: Uint8Array; miniatura: Uint8Array | null };
 
 /**
  * Um Drive em memória, só para testes: pastas e arquivos com nome, pai e ID, e falhas combinadas por nome de pasta (o
@@ -13,7 +13,7 @@ export function driveFalso() {
   const itens: Item[] = [];
   const falhas = new Map<string, Error[]>();
   const falhasAoListar: Error[] = [];
-  const chamadas = { obterItem: 0, listarFilhos: 0, baixar: 0 };
+  const chamadas = { obterItem: 0, listarFilhos: 0, baixar: 0, miniatura: 0 };
 
   const falharSeCombinado = (nome: string) => {
     const erro = falhas.get(nome)?.shift();
@@ -23,7 +23,7 @@ export function driveFalso() {
   const novoId = () => `PASTA${String(itens.length + 1).padStart(6, "0")}`;
 
   const criar = (nome: string, pai: string, resto: Partial<Item> = {}) => {
-    const item: Item = { id: novoId(), nome, pai, pasta: true, mime: PASTA, tamanho: null, modificadoEm: null, conteudo: new Uint8Array(), ...resto };
+    const item: Item = { id: novoId(), nome, pai, pasta: true, mime: PASTA, tamanho: null, modificadoEm: null, conteudo: new Uint8Array(), miniatura: null, ...resto };
     itens.push(item);
     return item;
   };
@@ -60,6 +60,12 @@ export function driveFalso() {
       const fim = inicio + tamanho;
       return { itens: filhos.slice(inicio, fim).map(doDrive), proxima: fim < filhos.length ? String(fim) : null };
     },
+    async miniatura(id) {
+      chamadas.miniatura++;
+      const item = itens.find((i) => i.id === id && !i.pasta);
+      if (!item) throw new ErroDoDrive("Drive 404: File not found", { permanente: true });
+      return item.miniatura ? { bytes: item.miniatura, mime: "image/jpeg" } : null;
+    },
     async baixar(id) {
       chamadas.baixar++;
       const item = itens.find((i) => i.id === id && !i.pasta);
@@ -91,8 +97,8 @@ export function driveFalso() {
     /** Uma pasta dentro de `pai`; devolve o ID. Um `pai` que o Drive falso não conhece vale como pasta de fora (a raiz de mentira). */
     pasta: (nome: string, pai: string) => criar(nome, pai).id,
     /** Um arquivo dentro de `pai`; devolve o ID. */
-    arquivo: (nome: string, pai: string, { mime = "application/pdf", tamanho = 1024, modificadoEm = null, conteudo = new Uint8Array() }: Partial<Pick<Item, "mime" | "tamanho" | "modificadoEm" | "conteudo">> = {}) =>
-      criar(nome, pai, { pasta: false, mime, tamanho, modificadoEm, conteudo }).id,
+    arquivo: (nome: string, pai: string, { mime = "application/pdf", tamanho = 1024, modificadoEm = null, conteudo = new Uint8Array(), miniatura = null }: Partial<Pick<Item, "mime" | "tamanho" | "modificadoEm" | "conteudo" | "miniatura">> = {}) =>
+      criar(nome, pai, { pasta: false, mime, tamanho, modificadoEm, conteudo, miniatura }).id,
     /** Muda de pasta um item que já existe (para testar o que sai da raiz). */
     mover: (id: string, novoPai: string) => {
       const item = itens.find((i) => i.id === id);

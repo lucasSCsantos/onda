@@ -12,6 +12,7 @@ import {
   lerJanela,
   lerPreferencias,
   planejarEnvio,
+  TIPOS_DE_NOTIFICACAO,
   proximaAbertura,
   type EventoDaNotificacao,
 } from "./notificacoes";
@@ -199,28 +200,32 @@ describe("retentativas", () => {
 
 describe("retenção da central", () => {
   it("aceita de 1 a 365 dias", () => {
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "30" })).toEqual({ retencao_das_notificacoes_dias: 30 });
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "1" })).toEqual({ retencao_das_notificacoes_dias: 1 });
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "365" })).toEqual({ retencao_das_notificacoes_dias: 365 });
+    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "30", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 30, limite_de_urgencia_horas: 12 });
+    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "1", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 1, limite_de_urgencia_horas: 12 });
+    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "365", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 365, limite_de_urgencia_horas: 12 });
   });
 
   it("recusa o resto", () => {
     for (const retencaoDias of ["0", "366", "", "1.5", "um mês"]) {
-      expect(lerConfiguracaoDasNotificacoes({ retencaoDias }), retencaoDias).toHaveProperty("erro");
+      expect(lerConfiguracaoDasNotificacoes({ retencaoDias, limiteDeUrgenciaHoras: "12" }), retencaoDias).toHaveProperty("erro");
     }
   });
 });
 
 describe("preferências", () => {
   it("o que a pessoa não marcou fica desligado", () => {
-    expect(lerPreferencias({ tiposLigados: ["designacao_aula"], inicio: "9", fim: "20" })).toEqual({
+    expect(lerPreferencias({ tiposLigados: TIPOS_DE_NOTIFICACAO.filter((t) => t !== "designacao_responsavel"), inicio: "9", fim: "20", nivel: "lider" })).toEqual({
       tiposDesligados: ["designacao_responsavel"],
       janela: { inicio: 9, fim: 20 },
     });
-    expect(lerPreferencias({ tiposLigados: ["designacao_responsavel", "designacao_aula", "inventado"], inicio: "8", fim: "21" })).toMatchObject({ tiposDesligados: [] });
+    expect(lerPreferencias({ tiposLigados: [...TIPOS_DE_NOTIFICACAO, "inventado"], inicio: "8", fim: "21", nivel: "lider" })).toMatchObject({ tiposDesligados: [] });
+    // O Professor só vê os tipos dele: o que não está no formulário não vira "desligado".
+    expect(lerPreferencias({ tiposLigados: [], inicio: "8", fim: "21", nivel: "professor" })).toMatchObject({
+      tiposDesligados: ["designacao_aula", "evento_alterado", "evento_cancelado", "chamada_pendente"],
+    });
   });
 
   it("recusa a janela inválida", () => {
-    expect(lerPreferencias({ tiposLigados: [], inicio: "21", fim: "8" })).toHaveProperty("erro");
+    expect(lerPreferencias({ tiposLigados: [], inicio: "21", fim: "8", nivel: "lider" })).toHaveProperty("erro");
   });
 });

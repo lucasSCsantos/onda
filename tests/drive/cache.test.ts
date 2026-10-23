@@ -58,3 +58,19 @@ describe("cache do Drive", () => {
     await expect(cliente.listarFilhos(pasta, opcoes)).resolves.toMatchObject({ itens: [] });
   });
 });
+
+describe("cache de outras respostas caras (o índice da busca)", () => {
+  it("guarda por uma validade própria e o \"Atualizar\" também esquece", async () => {
+    let agora = 0;
+    const { lembrar, limpar } = comCache(driveFalso().cliente, { validadeMs: 1000, agora: () => agora });
+    let chamadas = 0;
+    const buscar = async () => ++chamadas;
+    expect(await lembrar("indice", buscar, 5000)).toBe(1);
+    agora = 4000;
+    expect(await lembrar("indice", buscar, 5000)).toBe(1);
+    agora = 5001;
+    expect(await lembrar("indice", buscar, 5000)).toBe(2);
+    limpar();
+    expect(await lembrar("indice", buscar, 5000)).toBe(3);
+  });
+});

@@ -104,9 +104,28 @@ A chave privada nunca vai em código, em Log nem no navegador.
 ### Fila, envio e central
 
 As Notificações devidas são gravadas pelo banco na tabela `notificacoes`, que também é a central dentro do app ("Notificações" no
-menu, com as não lidas em destaque e o número no menu). Hoje há dois tipos: "você foi definido(a) como Responsável por um Evento" e
-"você foi escalado(a) como Professor ou Auxiliar de uma aula". Quem mexeu no próprio Evento não é avisado, e uma mudança que atinge
-várias Ocorrências de uma Série de uma vez avisa uma vez só.
+menu, com as não lidas em destaque e o número no menu). Os tipos:
+
+| Tipo | Quem recebe | Quando |
+| --- | --- | --- |
+| Designação | Liderança (Responsável); Liderança e Professor (Professor ou Auxiliar da aula) | ao salvar o Evento (gatilho) |
+| Lembrete de 1 dia e de 2 horas | Responsável (Liderança) | 24 h e 2 h antes do início; o de 2 horas não existe para Evento de dia inteiro |
+| Mudança de data, hora ou local; cancelamento | Responsável, Professor e Auxiliar | ao salvar o Evento (gatilho), só de Evento que ainda não começou |
+| Resumo semanal | Liderança, com os Eventos da semana seguinte que são dela | domingo às 19h (Salvador); quem não tem Evento não recebe |
+| Chamada pendente | Professor e Auxiliar | a aula acabou sem presença marcada, enquanto o cartão de Chamada ainda está à vista |
+| Evento sem Responsável | só o Admin | Evento dos próximos 7 dias sem Responsável (ou com o Responsável desativado) |
+
+Quem mexeu no próprio Evento não é avisado, e uma mudança que atinge várias Ocorrências de uma Série de uma vez avisa uma vez só.
+Em "Minha conta", cada pessoa liga e desliga só os tipos que o nível dela pode receber.
+
+- **Geração:** designação, mudança e cancelamento nascem de gatilhos do banco. O resto é devido com o passar do tempo: a cada 5 minutos o
+  `pg_cron` chama a mesma rota do agendador, que primeiro grava o que está devido (`src/lib/notificacoes/gerar.ts`, regras em
+  `notificacoesDevidas`) e depois envia a fila. A janela da chave dos lembretes é o início do Evento (um Evento remarcado ganha lembretes novos).
+- **Tag e validade:** os dois lembretes de um Evento têm a mesma `tag`, e mudança e cancelamento também: o aviso novo substitui o que ainda
+  está na tela. O lembrete de 1 dia vale até 2 h antes do início e o de 2 horas, até o início; mudança e cancelamento valem até o início
+  (no máximo 48 h). A validade vira o TTL do push (no máximo 24 h), então um aviso atrasado não é entregue.
+- **Urgência:** mudança ou cancelamento de Evento que começa em menos de 12 horas fura a janela de horário. O limite é editável em Admin →
+  Configurações (1 a 72 horas).
 
 - **Chave única:** tipo + Evento + pessoa + janela. O banco recusa a segunda igual, então nenhum aviso nasce duas vezes.
 - **Envio:** todo minuto em que há Notificação devida, o `pg_cron` chama `POST /api/agendador/notificacoes` pelo mesmo caminho das
@@ -114,13 +133,15 @@ várias Ocorrências de uma Série de uma vez avisa uma vez só.
   texto (modelos curtos em `src/dominio/notificacoes.ts`) e envia a cada dispositivo da pessoa separadamente. Uma reserva de 5 minutos
   impede que duas rodadas enviem a mesma Notificação; quem já recebeu fica registrado, então uma nova tentativa só envia ao que falhou.
 - **Janela de horário:** padrão das 8h às 21h em America/Bahia, ajustável por pessoa em "Minha conta". Fora dela, o aviso espera abrir
-  (os marcados como urgentes não esperam; nenhum tipo desta entrega é urgente).
+  (os urgentes não esperam).
 - **Retentativas:** esperas de 5, 15, 45 e 135 minutos, até 5 tentativas. A falha definitiva vira Log de erro (`notificacao.falhou`, só
   com tipo e contagens). Inscrição recusada com 404 ou 410 é removida (`push.expirado`). A Notificação vale 48 horas; depois expira.
 - **Modo de teste (dry-run):** com `PUSH_MODO_TESTE=1` nada sai; cada Notificação vira um Log `notificacao.simulada`.
-- **Retenção da central:** 30 dias por padrão, em Admin → Configurações; uma limpeza roda todo dia às 3h30.
+- **Retenção da central:** 30 dias por padrão, em Admin → Configurações; uma limpeza roda todo dia às 3h30. Nada é apagado antes de 8 dias,
+  qualquer que seja a retenção: os avisos de Chamada pendente e de Eventos sem Responsável são devidos por até 7 dias, e apagar o registro
+  de um já enviado o faria nascer de novo.
 - **Sem dados de Adolescentes:** o texto é montado só com título, número, data, hora e local do Evento (o Pequeno grupo omite o local).
 
 Sem `SUPABASE_SERVICE_ROLE_KEY` ou chaves VAPID (e fora do modo de teste), a rota responde 503 e a fila espera; a central funciona do mesmo jeito.
 
-Para reverter, veja o fim de `supabase/migrations/20261023140000_notificacoes.sql`.
+Para reverter, veja o fim de `supabase/migrations/20261023140000_notificacoes.sql` e de `supabase/migrations/20261023150000_push_demais_tipos.sql`.

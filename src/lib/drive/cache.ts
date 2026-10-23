@@ -12,12 +12,12 @@ const MAXIMO_DE_ENTRADAS = 500;
 export function comCache(cliente: ClienteDoDrive, { validadeMs = VALIDADE_PADRAO_MS, agora = Date.now }: { validadeMs?: number; agora?: () => number } = {}) {
   const guardado = new Map<string, { valor: unknown; venceEm: number }>();
 
-  async function lembrar<T>(chave: string, buscar: () => Promise<T>): Promise<T> {
+  async function lembrar<T>(chave: string, buscar: () => Promise<T>, validade = validadeMs): Promise<T> {
     const antigo = guardado.get(chave);
     if (antigo && antigo.venceEm > agora()) return antigo.valor as T;
     const valor = await buscar();
     guardado.delete(chave);
-    guardado.set(chave, { valor, venceEm: agora() + validadeMs });
+    guardado.set(chave, { valor, venceEm: agora() + validade });
     if (guardado.size > MAXIMO_DE_ENTRADAS) guardado.delete(guardado.keys().next().value!);
     return valor;
   }
@@ -27,5 +27,6 @@ export function comCache(cliente: ClienteDoDrive, { validadeMs = VALIDADE_PADRAO
     obterItem: (id) => lembrar(`item|${id}`, () => cliente.obterItem(id)),
     listarFilhos: (paiId, opcoes) => lembrar(`filhos|${paiId}|${opcoes.ordem}|${opcoes.pagina ?? ""}|${opcoes.tamanho}`, () => cliente.listarFilhos(paiId, opcoes)),
   };
-  return { cliente: comCacheDoDrive, limpar: () => guardado.clear() };
+  /** `lembrar` serve a outras respostas caras, como o índice da busca, com a mesma regra de validade e o mesmo "Atualizar". */
+  return { cliente: comCacheDoDrive, limpar: () => guardado.clear(), lembrar };
 }

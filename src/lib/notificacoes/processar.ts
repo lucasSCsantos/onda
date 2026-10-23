@@ -1,12 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  aindaVale,
   conteudoDaNotificacao,
   desfechoDoEnvio,
-  eTipoDeNotificacao,
+  eTipoDeEvento,
   JANELA_PADRAO,
   planejarEnvio,
   type EventoDaNotificacao,
 } from "@/dominio/notificacoes";
+import type { Status } from "@/dominio/eventos";
 import { entregar, type ConteudoDaNotificacao, type Dispositivo, type EnviadorDePush } from "@/dominio/push";
 
 // A rodada do agendador: reserva as Notificações devidas, decide o que fazer com cada uma (src/dominio/notificacoes.ts) e
@@ -38,8 +40,13 @@ type DoBanco = {
     inicio: string;
     dia_inteiro: boolean;
     local: string;
+    status: Status;
+    responsavel_id: string | null;
     categorias: { nome: string } | null;
   }[];
+  /** Responsáveis de contas ativas, e Eventos com presença marcada: o que decide se o motivo do aviso ainda vale. */
+  responsaveisAtivos: string[];
+  comChamada: string[];
 };
 
 export type ResumoDaRodada = {
@@ -98,16 +105,30 @@ async function carregar(db: SupabaseClient, reservadas: Reservada[]) {
     db.from("preferencias_de_notificacao").select("pessoa_id, tipos_desligados, janela_inicio, janela_fim").in("pessoa_id", pessoas),
     db.from("inscricoes_de_push").select("id, pessoa_id, endpoint, p256dh, auth").in("pessoa_id", pessoas),
     eventos.length > 0
-      ? db.from("eventos").select("id, titulo, numero_da_ocorrencia, inicio, dia_inteiro, local, categorias(nome)").in("id", eventos)
+      ? db.from("eventos").select("id, titulo, numero_da_ocorrencia, inicio, dia_inteiro, local, status, responsavel_id, categorias(nome)").in("id", eventos)
       : Promise.resolve({ data: [], error: null }),
   ]);
   for (const consulta of [preferencias, dispositivos, eventosLidos]) {
     if (consulta.error) throw new Error(`não foi possível ler os dados da fila (${consulta.error.code ?? "sem código"})`);
   }
+  const eventosDoBanco = (eventosLidos.data ?? []) as unknown as DoBanco["eventos"];
+
+  // Para conferir, na hora do envio, que o motivo do aviso ainda vale (aindaVale).
+  const responsaveis = [...new Set(eventosDoBanco.map((e) => e.responsavel_id).filter((id): id is string => id !== null))];
+  const paraChamada = reservadas.filter((n) => n.tipo === "chamada_pendente" && n.evento_id).map((n) => n.evento_id as string);
+  const [ativos, presencas] = await Promise.all([
+    responsaveis.length > 0 ? db.from("perfis").select("id").eq("ativo", true).in("id", responsaveis) : Promise.resolve({ data: [], error: null }),
+    paraChamada.length > 0 ? db.from("presencas").select("evento_id").in("evento_id", paraChamada) : Promise.resolve({ data: [], error: null }),
+  ]);
+  for (const consulta of [ativos, presencas]) {
+    if (consulta.error) throw new Error(`não foi possível ler os dados da fila (${consulta.error.code ?? "sem código"})`);
+  }
   return {
     preferencias: (preferencias.data ?? []) as DoBanco["preferencias"],
     dispositivos: (dispositivos.data ?? []) as unknown as DoBanco["dispositivos"],
-    eventos: (eventosLidos.data ?? []) as unknown as DoBanco["eventos"],
+    eventos: eventosDoBanco,
+    responsaveisAtivos: (ativos.data ?? []).map((p) => p.id as string),
+    comChamada: [...new Set((presencas.data ?? []).map((p) => p.evento_id as string))],
   } satisfies DoBanco;
 }
 
@@ -131,16 +152,29 @@ async function processarUma(
   resumo: ResumoDaRodada,
 ) {
   // Conteúdo: o já gravado, ou o montado agora a partir do Evento. Sem Evento nem texto, não há o que enviar.
+  let obsoleta = false;
   let conteudo: ConteudoDaNotificacao | null = n.titulo && n.texto ? { titulo: n.titulo, texto: n.texto, tag: n.tag ?? "mural", url: n.url ?? "/" } : null;
-  if (!conteudo && eTipoDeNotificacao(n.tipo)) {
+  if (!conteudo && eTipoDeEvento(n.tipo)) {
     const evento = dados.eventos.find((e) => e.id === n.evento_id);
-    if (evento) conteudo = conteudoDaNotificacao(n.tipo, eventoDaNotificacao(evento));
+    if (evento) {
+      conteudo = conteudoDaNotificacao(n.tipo, eventoDaNotificacao(evento));
+      // O aviso esperou na fila: se o motivo deixou de valer (Evento cancelado, Chamada feita), não sai.
+      const situacao = {
+        status: evento.status,
+        inicio: new Date(evento.inicio),
+        responsavelAtivo: evento.responsavel_id !== null && dados.responsaveisAtivos.includes(evento.responsavel_id),
+        chamadaFeita: dados.comChamada.includes(evento.id),
+      };
+      if (!aindaVale(n.tipo, situacao, agora)) obsoleta = true;
+    }
   }
   const gravarConteudo = conteudo && n.titulo === null ? { titulo: conteudo.titulo, texto: conteudo.texto, tag: conteudo.tag, url: conteudo.url } : {};
 
   const preferencias = dados.preferencias.find((p) => p.pessoa_id === n.pessoa_id);
   const dispositivos = dados.dispositivos.filter((d) => d.pessoa_id === n.pessoa_id);
-  const plano = conteudo
+  const plano = obsoleta
+    ? ({ acao: "expirar" } as const)
+    : conteudo
     ? planejarEnvio(
         { urgente: n.urgente, validaAte: new Date(n.valida_ate), tipo: n.tipo },
         {

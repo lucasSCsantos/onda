@@ -12,6 +12,8 @@ export interface ClienteDoDrive {
   obterItem(id: string): Promise<ItemDoDrive>;
   listarFilhos(paiId: string, opcoes: { ordem: OrdemDaListagem; pagina: string | null; tamanho: number }): Promise<{ itens: ItemDoDrive[]; proxima: string | null }>;
   baixar(id: string): Promise<Uint8Array>;
+  /** A miniatura de um arquivo, quando o Drive tem uma; nulo se não tem. */
+  miniatura(id: string): Promise<{ bytes: Uint8Array; mime: string } | null>;
 }
 
 /** Um arquivo ou pasta do Drive como o Mural precisa vê-lo. `pais` são os IDs das pastas onde mora (o Drive permite mais de um). */

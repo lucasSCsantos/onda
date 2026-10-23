@@ -18,7 +18,7 @@ let servidor: Server;
 let base = "";
 let pedidos: Pedido[] = [];
 /** O que o servidor responde a cada rota; os testes trocam para simular erros. */
-let respostas: { token: () => [number, unknown]; buscar: () => [number, unknown]; criar: () => [number, unknown] };
+let respostas: { token: () => [number, unknown]; buscar: () => [number, unknown]; criar: () => [number, unknown]; miniatura: [number, string] };
 let tokensEmitidos = 0;
 
 const lerCorpo = (req: IncomingMessage) =>
@@ -33,6 +33,11 @@ beforeAll(async () => {
     const corpo = await lerCorpo(req);
     const url = new URL(req.url!, base);
     pedidos.push({ metodo: req.method!, caminho: url.pathname + url.search, autorizacao: req.headers.authorization, corpo });
+    if (url.pathname.startsWith("/thumb")) {
+      res.writeHead(respostas.miniatura[0], { "Content-Type": respostas.miniatura[1] });
+      res.end("bytes-da-miniatura");
+      return;
+    }
     const [status, json] = url.pathname === "/token" ? respostas.token() : req.method === "GET" ? respostas.buscar() : respostas.criar();
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(json));
@@ -50,10 +55,11 @@ beforeEach(() => {
     token: () => [200, { access_token: `token-${++tokensEmitidos}`, expires_in: 3600 }],
     buscar: () => [200, { files: [] }],
     criar: () => [200, { id: "NOVA_PASTA_ID" }],
+    miniatura: [200, "image/png"],
   };
 });
 
-const cliente = (extra: { agora?: () => number } = {}) =>
+const cliente = (extra: { agora?: () => number; aceitaMiniatura?: (url: URL) => boolean } = {}) =>
   criarClienteDoGoogle({
     credenciais: { client_email: EMAIL, private_key: CHAVE_PRIVADA },
     urlDaApi: `${base}/drive/v3`,
@@ -224,5 +230,38 @@ describe("cliente do Drive: Arquivos (só leitura)", () => {
     const erro = await cliente().obterItem("X").catch((e) => e);
     expect(erro).toBeInstanceOf(ErroDoDrive);
     expect(erro.permanente).toBe(true);
+  });
+});
+
+describe("cliente do Drive: miniaturas", () => {
+  const comMiniatura = () => cliente({ aceitaMiniatura: (url) => url.hostname === "127.0.0.1" });
+  const pedidoDaMiniatura = () => pedidos.find((p) => p.caminho.startsWith("/thumb"))!;
+
+  it("busca a miniatura no endereço que o Drive deu, em tamanho de grade, e devolve os bytes", async () => {
+    respostas.buscar = () => [200, { thumbnailLink: `${base}/thumb/abc=s220` }];
+    const m = await comMiniatura().miniatura("ARQ1");
+    expect(m?.mime).toBe("image/png");
+    expect(new TextDecoder().decode(m!.bytes)).toBe("bytes-da-miniatura");
+    expect(pedidoDaMiniatura().caminho).toBe("/thumb/abc=s400");
+    expect(pedidoDaMiniatura().autorizacao).toBeUndefined();
+  });
+
+  it("sem miniatura no Drive, devolve nulo", async () => {
+    respostas.buscar = () => [200, {}];
+    expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
+  });
+
+  it("só busca endereços do Google: nada de pedir a um endereço qualquer", async () => {
+    respostas.buscar = () => [200, { thumbnailLink: `${base}/thumb/abc=s220` }];
+    expect(await cliente().miniatura("ARQ1")).toBeNull();
+    expect(pedidos.some((p) => p.caminho.startsWith("/thumb"))).toBe(false);
+  });
+
+  it("resposta que não é imagem ou deu erro vale como sem miniatura", async () => {
+    respostas.buscar = () => [200, { thumbnailLink: `${base}/thumb/abc=s220` }];
+    respostas.miniatura = [200, "text/html"];
+    expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
+    respostas.miniatura = [403, "image/png"];
+    expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
   });
 });

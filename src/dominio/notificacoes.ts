@@ -1,21 +1,68 @@
-import { tituloDeExibicao } from "./eventos";
-import { dataLocal, horaLocal, meiaNoite } from "./fuso";
+import { fimDaAula, SEM_CHAMADA } from "./cartao-de-chamada";
+import { diaDe, tituloDeExibicao, type Status } from "./eventos";
+import { dataLocal, horaLocal, meiaNoite, somarDias } from "./fuso";
 import { montarConteudo, type ConteudoDaNotificacao } from "./push";
 
 // Notificações: o que se decide sem rede nem banco. Os tipos, o texto curto de cada um, a janela de horário da pessoa,
 // as retentativas e o plano de envio de cada item da fila. O banco grava a fila (supabase/migrations/20261023140000_notificacoes.sql)
 // e a rota do agendador executa o plano (src/lib/notificacoes/processar.ts).
 
-export const TIPOS_DE_NOTIFICACAO = ["designacao_responsavel", "designacao_aula"] as const;
+const HORA = 3_600_000;
+
+export const TIPOS_DE_NOTIFICACAO = [
+  "designacao_responsavel",
+  "designacao_aula",
+  "lembrete_1d",
+  "lembrete_2h",
+  "evento_alterado",
+  "evento_cancelado",
+  "resumo_semanal",
+  "chamada_pendente",
+  "sem_responsavel",
+] as const;
 export type TipoDeNotificacao = (typeof TIPOS_DE_NOTIFICACAO)[number];
+
+/** Os tipos que falam de um Evento só (o texto sai dele); o resumo semanal reúne vários e traz o texto pronto. */
+export type TipoDeEvento = Exclude<TipoDeNotificacao, "resumo_semanal">;
 
 export const NOMES_DOS_TIPOS: Record<TipoDeNotificacao, string> = {
   designacao_responsavel: "Quando me definirem como Responsável por um Evento",
   designacao_aula: "Quando me escalarem como Professor ou Auxiliar de uma aula",
+  lembrete_1d: "Lembrete, 1 dia antes dos Eventos de que sou Responsável",
+  lembrete_2h: "Lembrete, 2 horas antes dos Eventos de que sou Responsável",
+  evento_alterado: "Quando um Evento meu mudar de data, hora ou local",
+  evento_cancelado: "Quando um Evento meu for cancelado",
+  resumo_semanal: "Resumo da semana, no domingo às 19h",
+  chamada_pendente: "Quando a aula passar e a Chamada estiver pendente",
+  sem_responsavel: "Eventos dos próximos 7 dias sem Responsável",
 };
 
 export const eTipoDeNotificacao = (valor: unknown): valor is TipoDeNotificacao =>
   typeof valor === "string" && (TIPOS_DE_NOTIFICACAO as readonly string[]).includes(valor);
+
+export const eTipoDeEvento = (valor: unknown): valor is TipoDeEvento => eTipoDeNotificacao(valor) && valor !== "resumo_semanal";
+
+/**
+ * Quem pode receber cada tipo, pelo nível de acesso: a Liderança e o Professor (só sobre as próprias aulas); o resumo
+ * semanal e os alertas de gestão, só a Liderança; os Eventos sem Responsável, só o Admin.
+ */
+const NIVEIS_DOS_TIPOS: Record<TipoDeNotificacao, readonly string[]> = {
+  designacao_responsavel: ["admin", "lider"],
+  designacao_aula: ["admin", "lider", "professor"],
+  lembrete_1d: ["admin", "lider"],
+  lembrete_2h: ["admin", "lider"],
+  evento_alterado: ["admin", "lider", "professor"],
+  evento_cancelado: ["admin", "lider", "professor"],
+  resumo_semanal: ["admin", "lider"],
+  chamada_pendente: ["admin", "lider", "professor"],
+  sem_responsavel: ["admin"],
+};
+
+/** Uma pessoa deste nível de acesso pode receber este tipo? O gatilho `notificar_mudancas` do banco usa as mesmas listas. */
+export const recebe = (tipo: TipoDeNotificacao, nivel: string) => NIVEIS_DOS_TIPOS[tipo].includes(nivel);
+
+/** Os tipos que uma pessoa deste nível pode ligar e desligar em "Minha conta". */
+export const tiposDoNivel = (nivel: string) => TIPOS_DE_NOTIFICACAO.filter((tipo) => recebe(tipo, nivel));
 
 // Janela de horário ------------------------------------------------------------------------------------------------
 
@@ -84,29 +131,51 @@ export function dataEHora(inicio: Date, diaInteiro: boolean): string {
 const localDe = (evento: EventoDaNotificacao) =>
   CATEGORIAS_SEM_LOCAL.includes(evento.categoria.trim().toLowerCase()) || evento.local.trim() === "" ? "" : ` · ${evento.local.trim()}`;
 
+const textoDoEvento = (e: EventoDaNotificacao) => `${tituloDeExibicao(e)} · ${dataEHora(e.inicio, e.diaInteiro)}${localDe(e)}`;
+
 /** Os modelos de texto de cada tipo, curtos e em pt-BR. O título da Notificação diz o que houve; o texto, de que Evento se trata. */
-const MODELOS: Record<TipoDeNotificacao, { titulo: string; texto: (evento: EventoDaNotificacao) => string }> = {
-  designacao_responsavel: {
-    titulo: "Você foi definido(a) como Responsável",
-    texto: (e) => `${tituloDeExibicao(e)} · ${dataEHora(e.inicio, e.diaInteiro)}${localDe(e)}`,
+const MODELOS: Record<TipoDeEvento, { titulo: string; texto: (evento: EventoDaNotificacao) => string; tag: string; url: (evento: EventoDaNotificacao) => string }> = {
+  designacao_responsavel: { titulo: "Você foi definido(a) como Responsável", texto: textoDoEvento, tag: "designacao_responsavel", url: (e) => `/eventos/${e.id}` },
+  designacao_aula: { titulo: "Você foi escalado(a) em uma aula", texto: textoDoEvento, tag: "designacao_aula", url: (e) => `/eventos/${e.id}` },
+  // Os dois lembretes de um Evento compartilham a tag: o que chega depois substitui o anterior na tela do aparelho.
+  lembrete_1d: { titulo: "Lembrete de Evento", texto: textoDoEvento, tag: "lembrete", url: (e) => `/eventos/${e.id}` },
+  lembrete_2h: { titulo: "Seu Evento começa em breve", texto: textoDoEvento, tag: "lembrete", url: (e) => `/eventos/${e.id}` },
+  // O cancelamento também substitui um aviso de mudança que ainda esteja na tela.
+  evento_alterado: { titulo: "Evento alterado", texto: textoDoEvento, tag: "mudanca", url: (e) => `/eventos/${e.id}` },
+  evento_cancelado: { titulo: "Evento cancelado", texto: textoDoEvento, tag: "mudanca", url: (e) => `/eventos/${e.id}` },
+  chamada_pendente: {
+    titulo: "Chamada pendente",
+    texto: (e) => `${tituloDeExibicao(e)} · ${dataEHora(e.inicio, e.diaInteiro)}`,
+    tag: "chamada_pendente",
+    url: (e) => `/eventos/${e.id}/chamada`,
   },
-  designacao_aula: {
-    titulo: "Você foi escalado(a) em uma aula",
-    texto: (e) => `${tituloDeExibicao(e)} · ${dataEHora(e.inicio, e.diaInteiro)}${localDe(e)}`,
-  },
+  sem_responsavel: { titulo: "Evento sem Responsável", texto: textoDoEvento, tag: "sem_responsavel", url: (e) => `/eventos/${e.id}` },
 };
 
 /** A tag de um tipo e de um Evento: um aviso novo do mesmo assunto substitui o anterior na tela do aparelho. */
-export const tagDaNotificacao = (tipo: TipoDeNotificacao, eventoId: string) => `${tipo}:${eventoId}`;
+export const tagDaNotificacao = (tipo: TipoDeEvento, eventoId: string) => `${MODELOS[tipo].tag}:${eventoId}`;
 
-/** O conteúdo mínimo que vai ao aparelho e à central: texto curto, `tag` e o caminho do Evento. */
-export function conteudoDaNotificacao(tipo: TipoDeNotificacao, evento: EventoDaNotificacao): ConteudoDaNotificacao {
+/** O conteúdo mínimo que vai ao aparelho e à central: texto curto, `tag` e o caminho do Evento (ou da Chamada). */
+export function conteudoDaNotificacao(tipo: TipoDeEvento, evento: EventoDaNotificacao): ConteudoDaNotificacao {
   const modelo = MODELOS[tipo];
   return montarConteudo({
     titulo: modelo.titulo,
     texto: modelo.texto(evento),
     tag: tagDaNotificacao(tipo, evento.id),
-    url: `/eventos/${evento.id}`,
+    url: modelo.url(evento),
+  });
+}
+
+/** O resumo da semana: quantos Eventos e os primeiros, na ordem das datas. `janela` é o domingo do resumo (a tag é uma por semana). */
+export function conteudoDoResumo(eventos: readonly EventoDaNotificacao[], janela: string): ConteudoDaNotificacao {
+  const ordenados = [...eventos].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+  const primeiros = ordenados.slice(0, 2).map((e) => `${tituloDeExibicao(e)} (${dataEHora(e.inicio, e.diaInteiro)})`);
+  const resto = ordenados.length - primeiros.length;
+  return montarConteudo({
+    titulo: "Seus Eventos da semana",
+    texto: `${ordenados.length} ${ordenados.length === 1 ? "Evento" : "Eventos"}: ${primeiros.join("; ")}${resto > 0 ? ` e mais ${resto}` : ""}`,
+    tag: `resumo_semanal:${janela}`,
+    url: "/",
   });
 }
 
@@ -202,13 +271,39 @@ export const RETENCAO_DA_CENTRAL_MINIMA = 1;
 export const RETENCAO_DA_CENTRAL_MAXIMA = 365;
 export const RETENCAO_DA_CENTRAL_PADRAO = 30;
 
+/** Abaixo de quantas horas para o início uma mudança ou cancelamento fura a janela de horário. O banco confere os mesmos limites. */
+export const LIMITE_DE_URGENCIA_MINIMO = 1;
+export const LIMITE_DE_URGENCIA_MAXIMO = 72;
+export const LIMITE_DE_URGENCIA_PADRAO = 12;
+
+/**
+ * Uma mudança ou cancelamento é urgente se o Evento ainda não começou e começa em menos de `limiteHoras`: a pessoa precisa
+ * saber agora, mesmo fora do horário que escolheu. O gatilho `notificar_mudancas` do banco aplica a mesma regra.
+ */
+export const ehUrgente = (inicio: Date, agora: Date, limiteHoras: number) => {
+  const falta = inicio.getTime() - agora.getTime();
+  return falta > 0 && falta < limiteHoras * HORA;
+};
+
 /** A configuração das Notificações como o Admin a envia, pronta para gravar, ou o que impede. */
-export function lerConfiguracaoDasNotificacoes(entrada: { retencaoDias: string }): { retencao_das_notificacoes_dias: number } | { erro: string } {
+export function lerConfiguracaoDasNotificacoes(entrada: {
+  retencaoDias: string;
+  limiteDeUrgenciaHoras: string;
+}): { retencao_das_notificacoes_dias: number; limite_de_urgencia_horas: number } | { erro: string } {
   const dias = Number(entrada.retencaoDias);
   if (entrada.retencaoDias.trim() === "" || !Number.isInteger(dias) || dias < RETENCAO_DA_CENTRAL_MINIMA || dias > RETENCAO_DA_CENTRAL_MAXIMA) {
     return { erro: `A central guarda as Notificações por ${RETENCAO_DA_CENTRAL_MINIMA} a ${RETENCAO_DA_CENTRAL_MAXIMA} dias.` };
   }
-  return { retencao_das_notificacoes_dias: dias };
+  const horas = Number(entrada.limiteDeUrgenciaHoras);
+  if (
+    entrada.limiteDeUrgenciaHoras.trim() === "" ||
+    !Number.isInteger(horas) ||
+    horas < LIMITE_DE_URGENCIA_MINIMO ||
+    horas > LIMITE_DE_URGENCIA_MAXIMO
+  ) {
+    return { erro: `Uma mudança é urgente quando o Evento começa em ${LIMITE_DE_URGENCIA_MINIMO} a ${LIMITE_DE_URGENCIA_MAXIMO} horas.` };
+  }
+  return { retencao_das_notificacoes_dias: dias, limite_de_urgencia_horas: horas };
 }
 
 // Preferências -----------------------------------------------------------------------------------------------------
@@ -217,9 +312,170 @@ export type PreferenciasDeNotificacao = { tiposDesligados: TipoDeNotificacao[]; 
 
 export const PREFERENCIAS_PADRAO: PreferenciasDeNotificacao = { tiposDesligados: [], janela: JANELA_PADRAO };
 
-/** O que o formulário de preferências envia: os tipos marcados (recebidos) e a janela, como texto. */
-export function lerPreferencias(entrada: { tiposLigados: readonly string[]; inicio: string; fim: string }): PreferenciasDeNotificacao | { erro: string } {
+/**
+ * O que o formulário de preferências envia: os tipos marcados (recebidos) e a janela, como texto. Só os tipos que o nível
+ * de acesso da pessoa pode receber estão no formulário, então só eles podem ficar desligados.
+ */
+export function lerPreferencias(entrada: { tiposLigados: readonly string[]; inicio: string; fim: string; nivel: string }): PreferenciasDeNotificacao | { erro: string } {
   const janela = lerJanela(entrada.inicio, entrada.fim);
   if ("erro" in janela) return janela;
-  return { tiposDesligados: TIPOS_DE_NOTIFICACAO.filter((t) => !entrada.tiposLigados.includes(t)), janela };
+  return { tiposDesligados: tiposDoNivel(entrada.nivel).filter((t) => !entrada.tiposLigados.includes(t)), janela };
+}
+
+// O que está devido agora ------------------------------------------------------------------------------------------
+
+/** Quem pode receber, como o planejador precisa: o nível, se a conta está ativa e os tipos que a pessoa desligou. */
+export type PessoaDoPlano = { id: string; nivel: string; ativo: boolean; tiposDesligados: readonly string[] };
+
+/** O Evento como o planejador o lê: o do texto, mais o que decide quem é avisado e quando. */
+export type EventoDoPlano = EventoDaNotificacao & {
+  fim: Date | null;
+  status: Status;
+  responsavelId: string | null;
+  /** Os ids do Professor e do Auxiliar da aula. */
+  professores: readonly string[];
+  temChamada: boolean;
+  /** Já tem ao menos uma presença marcada. */
+  chamadaFeita: boolean;
+};
+
+/** Uma Notificação devida, pronta para entrar na fila: a chave única é (tipo, Evento, pessoa, janela). */
+export type NotificacaoDevida = {
+  tipo: TipoDeNotificacao;
+  eventoId: string | null;
+  pessoaId: string;
+  janela: string;
+  validaAte: Date;
+  /** Só onde o texto não sai de um Evento só (o resumo semanal): os demais são montados na hora do envio. */
+  conteudo?: ConteudoDaNotificacao;
+};
+
+export const HORA_DO_RESUMO_SEMANAL = 19;
+const COM_LEMBRETE: readonly Status[] = ["planejado", "confirmado"];
+const SEM_ALERTA_DE_RESPONSAVEL: readonly Status[] = ["cancelado", "realizado", "adiado"];
+
+/** O último domingo às 19h (no fuso do Mural) que já passou: a hora do resumo da semana. */
+export function ultimoResumoSemanal(agora: Date): Date {
+  const { ano, mes, dia, diaDaSemana } = dataLocal(agora);
+  const domingo = somarDias(meiaNoite(ano, mes, dia), -diaDaSemana).getTime() + HORA_DO_RESUMO_SEMANAL * HORA;
+  return new Date(domingo > agora.getTime() ? domingo - 7 * 24 * HORA : domingo);
+}
+
+/**
+ * Tudo o que está devido neste instante; a chave única do banco descarta quem já recebeu. As janelas das chaves: lembretes,
+ * o início do Evento (se ele muda de hora, vale um lembrete novo); resumo, o domingo; os demais, uma vez por Evento e
+ * pessoa. Cada tipo respeita o nível de acesso e o interruptor da pessoa. A designação e a mudança ou cancelamento não
+ * passam por aqui: nascem de gatilhos do banco, no instante da alteração.
+ */
+export function notificacoesDevidas({
+  agora,
+  eventos,
+  pessoas,
+  janelaDaChamadaDias,
+}: {
+  agora: Date;
+  eventos: readonly EventoDoPlano[];
+  pessoas: readonly PessoaDoPlano[];
+  janelaDaChamadaDias: number;
+}): NotificacaoDevida[] {
+  const porId = new Map(pessoas.map((p) => [p.id, p]));
+  const devidas: NotificacaoDevida[] = [];
+  const agoraMs = agora.getTime();
+
+  const avisar = (
+    tipo: TipoDeNotificacao,
+    pessoaId: string | null,
+    evento: EventoDoPlano | null,
+    janela: string,
+    validaAte: Date,
+    conteudo?: ConteudoDaNotificacao,
+  ) => {
+    const pessoa = pessoaId ? porId.get(pessoaId) : undefined;
+    if (!pessoa || !pessoa.ativo || !recebe(tipo, pessoa.nivel) || pessoa.tiposDesligados.includes(tipo)) return;
+    devidas.push({ tipo, eventoId: evento?.id ?? null, pessoaId: pessoa.id, janela, validaAte, ...(conteudo ? { conteudo } : {}) });
+  };
+
+  const admins = pessoas.filter((p) => p.nivel === "admin");
+
+  for (const e of eventos) {
+    const falta = e.inicio.getTime() - agoraMs;
+
+    // Lembretes, só de quem é Responsável. Um Evento de dia inteiro começa à meia-noite: "2 horas antes" seria às 22h.
+    if (COM_LEMBRETE.includes(e.status) && falta > 0) {
+      const marca = String(Math.floor(e.inicio.getTime() / 60_000));
+      if (!e.diaInteiro && falta <= 2 * HORA) {
+        avisar("lembrete_2h", e.responsavelId, e, marca, e.inicio);
+      } else if (falta <= 24 * HORA) {
+        // Depois de 2h antes, o lembrete de 1 dia seria atrasado e enganoso; o de 2 horas o substitui.
+        avisar("lembrete_1d", e.responsavelId, e, marca, e.diaInteiro ? e.inicio : new Date(e.inicio.getTime() - 2 * HORA));
+      }
+    }
+
+    // Eventos dos próximos 7 dias sem Responsável (nem um Responsável com a conta desativada), para o Admin.
+    const responsavel = e.responsavelId ? porId.get(e.responsavelId) : undefined;
+    if (!SEM_ALERTA_DE_RESPONSAVEL.includes(e.status) && falta > 0 && falta <= 7 * 24 * HORA && !responsavel?.ativo) {
+      for (const admin of admins) avisar("sem_responsavel", admin.id, e, "", e.inicio);
+    }
+
+    // Chamada pendente: a aula já passou e ninguém marcou presença, enquanto o cartão ainda está à vista.
+    if (
+      e.temChamada &&
+      !SEM_CHAMADA.includes(e.status) &&
+      !e.chamadaFeita &&
+      fimDaAula(e).getTime() <= agoraMs &&
+      diaDe(e.inicio) >= diaDe(somarDias(agora, -janelaDaChamadaDias))
+    ) {
+      for (const professor of e.professores) avisar("chamada_pendente", professor, e, "", new Date(agoraMs + 24 * HORA));
+    }
+  }
+
+  // Resumo semanal: do domingo às 19h até as 19h de segunda, com os Eventos da semana seguinte de cada pessoa.
+  const resumoDe = ultimoResumoSemanal(agora);
+  if (agoraMs - resumoDe.getTime() < 24 * HORA) {
+    const { ano, mes, dia } = dataLocal(resumoDe);
+    const segunda = somarDias(meiaNoite(ano, mes, dia), 1).getTime();
+    const janela = diaDe(resumoDe);
+    for (const pessoa of pessoas) {
+      const dela = eventos.filter(
+        (e) =>
+          // Rascunho, Cancelado e Adiado não entram no resumo (os mesmos Status que não pedem Chamada).
+          !SEM_CHAMADA.includes(e.status) &&
+          e.inicio.getTime() >= segunda &&
+          e.inicio.getTime() < segunda + 7 * 24 * HORA &&
+          (e.responsavelId === pessoa.id || e.professores.includes(pessoa.id)),
+      );
+      if (dela.length > 0) avisar("resumo_semanal", pessoa.id, null, janela, new Date(resumoDe.getTime() + 24 * HORA), conteudoDoResumo(dela, janela));
+    }
+  }
+
+  return devidas;
+}
+
+// O motivo do aviso ainda vale? ------------------------------------------------------------------------------------
+
+/** Como o Evento está na hora do envio, o que decide se o motivo de um aviso que esperou (a janela, uma nova tentativa) ainda vale. */
+export type SituacaoDoEvento = { status: Status; inicio: Date; responsavelAtivo: boolean; chamadaFeita: boolean };
+
+/**
+ * Um aviso pode esperar horas na fila (a janela de horário, uma nova tentativa). Antes de enviar, confere se o motivo ainda
+ * vale: um lembrete de Evento cancelado ou uma Chamada pendente que já foi feita seriam avisos enganosos. A designação e o
+ * resumo semanal não passam por aqui: o primeiro vale sempre que o Evento existe; o segundo já traz o texto pronto.
+ */
+export function aindaVale(tipo: TipoDeEvento, e: SituacaoDoEvento, agora: Date): boolean {
+  const futuro = e.inicio.getTime() > agora.getTime();
+  switch (tipo) {
+    case "lembrete_1d":
+    case "lembrete_2h":
+      return COM_LEMBRETE.includes(e.status) && futuro;
+    case "evento_alterado":
+      return COM_LEMBRETE.includes(e.status);
+    case "evento_cancelado":
+      return e.status === "cancelado";
+    case "sem_responsavel":
+      return !SEM_ALERTA_DE_RESPONSAVEL.includes(e.status) && !e.responsavelAtivo;
+    case "chamada_pendente":
+      return !SEM_CHAMADA.includes(e.status) && !e.chamadaFeita;
+    default:
+      return true;
+  }
 }

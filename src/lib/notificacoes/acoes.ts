@@ -20,6 +20,7 @@ export async function salvarPreferenciasDeNotificacao(_: EstadoFormulario, dados
     tiposLigados: dados.getAll("tipo").map(String),
     inicio: String(dados.get("inicio") ?? ""),
     fim: String(dados.get("fim") ?? ""),
+    nivel: eu.nivel,
   });
   if ("erro" in lidas) return lidas;
 

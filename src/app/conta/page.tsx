@@ -58,7 +58,7 @@ export default async function PaginaMinhaConta() {
             chavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""}
             configurado={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)}
           />
-          <PreferenciasDeNotificacao preferencias={preferencias} />
+          <PreferenciasDeNotificacao preferencias={preferencias} nivel={eu.nivel} />
         </section>
         <section aria-labelledby="calendario" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <h2 id="calendario" className="text-xl font-semibold">

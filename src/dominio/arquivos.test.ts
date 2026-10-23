@@ -26,6 +26,7 @@ const pedido = (cliente: ClienteDoDrive, sobre: Partial<Omit<Parameters<typeof a
   pastaId: null,
   ordem: "nome" as const,
   pagina: null,
+  limiteDeDownloadBytes: 4 * 1024 * 1024,
   ...sobre,
 });
 
@@ -106,7 +107,7 @@ describe("abrir uma pasta em Arquivos", () => {
   it("entrega só o que a tela mostra: nada de pais nem tipo MIME cru", async () => {
     const { drive, logos } = ministerio();
     const r = await ok(pedido(drive.cliente, { pastaId: logos }));
-    expect(Object.keys(r.itens[0]).sort()).toEqual(["id", "modificadoEm", "nome", "pasta", "tamanho", "tipo"]);
+    expect(Object.keys(r.itens[0]).sort()).toEqual(["baixavel", "id", "link", "modificadoEm", "nome", "pasta", "previa", "tamanho", "tipo"]);
     expect(r.itens[0]).toMatchObject({ tipo: "imagem", tamanho: 2048 });
   });
 
@@ -258,6 +259,7 @@ describe("endereço de Arquivos", () => {
       "/arquivos?atalho=a1&pasta=P1&ordem=data-desc&modo=lista&pagina=TOKEN",
     );
     expect(enderecoDeArquivos({ pasta: "a b&c" })).toBe("/arquivos?pasta=a+b%26c");
+    expect(enderecoDeArquivos({ busca: "logo azul" })).toBe("/arquivos?q=logo+azul");
   });
 
   it("lê modo e página com cuidado", () => {

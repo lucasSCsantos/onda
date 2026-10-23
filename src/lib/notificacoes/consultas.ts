@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   conteudoDaNotificacao,
-  eTipoDeNotificacao,
+  eTipoDeEvento,
   PREFERENCIAS_PADRAO,
   TIPOS_DE_NOTIFICACAO,
   type EstadoDaNotificacao,
@@ -82,7 +82,7 @@ export async function notificacoesDaPessoa(supabase: SupabaseClient, limite = 10
   return (data ?? []).map((n) => {
     const evento = n.eventos;
     const montado =
-      n.titulo === null && evento && eTipoDeNotificacao(n.tipo)
+      n.titulo === null && evento && eTipoDeEvento(n.tipo)
         ? conteudoDaNotificacao(n.tipo, {
             id: evento.id,
             titulo: evento.titulo,

@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { lerIdDoAtalho, type IconeDeAtalho } from "@/dominio/arquivos";
+import { caminhoDentro, enderecoDeArquivos, lerIdDoAtalho, type IconeDeAtalho } from "@/dominio/arquivos";
+import { clienteDeArquivos } from "@/lib/drive/servidor";
 
 export type AtalhoDeArquivos = { id: string; nome: string; icone: IconeDeAtalho; pastaId: string };
 
@@ -45,4 +46,18 @@ export async function atalhosDoAdmin(supabase: SupabaseClient): Promise<(AtalhoD
 export async function funcoesParaMarcar(supabase: SupabaseClient): Promise<{ id: string; nome: string }[]> {
   const { data } = await supabase.from("funcoes").select("id, nome").order("nome");
   return (data ?? []) as { id: string; nome: string }[];
+}
+
+/**
+ * O endereço de Arquivos na pasta de um Evento, se ela está mesmo dentro da raiz; nulo se o Drive está desligado, a pasta
+ * ficou fora da raiz ou o Drive não respondeu (o link do Evento segue sem o atalho, sem quebrar a tela).
+ */
+export async function arquivosDaPastaDoEvento(pastaId: string | null, raizId: string | null): Promise<string | null> {
+  const cliente = clienteDeArquivos();
+  if (!pastaId || !raizId || !cliente) return null;
+  try {
+    return (await caminhoDentro({ limiteId: raizId, itemId: pastaId, cliente })) === null ? null : enderecoDeArquivos({ pasta: pastaId });
+  } catch {
+    return null;
+  }
 }

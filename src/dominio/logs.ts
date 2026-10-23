@@ -188,15 +188,19 @@ export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
   lideres_veem_historico_do_evento: "Líderes veem o histórico dos Eventos",
   faltas_para_alerta: "Faltas seguidas para o alerta de ausência",
   retencao_das_notificacoes_dias: "Por quanto tempo guardar as Notificações",
+  limite_de_urgencia_horas: "Limite de urgência das mudanças de Evento",
   drive_ligado: "Drive ligado",
   drive_pasta_raiz_id: "Pasta do ministério no Drive",
   drive_categorias: "Categorias com pasta no Drive",
+  drive_limite_de_download_mb: "Limite de download em Arquivos",
 };
 
 const UNIDADES_DAS_CONFIGURACOES: Record<string, [string, string]> = {
   retencao_dos_logs_meses: ["mês", "meses"],
   faltas_para_alerta: ["aula", "aulas"],
   retencao_das_notificacoes_dias: ["dia", "dias"],
+  limite_de_urgencia_horas: ["hora", "horas"],
+  drive_limite_de_download_mb: ["MB", "MB"],
 };
 
 function valorDaConfiguracao(chave: string, valor: unknown): string {

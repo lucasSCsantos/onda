@@ -1,4 +1,4 @@
-import { ErroDoDrive, idDaPasta } from "./drive";
+import { ErroDoDrive, idDaPasta, linkDaPasta } from "./drive";
 import type { ClienteDoDrive, ItemDoDrive, OrdemDaListagem } from "./pastas";
 
 // Arquivos: o Drive do ministério, só para ler, dentro do Mural (ADR 0006). Aqui moram as regras: o que vale como
@@ -76,16 +76,56 @@ export async function caminhoDentro({
   return subir(itemId, 0);
 }
 
-/** Um item como a tela o mostra: nada do que o Drive sabe além disso (pais, tipo MIME cru, links) sai do servidor. */
-export type ItemDeListagem = { id: string; nome: string; pasta: boolean; tipo: TipoDeItem; tamanho: number | null; modificadoEm: Date | null };
+/** Imagens que o app mostra na tela. SVG fica de fora: pode carregar script, e quem quiser baixa ou abre no Drive. */
+const MIMES_DE_IMAGEM_COM_PREVIA = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"];
 
-const paraListagem = (i: ItemDoDrive): ItemDeListagem => ({
+/** O limite de download que vale quando o Admin não mexeu: 4 MB, para não estourar a resposta da hospedagem. */
+export const LIMITE_DE_DOWNLOAD_PADRAO_MB = 4;
+export const LIMITE_DE_DOWNLOAD_MAXIMO_MB = 50;
+
+/** O limite de download que o Admin digitou (em MB inteiros), pronto para gravar, ou o que impede. */
+export function lerLimiteDeDownload(texto: string): { drive_limite_de_download_mb: number } | { erro: string } {
+  const mb = Number(texto);
+  if (texto.trim() === "" || !Number.isInteger(mb) || mb < 1 || mb > LIMITE_DE_DOWNLOAD_MAXIMO_MB) {
+    return { erro: `O limite de download de Arquivos precisa ser um número inteiro de 1 a ${LIMITE_DE_DOWNLOAD_MAXIMO_MB} MB.` };
+  }
+  return { drive_limite_de_download_mb: mb };
+}
+
+/** A página do arquivo, ou da pasta, no Drive: só o endereço de abrir; quem não tem acesso lá não entra. */
+export const linkNoDrive = (item: { id: string; pasta: boolean }) => (item.pasta ? linkDaPasta(item.id) : `https://drive.google.com/file/d/${item.id}/view`);
+
+/** Um arquivo se baixa pelo servidor se o Drive diz o tamanho (documentos do Google não dizem) e ele cabe no limite. */
+const cabeNoLimite = (tamanho: number | null, limiteBytes: number): tamanho is number => tamanho !== null && tamanho <= limiteBytes;
+
+const temPrevia = (i: { mime: string; pasta: boolean }) => !i.pasta && MIMES_DE_IMAGEM_COM_PREVIA.includes(i.mime);
+
+/**
+ * Um item como a tela o mostra: nada do que o Drive sabe além disso (pais, tipo MIME cru) sai do servidor. `baixavel`
+ * diz se o app baixa (dentro do limite do Admin); `previa`, se a imagem tem miniatura e ampliação no app; `link` abre no Drive.
+ */
+export type ItemDeListagem = {
+  id: string;
+  nome: string;
+  pasta: boolean;
+  tipo: TipoDeItem;
+  tamanho: number | null;
+  modificadoEm: Date | null;
+  baixavel: boolean;
+  previa: boolean;
+  link: string;
+};
+
+const paraListagem = (i: ItemDoDrive, limiteDeDownloadBytes: number): ItemDeListagem => ({
   id: i.id,
   nome: i.nome,
   pasta: i.pasta,
   tipo: tipoDoItem(i),
   tamanho: i.tamanho,
   modificadoEm: i.modificadoEm,
+  baixavel: !i.pasta && cabeNoLimite(i.tamanho, limiteDeDownloadBytes),
+  previa: temPrevia(i) && cabeNoLimite(i.tamanho, limiteDeDownloadBytes),
+  link: linkNoDrive(i),
 });
 
 /** O ID de um atalho (UUID) como vem na URL; qualquer outra coisa nem vai ao banco. */
@@ -134,6 +174,7 @@ export async function abrirPasta({
   pastaId,
   ordem,
   pagina,
+  limiteDeDownloadBytes,
 }: {
   cliente: ClienteDoDrive;
   raizId: string;
@@ -141,10 +182,11 @@ export async function abrirPasta({
   pastaId: string | null;
   ordem: OrdemDaListagem;
   pagina: string | null;
+  limiteDeDownloadBytes: number;
 }): Promise<ResultadoDaPasta> {
   try {
-    if (atalho && (await caminhoDentro({ limiteId: raizId, itemId: atalho.pastaId, cliente })) === null) return { estado: "bloqueado" };
-    const limiteId = atalho ? atalho.pastaId : raizId;
+    const limiteId = await limiteAutorizado({ cliente, raizId, atalho });
+    if (limiteId === null) return { estado: "bloqueado" };
     const alvoId = pastaId ?? limiteId;
 
     const caminho = await caminhoDentro({ limiteId, itemId: alvoId, cliente });
@@ -159,12 +201,225 @@ export async function abrirPasta({
       estado: "ok",
       pasta: alvo && alvoId !== limiteId ? { id: alvo.id, nome: alvo.nome } : inicio,
       caminho: [inicio, ...caminho.map((i) => ({ id: i.id, nome: i.nome }))],
-      itens: itens.map(paraListagem),
+      itens: itens.map((i) => paraListagem(i, limiteDeDownloadBytes)),
       proxima,
     };
   } catch {
     return { estado: "erro" };
   }
+}
+
+// Ver, baixar e buscar ----------------------------------------------------------------
+
+/**
+ * A pasta de onde a pessoa não sobe: a do atalho (que precisa estar dentro da raiz) ou a própria raiz; nulo se o atalho
+ * aponta para fora da raiz.
+ */
+async function limiteAutorizado({ cliente, raizId, atalho }: { cliente: ClienteDoDrive; raizId: string; atalho: AtalhoPermitido | null }): Promise<string | null> {
+  if (!atalho) return raizId;
+  return (await caminhoDentro({ limiteId: raizId, itemId: atalho.pastaId, cliente })) === null ? null : atalho.pastaId;
+}
+
+export type AcaoSobreItem = "miniatura" | "ver" | "baixar";
+
+export type ResultadoDoItem =
+  /** `emLinha`: a imagem aparece na tela; fora isso, o navegador baixa como anexo. */
+  | { estado: "ok"; bytes: Uint8Array; mime: string; nome: string; emLinha: boolean }
+  | { estado: "bloqueado" }
+  /** Acima do limite de download do Admin: só abre no Drive. */
+  | { estado: "grande" }
+  /** Não há o que servir: pasta, documento do Google, imagem sem prévia ou sem miniatura. */
+  | { estado: "indisponivel" }
+  | { estado: "erro" };
+
+/**
+ * Serve o conteúdo de um item (miniatura, imagem ampliada ou download) pelo servidor. Primeiro confere pela cadeia de pais
+ * que o item mora dentro da raiz (e do atalho, se houver); só então fala com o Drive. Respeita o limite de tamanho antes de
+ * baixar e de novo depois, caso o Drive tenha dito um tamanho menor que o real.
+ */
+export async function servirItem({
+  cliente,
+  raizId,
+  atalho,
+  itemId,
+  acao,
+  limiteDeDownloadBytes,
+}: {
+  cliente: ClienteDoDrive;
+  raizId: string;
+  atalho: AtalhoPermitido | null;
+  itemId: string;
+  acao: AcaoSobreItem;
+  limiteDeDownloadBytes: number;
+}): Promise<ResultadoDoItem> {
+  try {
+    const limiteId = await limiteAutorizado({ cliente, raizId, atalho });
+    if (limiteId === null || (await caminhoDentro({ limiteId, itemId, cliente })) === null) return { estado: "bloqueado" };
+    if (itemId === limiteId) return { estado: "indisponivel" };
+    const item = await cliente.obterItem(itemId);
+    if (item.pasta) return { estado: "indisponivel" };
+
+    if (acao === "miniatura") {
+      if (!temPrevia(item)) return { estado: "indisponivel" };
+      const miniatura = await cliente.miniatura(itemId);
+      return miniatura ? { estado: "ok", bytes: miniatura.bytes, mime: miniatura.mime, nome: item.nome, emLinha: true } : { estado: "indisponivel" };
+    }
+    if (acao === "ver" && !temPrevia(item)) return { estado: "indisponivel" };
+    if (item.tamanho === null) return { estado: "indisponivel" };
+    if (item.tamanho > limiteDeDownloadBytes) return { estado: "grande" };
+
+    const bytes = await cliente.baixar(itemId);
+    if (bytes.byteLength > limiteDeDownloadBytes) return { estado: "grande" };
+    return { estado: "ok", bytes, mime: item.mime, nome: item.nome, emLinha: acao === "ver" };
+  } catch {
+    return { estado: "erro" };
+  }
+}
+
+/** Quantas pastas o índice percorre, no máximo; passando disso a busca avisa e usa só a pasta atual. */
+export const MAXIMO_DE_PASTAS_DO_INDICE = 300;
+/** Quantos itens o índice guarda, no máximo (uma pasta enorme também estoura o teto). */
+const MAXIMO_DE_ITENS_DO_INDICE = 20_000;
+const TAMANHO_DA_PAGINA_DO_INDICE = 1000;
+const MAXIMO_DE_RESULTADOS = 100;
+const TAMANHO_MINIMO_DO_TERMO = 2;
+
+/** Um item do índice, com o nome da pasta onde mora, para a busca dizer onde achou. */
+export type EntradaDoIndice = {
+  id: string;
+  nome: string;
+  pasta: boolean;
+  mime: string;
+  tamanho: number | null;
+  modificadoEm: Date | null;
+  paiId: string;
+  paiNome: string;
+};
+
+export type Indice = { entradas: EntradaDoIndice[]; completo: boolean };
+
+/**
+ * Lê nome, tipo, tamanho e data de tudo que está abaixo de `inicioId` (ou só dentro dele, sem `recursivo`), de pasta em
+ * pasta. Só desce por pastas de verdade: atalho do Drive não é seguido, porque pode apontar para fora da raiz. Passando
+ * do teto de pastas ou de itens, devolve o que leu e `completo: false`.
+ */
+export async function construirIndice({
+  cliente,
+  inicioId,
+  inicioNome = "Arquivos",
+  recursivo,
+  maximoDePastas = MAXIMO_DE_PASTAS_DO_INDICE,
+}: {
+  cliente: ClienteDoDrive;
+  inicioId: string;
+  inicioNome?: string;
+  recursivo: boolean;
+  maximoDePastas?: number;
+}): Promise<Indice> {
+  const entradas: EntradaDoIndice[] = [];
+  const fila = [{ id: inicioId, nome: inicioNome }];
+  let percorridas = 0;
+  let completo = true;
+
+  while (fila.length > 0) {
+    if (percorridas >= maximoDePastas) {
+      completo = false;
+      break;
+    }
+    const pasta = fila.shift()!;
+    percorridas++;
+    let pagina: string | null = null;
+    do {
+      const lida = await cliente.listarFilhos(pasta.id, { ordem: "nome", pagina, tamanho: TAMANHO_DA_PAGINA_DO_INDICE });
+      for (const i of lida.itens) {
+        entradas.push({ id: i.id, nome: i.nome, pasta: i.pasta, mime: i.mime, tamanho: i.tamanho, modificadoEm: i.modificadoEm, paiId: pasta.id, paiNome: pasta.nome });
+        if (i.pasta && recursivo) fila.push({ id: i.id, nome: i.nome });
+      }
+      pagina = lida.proxima;
+      if (entradas.length >= MAXIMO_DE_ITENS_DO_INDICE) {
+        completo = false;
+        return { entradas, completo };
+      }
+    } while (pagina);
+  }
+  return { entradas, completo };
+}
+
+/** Minúsculas e sem acento, para "programacao" achar "Programação". */
+const normalizar = (texto: string) => texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+
+/** O termo digitado é grande o bastante para buscar? */
+export const termoValido = (termo: string) => normalizar(termo).length >= TAMANHO_MINIMO_DO_TERMO;
+
+export type ItemDeBusca = ItemDeListagem & { paiId: string; paiNome: string };
+
+export type ResultadoDaBusca =
+  | { estado: "ok"; resultados: ItemDeBusca[]; cortada: boolean; somentePastaAtual: boolean }
+  | { estado: "termo-curto" }
+  | { estado: "bloqueado" }
+  | { estado: "erro" };
+
+/**
+ * Busca por nome na raiz inteira (ou dentro do atalho). Quem chama entrega `obterIndice`, que guarda o índice por alguns
+ * minutos. Se o índice estourou o teto de pastas, usa só a pasta atual e diz isso. Todas as palavras do termo precisam
+ * aparecer no nome; pastas vêm antes dos arquivos, e no máximo 100 resultados voltam.
+ */
+export async function buscarArquivos({
+  cliente,
+  raizId,
+  atalho,
+  pastaId,
+  termo,
+  limiteDeDownloadBytes,
+  obterIndice,
+}: {
+  cliente: ClienteDoDrive;
+  raizId: string;
+  atalho: AtalhoPermitido | null;
+  pastaId: string | null;
+  termo: string;
+  limiteDeDownloadBytes: number;
+  obterIndice: (inicioId: string, recursivo: boolean) => Promise<Indice>;
+}): Promise<ResultadoDaBusca> {
+  if (!termoValido(termo)) return { estado: "termo-curto" };
+  try {
+    const limiteId = await limiteAutorizado({ cliente, raizId, atalho });
+    if (limiteId === null) return { estado: "bloqueado" };
+    const atualId = pastaId ?? limiteId;
+    if ((await caminhoDentro({ limiteId, itemId: atualId, cliente })) === null) return { estado: "bloqueado" };
+
+    let indice = await obterIndice(limiteId, true);
+    const somentePastaAtual = !indice.completo;
+    if (somentePastaAtual) indice = await obterIndice(atualId, false);
+
+    const palavras = normalizar(termo).split(/\s+/);
+    const achadas = indice.entradas
+      .filter((e) => {
+        const nome = normalizar(e.nome);
+        return palavras.every((p) => nome.includes(p));
+      })
+      .sort((a, b) => (a.pasta === b.pasta ? a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }) : a.pasta ? -1 : 1));
+
+    return {
+      estado: "ok",
+      resultados: achadas.slice(0, MAXIMO_DE_RESULTADOS).map((e) => ({ ...paraListagem({ ...e, pais: [e.paiId] }, limiteDeDownloadBytes), paiId: e.paiId, paiNome: e.paiNome })),
+      cortada: achadas.length > MAXIMO_DE_RESULTADOS,
+      somentePastaAtual,
+    };
+  } catch {
+    return { estado: "erro" };
+  }
+}
+
+/**
+ * O `Content-Disposition` de um arquivo servido pelo app: sempre com um nome seguro em ASCII (sem aspas, barras nem quebras
+ * de linha, que abririam brecha em cabeçalho) e, ao lado, o nome verdadeiro codificado.
+ */
+export function cabecalhoDeAnexo(nome: string, emLinha: boolean): string {
+  const limpo = nome.replace(/[\u0000-\u001f\u007f]/g, "").trim() || "arquivo";
+  const ascii = limpo.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^\x20-\x7e]|["\\/;%]/g, "_");
+  const codificado = encodeURIComponent(limpo).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `${emLinha ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${codificado}`;
 }
 
 // Atalhos --------------------------------------------------------------------------
@@ -221,12 +476,14 @@ export function enderecoDeArquivos({
   ordem = "nome",
   modo = "grade",
   pagina = null,
+  busca = null,
 }: {
   atalho?: string | null;
   pasta?: string | null;
   ordem?: OrdemDaListagem;
   modo?: ModoDeVista;
   pagina?: string | null;
+  busca?: string | null;
 }): string {
   const parametros = new URLSearchParams();
   if (atalho) parametros.set("atalho", atalho);
@@ -234,6 +491,7 @@ export function enderecoDeArquivos({
   if (ordem !== "nome") parametros.set("ordem", ordem);
   if (modo !== "grade") parametros.set("modo", modo);
   if (pagina) parametros.set("pagina", pagina);
+  if (busca) parametros.set("q", busca);
   const texto = parametros.toString();
   return texto ? `/arquivos?${texto}` : "/arquivos";
 }

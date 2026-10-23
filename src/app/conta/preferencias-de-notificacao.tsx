@@ -2,19 +2,19 @@
 
 import { useActionState } from "react";
 import { BotaoEnviar, CaixaDeMarcar, Mensagens, Selecao } from "@/components/formulario";
-import { NOMES_DOS_TIPOS, TIPOS_DE_NOTIFICACAO, type PreferenciasDeNotificacao } from "@/dominio/notificacoes";
+import { NOMES_DOS_TIPOS, tiposDoNivel, type PreferenciasDeNotificacao } from "@/dominio/notificacoes";
 import { salvarPreferenciasDeNotificacao } from "@/lib/notificacoes/acoes";
 
 const HORAS = Array.from({ length: 25 }, (_, h) => ({ valor: String(h), texto: `${h}h` }));
 
 /** Que tipos de Notificação a pessoa recebe e em que horas. Fora da janela, o aviso espera abrir (os urgentes não esperam). */
-export function PreferenciasDeNotificacao({ preferencias }: { preferencias: PreferenciasDeNotificacao }) {
+export function PreferenciasDeNotificacao({ preferencias, nivel }: { preferencias: PreferenciasDeNotificacao; nivel: string }) {
   const [estado, acao] = useActionState(salvarPreferenciasDeNotificacao, {});
   return (
     <form action={acao} className="flex flex-col gap-4 border-t border-borda pt-4">
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm font-medium">Quero ser avisado(a)</legend>
-        {TIPOS_DE_NOTIFICACAO.map((tipo) => (
+        {tiposDoNivel(nivel).map((tipo) => (
           <CaixaDeMarcar key={tipo} rotulo={NOMES_DOS_TIPOS[tipo]} name="tipo" value={tipo} defaultChecked={!preferencias.tiposDesligados.includes(tipo)} />
         ))}
       </fieldset>

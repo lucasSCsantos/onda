@@ -21,10 +21,10 @@ type AulaDoCartao = {
 };
 
 /** Aulas que não vão acontecer não pedem Chamada. */
-const SEM_CHAMADA: readonly Status[] = ["cancelado", "adiado", "rascunho"];
+export const SEM_CHAMADA: readonly Status[] = ["cancelado", "adiado", "rascunho"];
 
 /** O instante em que a aula acaba: o fim, ou o início; numa aula de dia inteiro, a meia-noite seguinte. */
-function fimDaAula({ inicio, fim, diaInteiro }: AulaDoCartao): Date {
+export function fimDaAula({ inicio, fim, diaInteiro }: Pick<AulaDoCartao, "inicio" | "fim" | "diaInteiro">): Date {
   if (!diaInteiro) return fim ?? inicio;
   const { ano, mes, dia } = dataLocal(fim ?? inicio);
   return somarDias(meiaNoite(ano, mes, dia), 1);
