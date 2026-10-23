@@ -98,3 +98,27 @@ node -e 'const c=require("crypto");const k=c.generateKeyPairSync("ec",{namedCurv
 **Rotacionar:** gere um par novo e troque as três variáveis (na Vercel e no `.env.local`). Um par novo **invalida todas as
 inscrições existentes**: cada pessoa precisa desativar e ativar de novo em "Minha conta". Só rotacione se a chave privada vazou.
 A chave privada nunca vai em código, em Log nem no navegador.
+
+### Fila, envio e central
+
+As Notificações devidas são gravadas pelo banco na tabela `notificacoes`, que também é a central dentro do app ("Notificações" no
+menu, com as não lidas em destaque e o número no menu). Hoje há dois tipos: "você foi definido(a) como Responsável por um Evento" e
+"você foi escalado(a) como Professor ou Auxiliar de uma aula". Quem mexeu no próprio Evento não é avisado, e uma mudança que atinge
+várias Ocorrências de uma Série de uma vez avisa uma vez só.
+
+- **Chave única:** tipo + Evento + pessoa + janela. O banco recusa a segunda igual, então nenhum aviso nasce duas vezes.
+- **Envio:** todo minuto em que há Notificação devida, o `pg_cron` chama `POST /api/agendador/notificacoes` pelo mesmo caminho das
+  pastas do Drive (`pg_net`, `Authorization: Bearer <CRON_SECRET>`, `app_url` e `cron_secret` no Vault). A rota reserva um lote, monta o
+  texto (modelos curtos em `src/dominio/notificacoes.ts`) e envia a cada dispositivo da pessoa separadamente. Uma reserva de 5 minutos
+  impede que duas rodadas enviem a mesma Notificação; quem já recebeu fica registrado, então uma nova tentativa só envia ao que falhou.
+- **Janela de horário:** padrão das 8h às 21h em America/Bahia, ajustável por pessoa em "Minha conta". Fora dela, o aviso espera abrir
+  (os marcados como urgentes não esperam; nenhum tipo desta entrega é urgente).
+- **Retentativas:** esperas de 5, 15, 45 e 135 minutos, até 5 tentativas. A falha definitiva vira Log de erro (`notificacao.falhou`, só
+  com tipo e contagens). Inscrição recusada com 404 ou 410 é removida (`push.expirado`). A Notificação vale 48 horas; depois expira.
+- **Modo de teste (dry-run):** com `PUSH_MODO_TESTE=1` nada sai; cada Notificação vira um Log `notificacao.simulada`.
+- **Retenção da central:** 30 dias por padrão, em Admin → Configurações; uma limpeza roda todo dia às 3h30.
+- **Sem dados de Adolescentes:** o texto é montado só com título, número, data, hora e local do Evento (o Pequeno grupo omite o local).
+
+Sem `SUPABASE_SERVICE_ROLE_KEY` ou chaves VAPID (e fora do modo de teste), a rota responde 503 e a fila espera; a central funciona do mesmo jeito.
+
+Para reverter, veja o fim de `supabase/migrations/20261023140000_notificacoes.sql`.

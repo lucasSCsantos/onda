@@ -9,10 +9,12 @@ import { COOKIE_DO_DISPOSITIVO } from "@/dominio/push";
 import { assinaturaDa } from "@/lib/calendario/consultas";
 import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, categorias } from "@/lib/eventos/consultas";
+import { preferenciasDe } from "@/lib/notificacoes/consultas";
 import { dispositivosDa } from "@/lib/push/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { PainelDeNotificacoes } from "./painel-de-notificacoes";
 import { PainelDoCalendario } from "./painel-do-calendario";
+import { PreferenciasDeNotificacao } from "./preferencias-de-notificacao";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
@@ -21,12 +23,13 @@ export default async function PaginaMinhaConta() {
   const eu = await exigirMural();
   const supabase = await supabaseDoServidor();
   const professor = eu.nivel === "professor";
-  const [assinatura, todas, areas, dispositivos, jar] = await Promise.all([
+  const [assinatura, todas, areas, dispositivos, preferencias, jar] = await Promise.all([
     assinaturaDa(supabase, eu.id),
     // O Professor não escolhe Categorias, e só lê as das aulas dele.
     professor ? [] : categorias(supabase),
     areasDaPessoa(supabase, eu.id),
     dispositivosDa(supabase, eu.id),
+    preferenciasDe(supabase, eu.id),
     cookies(),
   ]);
   const hashDeste = jar.get(COOKIE_DO_DISPOSITIVO)?.value;
@@ -55,6 +58,7 @@ export default async function PaginaMinhaConta() {
             chavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""}
             configurado={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)}
           />
+          <PreferenciasDeNotificacao preferencias={preferencias} />
         </section>
         <section aria-labelledby="calendario" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <h2 id="calendario" className="text-xl font-semibold">

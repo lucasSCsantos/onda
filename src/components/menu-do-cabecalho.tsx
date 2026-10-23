@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Trophy, UserRound, Users, X, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Trophy, UserRound, Users, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
@@ -15,8 +15,19 @@ const ADOLESCENTES: Destino = { href: "/adolescentes", rotulo: "Adolescentes", i
 const PRESENCA: Destino = { href: "/presenca", rotulo: "Presença", icone: ClipboardCheck };
 const RANKING: Destino = { href: "/ranking", rotulo: "Ranking", icone: Trophy };
 const PROFESSORES: Destino = { href: CAMINHO_DOS_PROFESSORES, rotulo: "Professores", icone: GraduationCap };
+const NOTIFICACOES: Destino = { href: "/notificacoes", rotulo: "Notificações", icone: Bell };
 const MINHA_CONTA: Destino = { href: "/conta", rotulo: "Minha conta", icone: UserRound };
 const ADMINISTRACAO: Destino = { href: "/admin", rotulo: "Administração", icone: LayoutDashboard };
+
+/** O número de Notificações não lidas, ao lado do item do menu. */
+function Indicador({ quantas }: { quantas: number }) {
+  return (
+    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-marca px-1.5 text-xs font-semibold text-white">
+      <span aria-hidden>{quantas > 99 ? "99+" : quantas}</span>
+      <span className="sr-only">{quantas === 1 ? "não lida" : "não lidas"}: {quantas}</span>
+    </span>
+  );
+}
 
 /**
  * Menu do cabeçalho: hambúrguer com painel abaixo do header no celular e itens em linha, com cara de botão, a partir de
@@ -27,11 +38,14 @@ export function MenuDoCabecalho({
   lideranca,
   calendario,
   professores,
+  naoLidas = 0,
 }: {
   admin: boolean;
   lideranca: boolean;
   calendario: boolean;
   professores: boolean;
+  /** Notificações ainda não lidas, para o indicador. */
+  naoLidas?: number;
 }) {
   const destinos = [
     ...(calendario ? [CALENDARIO] : []),
@@ -39,6 +53,7 @@ export function MenuDoCabecalho({
     // O Admin chega a Professores pelo menu da administração, dentro do Admin.
     ...(professores && !admin ? [PROFESSORES] : []),
     ...(admin ? [ADMINISTRACAO] : []),
+    NOTIFICACOES,
     MINHA_CONTA,
   ];
   const caminho = usePathname();
@@ -88,10 +103,13 @@ export function MenuDoCabecalho({
         className="botao-secundario md:hidden"
         aria-expanded={aberto}
         aria-controls={idDoPainel}
-        aria-label={aberto ? "Fechar menu" : "Abrir menu"}
+        aria-label={`${aberto ? "Fechar menu" : "Abrir menu"}${naoLidas > 0 ? ` (${naoLidas} ${naoLidas === 1 ? "notificação não lida" : "notificações não lidas"})` : ""}`}
         onClick={() => setAberto((a) => !a)}
       >
-        {aberto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+        <span className="relative">
+          {aberto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+          {!aberto && naoLidas > 0 && <span aria-hidden className="absolute -top-1 -right-1 size-2.5 rounded-full bg-marca" />}
+        </span>
       </button>
 
       <nav aria-label="Principal" className="hidden items-center gap-1 text-sm md:flex">
@@ -104,6 +122,7 @@ export function MenuDoCabecalho({
           >
             <Icone aria-hidden className="size-4" />
             {rotulo}
+            {href === NOTIFICACOES.href && naoLidas > 0 && <Indicador quantas={naoLidas} />}
           </Link>
         ))}
         <form action={sair}>
@@ -133,6 +152,7 @@ export function MenuDoCabecalho({
             >
               <Icone aria-hidden className="size-5" />
               {rotulo}
+              {href === NOTIFICACOES.href && naoLidas > 0 && <Indicador quantas={naoLidas} />}
             </Link>
           ))}
           {secoes.length > 0 && (

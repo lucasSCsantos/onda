@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
 import { lerConfiguracoes } from "@/dominio/configuracoes";
 import { lerConfiguracaoDoDrive } from "@/dominio/drive";
+import { lerConfiguracaoDasNotificacoes } from "@/dominio/notificacoes";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -26,10 +27,13 @@ export async function salvarConfiguracoes(_: EstadoFormulario, dados: FormData):
   });
   if ("erro" in drive) return drive;
 
+  const notificacoes = lerConfiguracaoDasNotificacoes({ retencaoDias: campoTexto(dados, "retencao_das_notificacoes") });
+  if ("erro" in notificacoes) return notificacoes;
+
   const supabase = await supabaseDoServidor();
   const { data, error } = await supabase
     .from("configuracoes")
-    .update({ ...lidas, ...drive })
+    .update({ ...lidas, ...drive, ...notificacoes })
     .eq("id", true)
     .select("id");
   if (error || !data?.length) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import { JANELA_MAXIMA, JANELA_MINIMA } from "@/dominio/cartao-de-chamada";
+import { RETENCAO_DA_CENTRAL_MAXIMA, RETENCAO_DA_CENTRAL_MINIMA } from "@/dominio/notificacoes";
 import { FALTAS_MAXIMAS, FALTAS_MINIMAS, RETENCAO_MAXIMA, RETENCAO_MINIMA } from "@/dominio/configuracoes";
 import { salvarConfiguracoes } from "@/lib/configuracoes/acoes";
 
@@ -13,6 +14,7 @@ export type ValoresDasConfiguracoes = {
   faltasParaAlerta: number;
   desempatePor: string | null;
   janelaDaChamadaDias: number;
+  retencaoDasNotificacoesDias: number;
   drive: { ligado: boolean; pastaRaizId: string | null; categorias: string[] };
 };
 
@@ -88,6 +90,20 @@ export function FormularioDeConfiguracoes({
         <p className="text-sm text-texto-suave">
           O Professor e o Auxiliar veem o cartão na tela principal do início do dia da aula até o fim do último desses dias. Com 1, até o fim do dia seguinte.
         </p>
+      </fieldset>
+      <fieldset className="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4">
+        <legend className="px-1 font-semibold">Notificações</legend>
+        <Campo
+          rotulo="Guardar as Notificações na central por quantos dias"
+          name="retencao_das_notificacoes"
+          type="number"
+          inputMode="numeric"
+          min={RETENCAO_DA_CENTRAL_MINIMA}
+          max={RETENCAO_DA_CENTRAL_MAXIMA}
+          defaultValue={valores.retencaoDasNotificacoesDias}
+          required
+        />
+        <p className="text-sm text-texto-suave">Todo dia, de madrugada, as Notificações mais antigas que isso saem da central de cada pessoa.</p>
       </fieldset>
       <fieldset className="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4">
         <legend className="px-1 font-semibold">Ranking</legend>

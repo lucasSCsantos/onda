@@ -187,6 +187,7 @@ export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
   retencao_dos_logs_meses: "Por quanto tempo guardar os logs",
   lideres_veem_historico_do_evento: "Líderes veem o histórico dos Eventos",
   faltas_para_alerta: "Faltas seguidas para o alerta de ausência",
+  retencao_das_notificacoes_dias: "Por quanto tempo guardar as Notificações",
   drive_ligado: "Drive ligado",
   drive_pasta_raiz_id: "Pasta do ministério no Drive",
   drive_categorias: "Categorias com pasta no Drive",
@@ -195,6 +196,7 @@ export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
 const UNIDADES_DAS_CONFIGURACOES: Record<string, [string, string]> = {
   retencao_dos_logs_meses: ["mês", "meses"],
   faltas_para_alerta: ["aula", "aulas"],
+  retencao_das_notificacoes_dias: ["dia", "dias"],
 };
 
 function valorDaConfiguracao(chave: string, valor: unknown): string {
@@ -526,6 +528,33 @@ export const ACOES: Record<string, Definicao> = {
       `enviou uma Notificação de teste para si mesmo (${plural(numero(log.detalhes, "enviados"), "dispositivo recebeu", "dispositivos receberam")}${numero(log.detalhes, "falhas") > 0 ? `, ${plural(numero(log.detalhes, "falhas"), "falhou", "falharam")}` : ""})`,
     ],
     tentativa: "enviar uma Notificação de teste",
+  },
+  "notificacao.preferencias_alteradas": {
+    nome: "Preferências de Notificações alteradas",
+    visual: "edicao",
+    feito: (log) => [
+      `mudou as próprias preferências de Notificações (janela das ${numero(log.detalhes, "janela_inicio")}h às ${numero(log.detalhes, "janela_fim")}h${Array.isArray(log.detalhes.tipos_desligados) && log.detalhes.tipos_desligados.length > 0 ? `, ${plural(log.detalhes.tipos_desligados.length, "tipo desligado", "tipos desligados")}` : ""})`,
+    ],
+    tentativa: "mudar as preferências de Notificações",
+  },
+  "notificacao.simulada": {
+    nome: "Notificação simulada (modo de teste)",
+    visual: "acesso",
+    feito: (log) => [
+      `simulou o envio de uma Notificação a ${plural(numero(log.detalhes, "dispositivos"), "dispositivo", "dispositivos")} (modo de teste, nada saiu): `,
+      objeto(log),
+    ],
+    tentativa: "simular o envio de uma Notificação",
+  },
+  "notificacao.falhou": {
+    nome: "Notificação não enviada",
+    visual: "acesso",
+    feito: (log) => [
+      `não conseguiu enviar a Notificação `,
+      objeto(log),
+      ` a ${plural(numero(log.detalhes, "dispositivos"), "dispositivo", "dispositivos")}, depois de ${plural(numero(log.detalhes, "tentativas"), "tentativa", "tentativas")}`,
+    ],
+    tentativa: "enviar a Notificação",
   },
   "dados.exportados": {
     nome: "Dados exportados",

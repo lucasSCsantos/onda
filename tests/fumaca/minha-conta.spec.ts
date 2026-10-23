@@ -82,8 +82,44 @@ test("Minha conta: a seção Notificações aparece sem pedir permissão antes d
   await page.goto("/conta");
   await expect(page.getByRole("heading", { name: "Notificações", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Ativar neste aparelho" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar preferências" })).toBeVisible();
   // Abrir a página não decide nada pela pessoa: a permissão continua por pedir.
   expect(await page.evaluate(() => Notification.permission)).toBe("default");
+  const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
+test("a central de Notificações mostra o aviso não lido no menu e o marca como lido", async ({ page }) => {
+  const funcao = await admin.from("funcoes").select("id").eq("nome", "Líder do louvor").single().throwOnError();
+  const convite = await admin.from("convites").insert({ nivel: "lider", funcao_id: funcao.data.id }).select("codigo").single().throwOnError();
+  const nome = `Central ${crypto.randomUUID().slice(0, 8)}`;
+  await page.goto(`/cadastro?convite=${convite.data.codigo}`);
+  await page.getByLabel("Nome").fill(nome);
+  await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
+  await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
+
+  // Alguém define a pessoa como Responsável de um Evento: o banco cria a Notificação.
+  const eu = await admin.from("perfis").select("id").eq("nome", nome).single().throwOnError();
+  const categoria = await admin.from("categorias").select("id").eq("nome", "Culto").single().throwOnError();
+  const outro = await admin.from("perfis").select("id").neq("id", eu.data.id).eq("nivel", "admin").limit(1).single().throwOnError();
+  const titulo = `Culto da central ${crypto.randomUUID().slice(0, 8)}`;
+  await admin
+    .from("eventos")
+    .insert({ titulo, categoria_id: categoria.data.id, inicio: new Date(Date.now() + 36 * 3600 * 1000).toISOString(), status: "confirmado", responsavel_id: eu.data.id, criado_por: outro.data.id })
+    .throwOnError();
+
+  await page.goto("/notificacoes");
+  await expect(page.getByRole("heading", { name: "Notificações", exact: true })).toBeVisible();
+  await expect(page.getByText("Você foi definido(a) como Responsável")).toBeVisible();
+  await expect(page.getByText(titulo)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Abrir menu \(1 notificação não lida\)/ })).toBeVisible();
+
+  await page.getByRole("button", { name: "Marcar como lida" }).click();
+  await expect(page.getByRole("button", { name: "Marcar como lida" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
   const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   expect(larguraExcedida).toBeLessThanOrEqual(0);
 });

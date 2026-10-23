@@ -151,6 +151,16 @@ describe("fraseDoLog", () => {
     expect(frase(log({ acao: "push.teste_enviado", detalhes: { enviados: 2, falhas: 1 } }))).toBe("Carol Leal enviou uma Notificação de teste para si mesmo (2 dispositivos receberam, 1 falhou)");
   });
 
+  it("o agendador de Notificações aparece sem endpoint nem chaves", () => {
+    const doSistema = { usuarioId: null, usuarioNome: null, origem: "sistema" as const, objetoTipo: "notificacao", objetoRotulo: "Você foi definido(a) como Responsável" };
+    expect(frase(log({ ...doSistema, acao: "notificacao.simulada", detalhes: { dispositivos: 2 } }))).toBe(
+      "Sistema simulou o envio de uma Notificação a 2 dispositivos (modo de teste, nada saiu): Você foi definido(a) como Responsável",
+    );
+    expect(frase(log({ ...doSistema, acao: "notificacao.falhou", resultado: "sucesso", severidade: "erro", detalhes: { dispositivos: 1, tentativas: 5 } }))).toBe(
+      "Sistema não conseguiu enviar a Notificação Você foi definido(a) como Responsável a 1 dispositivo, depois de 5 tentativas",
+    );
+  });
+
   it("o Drive: a pasta criada e a que falhou são do Sistema, e a configuração mostra as Categorias pelo nome", () => {
     const doSistema = {
       usuarioId: null,

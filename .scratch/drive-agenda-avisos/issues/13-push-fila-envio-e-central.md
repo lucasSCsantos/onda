@@ -8,14 +8,14 @@
 
 **Status:** ready-for-agent
 
-- [ ] Fila de Notificações com chave única (tipo + Evento + pessoa + janela), conteúdo mínimo, estado, tentativas, próxima tentativa, `tag`, validade (TTL), lida e criação
-- [ ] Rota do agendador (`pg_cron`/`pg_net`, `CRON_SECRET`) que envia por dispositivo de forma independente; a falha de um não impede os outros
-- [ ] Respeita a janela de horário da pessoa (padrão 8h às 21h em America/Bahia); fora dela a notificação espera abrir, salvo urgentes
-- [ ] Retentativas com espera crescente e limite; falhas definitivas vão para os Logs como erro; inscrições com 404 ou 410 são removidas
-- [ ] Modo de teste (dry-run) por variável de ambiente que registra o que seria enviado sem enviar
-- [ ] Modelos de texto em um mapa no código, em pt-BR, curtos; nunca incluem dados de Adolescentes; o Pequeno grupo omite o local
-- [ ] Primeiro tipo: designação como Responsável ou Professor/Auxiliar, para Liderança e Professores
-- [ ] Central dentro do app com não lidas em destaque, marcação de lida, link para o Evento e indicador de não lidas no menu
-- [ ] Retenção da central configurável (padrão 30 dias) com limpeza agendada
-- [ ] Preferências por pessoa: ligar e desligar cada tipo e a janela de horário, em "Minha conta"
-- [ ] Testes com o envio falso (idempotência, janela, vários dispositivos, dry-run, payload sem dados de Adolescentes) e do banco (chave única, políticas, retenção)
+- [x] Fila de Notificações com chave única (tipo + Evento + pessoa + janela), conteúdo mínimo, estado, tentativas, próxima tentativa, `tag`, validade (TTL), lida e criação
+- [x] Rota do agendador (`pg_cron`/`pg_net`, `CRON_SECRET`) que envia por dispositivo de forma independente; a falha de um não impede os outros
+- [x] Respeita a janela de horário da pessoa (padrão 8h às 21h em America/Bahia); fora dela a notificação espera abrir, salvo urgentes
+- [x] Retentativas com espera crescente e limite; falhas definitivas vão para os Logs como erro; inscrições com 404 ou 410 são removidas
+- [x] Modo de teste (dry-run) por variável de ambiente que registra o que seria enviado sem enviar
+- [x] Modelos de texto em um mapa no código, em pt-BR, curtos; nunca incluem dados de Adolescentes; o Pequeno grupo omite o local
+- [x] Primeiro tipo: designação como Responsável ou Professor/Auxiliar, para Liderança e Professores
+- [x] Central dentro do app com não lidas em destaque, marcação de lida, link para o Evento e indicador de não lidas no menu
+- [x] Retenção da central configurável (padrão 30 dias) com limpeza agendada
+- [x] Preferências por pessoa: ligar e desligar cada tipo e a janela de horário, em "Minha conta"
+- [x] Testes com o envio falso (idempotência, janela, vários dispositivos, dry-run, payload sem dados de Adolescentes) e do banco (chave única, políticas, retenção)

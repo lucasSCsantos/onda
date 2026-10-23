@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { JANELA_PADRAO } from "@/dominio/cartao-de-chamada";
 import { temCampoDaPasta } from "@/dominio/drive";
+import { RETENCAO_DA_CENTRAL_PADRAO } from "@/dominio/notificacoes";
 
 /** O que o Admin configura sem mexer em código. */
 export type Configuracoes = {
@@ -15,6 +16,8 @@ export type Configuracoes = {
   janelaDaChamadaDias: number;
   /** Quando os logs entraram no ar. */
   logsDesde: Date;
+  /** Por quantos dias a central guarda as Notificações. */
+  retencaoDasNotificacoesDias: number;
   /** O Drive do ministério (ADR 0006): ligado ou não, a pasta raiz e as Categorias que ganham pasta sozinhas. */
   drive: { ligado: boolean; pastaRaizId: string | null; categorias: string[] };
 };
@@ -29,6 +32,7 @@ type ConfiguracoesDoBanco = {
   drive_ligado: boolean;
   drive_pasta_raiz_id: string | null;
   drive_categorias: string[];
+  retencao_das_notificacoes_dias: number;
 };
 
 /** Por quantos dias depois da aula o cartão de Chamada fica à vista; qualquer pessoa aprovada lê (o Professor não lê as configurações). */
@@ -42,7 +46,7 @@ export async function configuracoes(supabase: SupabaseClient): Promise<Configura
   const { data } = await supabase
     .from("configuracoes")
     .select(
-      "retencao_dos_logs_meses, lideres_veem_historico_do_evento, faltas_para_alerta, desempate_por, janela_da_chamada_dias, logs_desde, drive_ligado, drive_pasta_raiz_id, drive_categorias",
+      "retencao_dos_logs_meses, lideres_veem_historico_do_evento, faltas_para_alerta, desempate_por, janela_da_chamada_dias, logs_desde, drive_ligado, drive_pasta_raiz_id, drive_categorias, retencao_das_notificacoes_dias",
     )
     .maybeSingle()
     .overrideTypes<ConfiguracoesDoBanco, { merge: false }>();
@@ -53,6 +57,7 @@ export async function configuracoes(supabase: SupabaseClient): Promise<Configura
     desempatePor: data?.desempate_por ?? null,
     janelaDaChamadaDias: data?.janela_da_chamada_dias ?? JANELA_PADRAO,
     logsDesde: data ? new Date(data.logs_desde) : new Date(),
+    retencaoDasNotificacoesDias: data?.retencao_das_notificacoes_dias ?? RETENCAO_DA_CENTRAL_PADRAO,
     drive: {
       ligado: data?.drive_ligado ?? false,
       pastaRaizId: data?.drive_pasta_raiz_id ?? null,
