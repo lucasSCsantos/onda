@@ -63,6 +63,7 @@ describe("podeFazerChamada", () => {
     categoria: { area: "Ensino", temChamada: true },
     status: "confirmado" as const,
     inicio: new Date("2026-10-25T09:00:00-03:00"),
+    professores: [] as string[],
     ...mudancas,
   });
   const lider = { id: "l", nivel: "lider" as const, ativo: true };
@@ -75,6 +76,25 @@ describe("podeFazerChamada", () => {
     expect(podeFazerChamada(lider, ["Louvor"], aula(), agora)).toBe(false);
     expect(podeFazerChamada({ ...admin, ativo: false }, [], aula(), agora)).toBe(false);
     expect(podeFazerChamada({ id: "p", nivel: "professor", ativo: true }, [], aula(), agora)).toBe(false);
+  });
+
+  it("o Professor e o Auxiliar daquela aula, mesmo sem Função na Área, e só dela", () => {
+    const professor = { id: "p", nivel: "professor" as const, ativo: true };
+    expect(podeFazerChamada(professor, [], aula({ professores: ["p"] }), agora)).toBe(true);
+    expect(podeFazerChamada(professor, [], aula({ professores: ["outro", "p"] }), agora)).toBe(true);
+    expect(podeFazerChamada(professor, [], aula({ professores: ["outro"] }), agora)).toBe(false);
+    expect(podeFazerChamada({ ...professor, ativo: false }, [], aula({ professores: ["p"] }), agora)).toBe(false);
+    expect(podeFazerChamada({ ...professor, nivel: "pendente" }, [], aula({ professores: ["p"] }), agora)).toBe(false);
+    // Líder de outra Área escolhido como Professor também faz a Chamada da aula dele.
+    expect(podeFazerChamada(lider, ["Louvor"], aula({ professores: ["l"] }), agora)).toBe(true);
+  });
+
+  it("o Professor segue as mesmas regras de dia, Cancelada e Categoria sem chamada", () => {
+    const professor = { id: "p", nivel: "professor" as const, ativo: true };
+    const dele = { professores: ["p"] };
+    expect(podeFazerChamada(professor, [], aula({ ...dele, inicio: new Date("2026-10-26T09:00:00-03:00") }), agora)).toBe(false);
+    expect(podeFazerChamada(professor, [], aula({ ...dele, status: "cancelado" }), agora)).toBe(false);
+    expect(podeFazerChamada(professor, [], aula({ ...dele, categoria: { area: "Ensino", temChamada: false } }), agora)).toBe(false);
   });
 
   it("nem aula futura, nem Cancelada, nem Categoria sem chamada", () => {

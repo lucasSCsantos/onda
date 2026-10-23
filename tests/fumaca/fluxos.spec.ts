@@ -254,6 +254,51 @@ test("Chamada: um toque marca e salva na hora, e a marcação continua depois de
   await expect(page.getByRole("group", { name: `Marcações de ${aluno}` }).getByRole("button", { name: "Trouxe bíblia" })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("Chamada do Professor: faz a Chamada da própria aula, sem ver nascimento, e não abre a de outro", async ({ page }) => {
+  const nome = `Professor ${crypto.randomUUID().slice(0, 6)}`;
+  const convite = await admin.from("convites").insert({ nivel: "professor" }).select("codigo").single();
+  if (convite.error) throw convite.error;
+  await cadastrar(page, nome, convite.data.codigo);
+  await expect(page).not.toHaveURL(/\/cadastro/);
+
+  const { data: eu } = await admin.from("perfis").select("id").eq("nome", nome).single();
+  const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
+  const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
+  const aluno = `Bia ${crypto.randomUUID().slice(0, 6)}`;
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  // O Responsável é da Liderança; a aula é do Professor pelo campo "Professor".
+  const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável da Chamada" } });
+  if (lider.error) throw lider.error;
+  await admin.from("perfis").update({ nivel: "admin" }).eq("id", lider.data.user.id).throwOnError();
+  const aula = async (titulo: string, campos: Record<string, string>) => {
+    const { data } = await admin
+      .from("eventos")
+      .insert({ titulo, categoria_id: ebd.data!.id, inicio: `${hoje()}T00:01:00-03:00`, responsavel_id: lider.data.user.id, status: "planejado", campos: { [campo("Tema")]: "Semeador", ...campos }, criado_por: lider.data.user.id })
+      .select("id")
+      .single()
+      .throwOnError();
+    return data.id as string;
+  };
+  const minha = await aula("EBD do Professor", { [campo("Professor")]: eu!.id });
+  const deOutro = await aula("EBD de outro", {});
+
+  await page.goto(`/eventos/${minha}`);
+  await page.getByRole("link", { name: "Chamada" }).click();
+  await expect(page.getByRole("heading", { name: "Chamada" })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Procurar Adolescente" }).fill(aluno);
+  const marcacoes = page.getByRole("group", { name: `Marcações de ${aluno}` });
+  await marcacoes.getByRole("button", { name: "Presente" }).click();
+  await expect(page.getByText("Salvo")).toBeVisible();
+  await expect(page.getByText("2011")).toHaveCount(0);
+
+  await page.reload();
+  await page.getByRole("searchbox", { name: "Procurar Adolescente" }).fill(aluno);
+  await expect(page.getByRole("group", { name: `Marcações de ${aluno}` }).getByRole("button", { name: "Presente" })).toHaveAttribute("aria-pressed", "true");
+
+  const resposta = await page.goto(`/eventos/${deOutro}/chamada`);
+  expect(resposta?.status()).toBe(404);
+});
+
 test("o Líder é mandado de volta ao início ao abrir /admin", async ({ page }) => {
   await cadastrar(page, "Líder Barrado", await novoConvite());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();

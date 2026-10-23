@@ -112,18 +112,20 @@ export function estevePresente(marcadas: readonly string[], marcacoes: readonly 
 }
 
 /**
- * Quem faz a Chamada de uma aula: o Admin e quem tem Função na Área da Categoria, numa Categoria com chamada, numa aula
- * não Cancelada que já chegou ao dia (no fuso do Mural). A função `public.pode_fazer_chamada` segue a mesma regra.
+ * Quem faz a Chamada de uma aula: o Admin, quem tem Função na Área da Categoria e o Professor e o Auxiliar daquela aula
+ * (`professores`, os ids de `professoresDaAula`), numa Categoria com chamada, numa aula não Cancelada que já chegou ao
+ * dia (no fuso do Mural). A função `public.pode_fazer_chamada` segue a mesma regra.
  */
 export function podeFazerChamada(
   quem: Pessoa,
   areas: readonly string[],
-  aula: { categoria: { area: string; temChamada: boolean }; status: Status; inicio: Date },
+  aula: { categoria: { area: string; temChamada: boolean }; status: Status; inicio: Date; professores: readonly string[] },
   agora: Date,
 ): boolean {
+  const escalado = quem.ativo && quem.nivel !== "pendente" && aula.professores.includes(quem.id);
   return (
     aula.categoria.temChamada &&
-    podeCriarEvento(quem, areas, aula.categoria) &&
+    (escalado || podeCriarEvento(quem, areas, aula.categoria)) &&
     aula.status !== "cancelado" &&
     diaDe(aula.inicio) <= diaDe(agora)
   );

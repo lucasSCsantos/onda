@@ -118,3 +118,46 @@ export async function presencasDoPeriodo(
   }
   return { aulas: [...aulas.values()].sort((a, b) => b.inicio.getTime() - a.inicio.getTime()), porAula };
 }
+
+/**
+ * O que a Chamada precisa para quem a faz sem ser da Liderança (o Professor e o Auxiliar da aula): os Adolescentes ativos
+ * só com nome e identificador, as Marcações ativas sem os pontos e a Chamada já feita. As funções do banco só respondem
+ * a quem pode fazer a Chamada daquela aula, no dia dela em diante.
+ */
+export async function chamadaDoProfessor(
+  supabase: SupabaseClient,
+  eventoId: string,
+): Promise<{ adolescentes: { id: string; nome: string }[]; marcacoes: Marcacao[]; presencas: PresencaNaAula[] }> {
+  // Funções que devolvem várias linhas: o cliente sem tipos do banco as trata como uma, então o formato vem daqui.
+  const [alunos, marcas, gravadas] = await Promise.all([
+    supabase.rpc("adolescentes_da_chamada", { evento: eventoId }),
+    supabase.rpc("marcacoes_da_chamada", { evento: eventoId }),
+    supabase.rpc("presencas_da_chamada", { evento: eventoId }),
+  ]);
+  const alunosDoBanco = (alunos.data ?? []) as { id: string; nome: string }[];
+  const marcasDoBanco = (marcas.data ?? []) as Omit<MarcacaoDoBanco, "pontos" | "ativa">[];
+  const gravadasDoBanco = (gravadas.data ?? []) as { adolescente_id: string; marcacao_id: string; visitante: string | null }[];
+
+  const porAdolescente = new Map<string, PresencaNaAula>();
+  for (const linha of gravadasDoBanco) {
+    const presenca = porAdolescente.get(linha.adolescente_id) ?? { adolescente: linha.adolescente_id, marcacoes: [], visitante: null };
+    presenca.marcacoes.push(linha.marcacao_id);
+    presenca.visitante ??= linha.visitante;
+    porAdolescente.set(linha.adolescente_id, presenca);
+  }
+
+  return {
+    adolescentes: alunosDoBanco,
+    marcacoes: marcasDoBanco.map((m) => ({
+      id: m.id,
+      nome: m.nome,
+      icone: m.icone,
+      pontos: 0,
+      ativa: true,
+      contaPresenca: m.conta_presenca,
+      pedeVisitante: m.pede_visitante,
+      ordem: m.ordem,
+    })),
+    presencas: [...porAdolescente.values()],
+  };
+}
