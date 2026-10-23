@@ -113,3 +113,13 @@ export function autorizadoPeloAgendador(cabecalho: string | null, segredo: strin
   for (let i = 0; i < esperado.length; i++) diferenca |= (recebido.charCodeAt(i) || 0) ^ esperado.charCodeAt(i);
   return diferenca === 0;
 }
+
+/**
+ * O botão "Criar pasta agora" aparece para quem edita o Evento quando o Drive está ligado, a Categoria tem onde pôr o
+ * link e a pasta ainda não existe nem está a caminho: Evento sem pasta (criado antes da integração, ou com link manual)
+ * ou com erro. O banco confere de novo.
+ */
+type EntradaDoBotao = { estado: EstadoDaPasta | null; driveLigado: boolean; campos: readonly { nome: string; tipo: string }[] };
+
+export const podePedirPasta = ({ estado, driveLigado, campos }: EntradaDoBotao) =>
+  driveLigado && temCampoDaPasta(campos) && (estado === null || estado === "falhou");

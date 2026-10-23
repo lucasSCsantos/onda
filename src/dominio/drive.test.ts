@@ -9,6 +9,7 @@ import {
   linkDaPasta,
   MAXIMO_DE_TENTATIVAS,
   nomeDaPasta,
+  podePedirPasta,
   situacaoDaPasta,
   temCampoDaPasta,
 } from "./drive";
@@ -160,5 +161,21 @@ describe("a consulta que acha uma pasta pelo nome", () => {
     expect(consultaDeBusca("Culto d'Ana", "RAIZ")).toContain("name = 'Culto d\\'Ana'");
     expect(consultaDeBusca("a\\b", "RAIZ")).toContain("name = 'a\\\\b'");
     expect(consultaDeBusca("x' or name != '", "RAIZ")).toContain("name = 'x\\' or name != \\''");
+  });
+});
+
+describe("o botão Criar pasta agora", () => {
+  const campos = [{ nome: "Link do material", tipo: "link" }];
+
+  it("aparece para o Evento sem pasta ou com erro, com o Drive ligado e um campo para o link", () => {
+    expect(podePedirPasta({ estado: null, driveLigado: true, campos })).toBe(true);
+    expect(podePedirPasta({ estado: "falhou", driveLigado: true, campos })).toBe(true);
+  });
+
+  it("some quando a pasta existe ou está a caminho, o Drive está desligado ou a Categoria não tem o campo", () => {
+    expect(podePedirPasta({ estado: "criada", driveLigado: true, campos })).toBe(false);
+    expect(podePedirPasta({ estado: "pendente", driveLigado: true, campos })).toBe(false);
+    expect(podePedirPasta({ estado: null, driveLigado: false, campos })).toBe(false);
+    expect(podePedirPasta({ estado: null, driveLigado: true, campos: [{ nome: "Tema", tipo: "texto_curto" }] })).toBe(false);
   });
 });

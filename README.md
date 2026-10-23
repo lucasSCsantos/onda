@@ -24,7 +24,7 @@ Cloud, compartilhar a pasta, Vault do Supabase e as variáveis da Vercel).
 
 ## Pastas dos Eventos no Drive
 
-Com o Drive ligado em **Admin → Configurações**, cada Evento avulso de uma Categoria marcada ali (a EBD e o Pequeno grupo, por
+Com o Drive ligado em **Admin → Configurações**, cada Evento (avulso ou Ocorrência de uma Série) de uma Categoria marcada ali (a EBD e o Pequeno grupo, por
 padrão) ganha sozinho uma pasta `Categoria/Ano/AAAA-MM-DD · título` dentro da pasta do ministério, e o link entra no campo
 "Link do material". O Mural só cria e lê: nunca apaga nem sobrescreve nada no Drive, e um link digitado à mão vale mais que a
 pasta automática. As decisões estão nos ADRs 0006 e 0007.
@@ -44,7 +44,9 @@ Como funciona:
 - tarefa que gasta as 5 tentativas sem nunca receber resposta (a rota caiu depois de reservar, de novo e de novo) fecha com
   erro na reserva seguinte, em vez de ficar pendente para sempre;
 - uma tarefa já na fila segue mesmo se a Categoria for desmarcada depois; já um Evento criado com o Drive desligado, ou antes de
-  ligá-lo, não ganha pasta sozinho (o botão "Criar pasta agora" é do ticket 05).
+  ligá-lo, não ganha pasta sozinho: quem edita o Evento usa o botão "Criar pasta agora" na tela dele (também serve para tentar de novo um Evento com erro; um link manual é mantido).
+
+Séries: cada Ocorrência ganha a sua pasta, com o número no nome (`AAAA-MM-DD · Título · N`), e criar a Série só enfileira as tarefas (o Drive nunca é esperado; as pastas saem pela fila, 10 por rodada). Mudar título ou data de um Evento que já tem pasta enfileira uma tarefa de renomear: troca só o nome da pasta, sem apagar nada e sem movê-la, mesmo que a data mude de ano ou de Categoria. Cancelar um Evento nunca toca na pasta.
 
 Limites conhecidos: se duas rodadas do agendador rodarem juntas (só se a reserva de 10 minutos vencer no meio), as pastas de
 Categoria e de ano podem sair duplicadas, porque o Drive aceita duas pastas com o mesmo nome; e dois Eventos avulsos com a mesma

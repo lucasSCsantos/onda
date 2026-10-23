@@ -128,6 +128,14 @@ describe("cliente do Drive", () => {
     expect(criacao.caminho).toContain("supportsAllDrives=true");
   });
 
+  it("renomeia a pasta com PATCH, mandando só o nome novo", async () => {
+    await cliente().renomearPasta("PASTA/1", "2026-11-01 · Aula nova");
+    const pedido = pedidos.find((p) => p.metodo === "PATCH")!;
+    expect(pedido.caminho).toContain("/drive/v3/files/PASTA%2F1?");
+    expect(pedido.caminho).toContain("supportsAllDrives=true");
+    expect(JSON.parse(pedido.corpo)).toEqual({ name: "2026-11-01 · Aula nova" });
+  });
+
   it("404 (pasta fora de alcance) é erro permanente; 500, 429 e 403 passam", async () => {
     respostas.buscar = () => [404, { error: { message: "File not found: RAIZ." } }];
     const erro404 = await cliente().buscarPasta("EBD", "RAIZ").catch((e) => e);

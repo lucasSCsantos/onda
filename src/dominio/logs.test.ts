@@ -172,6 +172,10 @@ describe("fraseDoLog", () => {
       detalhes: { categoria: "EBD" },
     };
     expect(frase(log({ ...doSistema, acao: "drive.pasta_criada" }))).toBe("Sistema criou a pasta no Drive do Evento EBD · Aula 3");
+    expect(frase(log({ ...doSistema, acao: "drive.pasta_renomeada" }))).toBe("Sistema renomeou a pasta no Drive do Evento EBD · Aula 3");
+    expect(frase(log({ ...doSistema, acao: "drive.pasta_renomear_falhou", resultado: "falha", severidade: "aviso" }))).toBe(
+      "Sistema tentou renomear a pasta no Drive do Evento EBD · Aula 3, mas não conseguiu",
+    );
     expect(frase(log({ ...doSistema, acao: "drive.pasta_falhou", resultado: "falha", severidade: "aviso" }))).toBe(
       "Sistema tentou criar a pasta no Drive do Evento EBD · Aula 3, mas não conseguiu",
     );

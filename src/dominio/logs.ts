@@ -408,6 +408,24 @@ export const ACOES: Record<string, Definicao> = {
     feito: (log) => ["não conseguiu criar a pasta no Drive do Evento ", eventoDoLog(log)],
     tentativa: "criar a pasta no Drive do Evento",
   },
+  "drive.pasta_solicitada": {
+    nome: "Pasta do Evento pedida",
+    visual: "criacao",
+    feito: (log) => ["pediu a criação da pasta no Drive do Evento ", eventoDoLog(log)],
+    tentativa: "pedir a criação da pasta no Drive do Evento",
+  },
+  "drive.pasta_renomeada": {
+    nome: "Pasta do Evento renomeada",
+    visual: "edicao",
+    feito: (log) => ["renomeou a pasta no Drive do Evento ", eventoDoLog(log)],
+    tentativa: "renomear a pasta no Drive do Evento",
+  },
+  "drive.pasta_renomear_falhou": {
+    nome: "Pasta do Evento não renomeada",
+    visual: "erro",
+    feito: (log) => ["não conseguiu renomear a pasta no Drive do Evento ", eventoDoLog(log)],
+    tentativa: "renomear a pasta no Drive do Evento",
+  },
   "drive.configuracao_alterada": {
     nome: "Configuração do Drive alterada",
     visual: "edicao",
@@ -627,7 +645,7 @@ export function detalhesDoLog(log: Log): string[] {
   if (log.acao === "acesso.login_falhou" && numero(d, "tentativas") > 1) {
     linhas.push(`Tentativas na última hora: ${numero(d, "tentativas")}`);
   }
-  if (log.acao === "drive.pasta_falhou") {
+  if (log.acao === "drive.pasta_falhou" || log.acao === "drive.pasta_renomear_falhou") {
     linhas.push(`Tentativa ${numero(d, "tentativa")}: ${d.definitiva === true ? "não será refeita" : "será refeita"}`);
     if (texto(d, "erro")) linhas.push(`Motivo: ${texto(d, "erro")}`);
   }

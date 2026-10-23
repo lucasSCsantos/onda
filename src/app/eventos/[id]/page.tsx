@@ -21,7 +21,7 @@ import {
   statusNoMomento,
 } from "@/dominio/eventos";
 import { eChecklist } from "@/dominio/checklist";
-import { situacaoDaPasta } from "@/dominio/drive";
+import { podePedirPasta, situacaoDaPasta } from "@/dominio/drive";
 import { FUSO } from "@/dominio/fuso";
 import { podeVerHistoricoDoEvento } from "@/dominio/logs";
 import { descreverRegra, formatarDia } from "@/dominio/series";
@@ -31,6 +31,7 @@ import { exigirMural } from "@/lib/contas/perfil";
 import { areasDaPessoa, evento as buscarEvento, pessoas, pessoasDaAula, serie as buscarSerie, type EventoCompleto } from "@/lib/eventos/consultas";
 import { historicoDoEvento } from "@/lib/logs/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
+import { BotaoCriarPasta } from "./botao-criar-pasta";
 import { BotaoExcluir } from "./botao-excluir";
 import { Checklist } from "./checklist";
 import { ObservacoesDaAula } from "./observacoes-da-aula";
@@ -61,6 +62,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const supabase = await supabaseDoServidor();
   const [evento, areas] = await Promise.all([buscarEvento(supabase, id), areasDaPessoa(supabase, eu.id)]);
   if (!evento) notFound();
+  const config = await configuracoes(supabase);
   const serie = evento.serieId ? await buscarSerie(supabase, evento.serieId) : null;
 
   const agora = new Date();
@@ -69,6 +71,8 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const nativos = nativosDe(evento.categoria);
   const pasta = situacaoDaPasta(evento.pastaEstado);
   const edita = podeEditarEvento(eu, areas, evento);
+  const pedePasta =
+    edita && podePedirPasta({ estado: evento.pastaEstado, driveLigado: config.drive.ligado, campos: evento.categoria.campos });
   // O Professor vê a aula inteira, mas não lê as outras contas: os nomes dela vêm por `pessoas_da_aula`.
   const soObservacoes = podeEditarSoAsObservacoes(eu, { campos: evento.campos, definicoes: evento.categoria.campos });
   const lideranca = podeVerTodosOsEventos(eu);
@@ -82,7 +86,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
   const responsavel = evento.pessoaResponsavel ?? (evento.responsavel ? (nomes.get(evento.responsavel) ?? null) : null);
   // O histórico (logs) do Evento: o Admin sempre; o líder que edita, se o Admin ligar. A política de `logs` confere.
   const veHistorico =
-    lideranca && podeVerHistoricoDoEvento(eu, areas, evento, (await configuracoes(supabase)).lideresVeemHistoricoDoEvento);
+    lideranca && podeVerHistoricoDoEvento(eu, areas, evento, config.lideresVeemHistoricoDoEvento);
   const historico = veHistorico ? await historicoDoEvento(supabase, evento.id, evento.serieId) : [];
   // Os valores como o formulário os mostra (o valor em reais com vírgula, a lista um item por linha).
   const textos = entradaDoEvento(evento, evento.categoria).campos;
@@ -183,6 +187,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
             {pasta.texto}
           </p>
         )}
+        {pedePasta && <BotaoCriarPasta id={evento.id} />}
 
         {soObservacoes && nativos.observacoes !== "oculto" && <ObservacoesDaAula eventoId={evento.id} observacoes={evento.observacoes} />}
 

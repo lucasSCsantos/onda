@@ -119,5 +119,8 @@ export function criarClienteDoGoogle({
       )) as { id: string };
       return { id: corpo.id };
     },
+    async renomearPasta(pastaId, nome) {
+      await pedir(`/files/${encodeURIComponent(pastaId)}`, { fields: "id" }, { method: "PATCH", body: JSON.stringify({ name: nome }) });
+    },
   };
 }

@@ -15,6 +15,8 @@ export default defineConfig({
           name: "rls",
           include: ["tests/rls/**/*.test.ts"],
           testTimeout: 20_000,
+          // Todos falam com o mesmo banco local, e alguns mexem em configuração e fila globais.
+          fileParallelism: false,
         },
       },
     ],

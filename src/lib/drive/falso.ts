@@ -1,3 +1,4 @@
+import { ErroDoDrive } from "@/dominio/drive";
 import type { ClienteDoDrive } from "@/dominio/pastas";
 
 /**
@@ -24,6 +25,12 @@ export function driveFalso() {
       const pasta = { id: `PASTA${String(pastas.length + 1).padStart(6, "0")}`, nome, pai: paiId };
       pastas.push(pasta);
       return { id: pasta.id };
+    },
+    async renomearPasta(pastaId, nome) {
+      falharSeCombinado(nome);
+      const pasta = pastas.find((p) => p.id === pastaId);
+      if (!pasta) throw new ErroDoDrive("pasta não encontrada ou sem acesso", { permanente: true });
+      pasta.nome = nome;
     },
   };
 

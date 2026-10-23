@@ -144,7 +144,7 @@ describe("quando um Evento ganha uma tarefa de pasta", () => {
     expect(await eventoLido(id)).toMatchObject({ pasta_estado: null });
   });
 
-  it("uma Ocorrência de Série fica de fora: as pastas das Séries são de outro ticket", async () => {
+  it("uma Ocorrência de Série também entra na fila (as pastas das Séries têm o teste próprio em pastas-das-series)", async () => {
     await ligar();
     const lucas = await comFuncoes("Lucas", "admin", []);
     const ebd = await categoria("EBD");
@@ -156,7 +156,7 @@ describe("quando um Evento ganha uma tarefa de pasta", () => {
       .throwOnError();
     const { id } = await eventoNovo("EBD", { serie_id: serie.id });
 
-    expect(await tarefaDe(id)).toBeNull();
+    expect(await tarefaDe(id)).toMatchObject({ operacao: "criar" });
   });
 });
 

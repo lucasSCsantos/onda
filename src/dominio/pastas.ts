@@ -1,9 +1,13 @@
-import { caminhoDaPasta, ErroDoDrive, esperaEmMinutos, linkDaPasta, MAXIMO_DE_TENTATIVAS } from "./drive";
+import { caminhoDaPasta, ErroDoDrive, esperaEmMinutos, linkDaPasta, MAXIMO_DE_TENTATIVAS, nomeDaPasta } from "./drive";
 
-/** O que o Mural precisa do Drive: achar e criar uma pasta dentro de outra. A implementação real fica em src/lib/drive. */
+/**
+ * O que o Mural precisa do Drive: achar e criar uma pasta dentro de outra, e trocar o nome de uma. Nunca apaga nem move
+ * (ADR 0006). A implementação real fica em src/lib/drive.
+ */
 export interface ClienteDoDrive {
   buscarPasta(nome: string, paiId: string): Promise<{ id: string } | null>;
   criarPasta(nome: string, paiId: string): Promise<{ id: string }>;
+  renomearPasta(pastaId: string, nome: string): Promise<void>;
 }
 
 /** Uma tarefa de criar a pasta de um Evento. `tentativas` já conta a que está rodando. */
@@ -40,8 +44,31 @@ export async function criarPastaDoEvento({
     }
     return { estado: "criada", pastaId: paiId, link: linkDaPasta(paiId) };
   } catch (erro) {
-    const permanente = erro instanceof ErroDoDrive && erro.permanente;
-    if (permanente || tarefa.tentativas >= MAXIMO_DE_TENTATIVAS) return { estado: "falhou", erro: mensagemDe(erro) };
-    return { estado: "adiada", erro: mensagemDe(erro), depoisDeMinutos: esperaEmMinutos(tarefa.tentativas) };
+    return falhaDe(erro, tarefa.tentativas);
+  }
+}
+
+/** A tentativa falhou: erro permanente ou tentativas esgotadas fecham a tarefa; o resto espera e volta. */
+function falhaDe(erro: unknown, tentativas: number): Extract<ResultadoDaPasta, { estado: "adiada" | "falhou" }> {
+  const permanente = erro instanceof ErroDoDrive && erro.permanente;
+  if (permanente || tentativas >= MAXIMO_DE_TENTATIVAS) return { estado: "falhou", erro: mensagemDe(erro) };
+  return { estado: "adiada", erro: mensagemDe(erro), depoisDeMinutos: esperaEmMinutos(tentativas) };
+}
+
+/** Uma tarefa de renomear a pasta de um Evento que mudou de título ou de data. `tentativas` já conta a que está rodando. */
+export type TarefaDeRenomear = { pastaId: string; inicio: Date; titulo: string; tentativas: number };
+
+export type ResultadoDaRenomeacao = { estado: "renomeada" } | Extract<ResultadoDaPasta, { estado: "adiada" | "falhou" }>;
+
+/**
+ * Dá à pasta do Evento o nome certo para o título e a data de agora. Só troca o nome: o conteúdo fica, e a pasta
+ * continua onde está, mesmo que a data tenha mudado de ano. Renomear para o nome que já tem não muda nada.
+ */
+export async function renomearPastaDoEvento({ tarefa, cliente }: { tarefa: TarefaDeRenomear; cliente: ClienteDoDrive }): Promise<ResultadoDaRenomeacao> {
+  try {
+    await cliente.renomearPasta(tarefa.pastaId, nomeDaPasta(tarefa));
+    return { estado: "renomeada" };
+  } catch (erro) {
+    return falhaDe(erro, tarefa.tentativas);
   }
 }
