@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
 import type { NivelDeAcesso } from "@/dominio/acesso";
+import { CAMPOS_NATIVOS, erroNosNativos, lerNativos } from "@/dominio/campos-nativos";
 import {
   erroNaCategoria,
   erroNaFuncao,
@@ -57,14 +58,24 @@ export async function definirFuncoes(pessoa: string, _: EstadoFormulario, dados:
   return { aviso: "Funções salvas." };
 }
 
-/** Nome, Área e cor de uma Categoria; criar leva à tela dos campos dela. */
+/** Nome, Área, cor, Chamada e campos comuns de uma Categoria; criar leva à tela dos campos dela. */
 export async function salvarCategoria(id: string | null, _: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
   const categoria = { nome: campoTexto(dados, "nome"), area: campoTexto(dados, "area"), cor: campoTexto(dados, "cor").toLowerCase() };
-  const erro = erroNaCategoria(categoria);
+  const nativos = lerNativos(Object.fromEntries(CAMPOS_NATIVOS.map((campo) => [campo, campoTexto(dados, `nativo_${campo}`)])));
+  const erro = erroNaCategoria(categoria) ?? erroNosNativos(nativos);
   if (erro) return { erro };
 
   const supabase = await supabaseDoServidor();
-  const linha = { nome: categoria.nome, area_id: categoria.area, cor: categoria.cor, tem_chamada: dados.get("tem_chamada") === "on" };
+  const linha = {
+    nome: categoria.nome,
+    area_id: categoria.area,
+    cor: categoria.cor,
+    tem_chamada: dados.get("tem_chamada") === "on",
+    nativo_local: nativos.local,
+    nativo_fim: nativos.fim,
+    nativo_observacoes: nativos.observacoes,
+    nativo_link: nativos.link,
+  };
   const { data, error } = id
     ? await supabase.from("categorias").update(linha).eq("id", id).select("id").single()
     : await supabase.from("categorias").insert(linha).select("id").single();

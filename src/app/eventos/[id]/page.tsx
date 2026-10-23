@@ -6,6 +6,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { LinhaDoTempo } from "@/components/linha-do-tempo";
 import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
 import { podeGerenciarContas } from "@/dominio/acesso";
+import { nativosDe } from "@/dominio/campos-nativos";
 import { podeCriarEvento, type CampoCadastrado } from "@/dominio/catalogo";
 import {
   camposChecklist,
@@ -63,6 +64,8 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
   const agora = new Date();
   const status = statusNoMomento(evento, agora);
+  // O que a Categoria oculta não aparece, mesmo que o Evento ainda guarde o valor (ADR 0008).
+  const nativos = nativosDe(evento.categoria);
   const edita = podeEditarEvento(eu, areas, evento);
   // O Professor vê a aula inteira, mas não lê as outras contas: os nomes dela vêm por `pessoas_da_aula`.
   const soObservacoes = podeEditarSoAsObservacoes(eu, { campos: evento.campos, definicoes: evento.categoria.campos });
@@ -126,7 +129,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
 
         <dl className="grid gap-4 sm:grid-cols-[auto_1fr] sm:gap-x-6">
           <Item rotulo={rotuloDaData(evento.categoria)}>
-            <span className="first-letter:uppercase">{quando(evento)}</span>
+            <span className="first-letter:uppercase">{quando(nativos.fim === "oculto" ? { ...evento, fim: null } : evento)}</span>
           </Item>
           <Item rotulo="Categoria">{evento.categoria.nome}</Item>
           {serie && (
@@ -136,7 +139,7 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
               {evento.editada && ". Esta Ocorrência foi editada à parte: as edições de série não a sobrescrevem"}
             </Item>
           )}
-          {evento.local && <Item rotulo="Local">{evento.local}</Item>}
+          {evento.local && nativos.local !== "oculto" && <Item rotulo="Local">{evento.local}</Item>}
           <Item rotulo="Responsável">
             {semResponsavel({ ...evento, responsavel }, agora)
               ? `Sem Responsável${responsavel ? ` (${responsavel.nome} foi desativado)` : ""}`
@@ -157,19 +160,19 @@ export default async function PaginaEvento(props: PageProps<"/eventos/[id]">) {
                 </Item>
               );
             })}
-          {evento.link && (
+          {evento.link && nativos.link !== "oculto" && (
             <Item rotulo="Link">
               <Externo href={evento.link} />
             </Item>
           )}
-          {evento.observacoes && !soObservacoes && (
+          {evento.observacoes && !soObservacoes && nativos.observacoes !== "oculto" && (
             <Item rotulo="Observações">
               <span className="whitespace-pre-line">{evento.observacoes}</span>
             </Item>
           )}
         </dl>
 
-        {soObservacoes && <ObservacoesDaAula eventoId={evento.id} observacoes={evento.observacoes} />}
+        {soObservacoes && nativos.observacoes !== "oculto" && <ObservacoesDaAula eventoId={evento.id} observacoes={evento.observacoes} />}
 
         {lideranca && (
           <p className="text-sm text-texto-suave">

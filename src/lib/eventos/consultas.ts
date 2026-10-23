@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
+import type { NativosDaCategoria } from "@/dominio/campos-nativos";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 import { semProfessor } from "@/dominio/professores";
@@ -30,7 +31,25 @@ export async function opcoesDeProfessores(supabase: SupabaseClient): Promise<Opc
 
 export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string; temChamada: boolean };
 
-type CategoriaDoBanco = {
+/** As colunas da configuração dos campos comuns, como o banco as devolve. */
+type NativosDoBanco = {
+  nativo_local: NativosDaCategoria["local"];
+  nativo_fim: NativosDaCategoria["fim"];
+  nativo_observacoes: NativosDaCategoria["observacoes"];
+  nativo_link: NativosDaCategoria["link"];
+};
+
+/** A configuração dos campos comuns de uma linha de `categorias`. */
+export const nativosDoBanco = (c: NativosDoBanco): NativosDaCategoria => ({
+  local: c.nativo_local,
+  fim: c.nativo_fim,
+  observacoes: c.nativo_observacoes,
+  link: c.nativo_link,
+});
+
+const COLUNAS_DOS_NATIVOS = "nativo_local, nativo_fim, nativo_observacoes, nativo_link";
+
+type CategoriaDoBanco = NativosDoBanco & {
   id: string;
   nome: string;
   cor: string;
@@ -40,13 +59,16 @@ type CategoriaDoBanco = {
 };
 
 const comArea = ({ areas, campos_das_categorias, tem_chamada, ...categoria }: CategoriaDoBanco): CategoriaComArea => ({
-  ...categoria,
+  id: categoria.id,
+  nome: categoria.nome,
+  cor: categoria.cor,
   temChamada: tem_chamada,
   area: areas.nome,
   campos: campos_das_categorias,
+  nativos: nativosDoBanco(categoria),
 });
 
-const SELECAO_DA_CATEGORIA = "id, nome, cor, tem_chamada, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)";
+const SELECAO_DA_CATEGORIA = `id, nome, cor, tem_chamada, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)`;
 
 export async function categorias(supabase: SupabaseClient): Promise<CategoriaComArea[]> {
   const { data } = await supabase
@@ -97,7 +119,13 @@ type EventoDoBanco = {
   status: Status;
   responsavel_id: string | null;
   campos: Evento["campos"];
-  categorias: { id: string; nome: string; cor: string; areas: { nome: string }; campos_das_categorias: { id: string; nome: string; tipo: string }[] };
+  categorias: NativosDoBanco & {
+    id: string;
+    nome: string;
+    cor: string;
+    areas: { nome: string };
+    campos_das_categorias: { id: string; nome: string; tipo: string }[];
+  };
   responsavel: { nome: string; ativo: boolean } | null;
 };
 
@@ -111,7 +139,7 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
     .from("eventos")
     .select(
       `id, titulo, inicio, fim, dia_inteiro, local, status, responsavel_id, campos,
-      categorias(id, nome, cor, areas(nome), campos_das_categorias(id, nome, tipo)),
+      categorias(id, nome, cor, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo)),
       responsavel:perfis!eventos_responsavel_id_fkey(nome, ativo)`,
     );
   if (periodo) {
@@ -122,11 +150,15 @@ export async function eventos(supabase: SupabaseClient, periodo?: { inicio: Date
   const agora = new Date();
   return (data ?? []).map((e) => {
     const periodo = { inicio: new Date(e.inicio), fim: e.fim ? new Date(e.fim) : null, diaInteiro: e.dia_inteiro };
+    const nativos = nativosDoBanco(e.categorias);
     return {
       id: e.id,
       titulo: e.titulo,
+      // O que a Categoria oculta não aparece em cartão nenhum, mesmo que o Evento ainda guarde o valor (ADR 0008);
+      // o Status continua pelo período gravado.
       ...periodo,
-      local: e.local,
+      fim: nativos.fim === "oculto" ? null : periodo.fim,
+      local: nativos.local === "oculto" ? "" : e.local,
       status: statusNoMomento({ ...periodo, status: e.status }, agora),
       categoria: { nome: e.categorias.nome, cor: e.categorias.cor },
       responsavel: semResponsavel({ ...periodo, responsavel: e.responsavel }, agora) ? null : e.responsavel!.nome,

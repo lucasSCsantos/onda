@@ -1,5 +1,6 @@
 import type { Pessoa } from "./acesso";
 import type { ItemDoChecklist } from "./checklist";
+import { nativosDe, NOMES_DOS_NATIVOS, type CampoNativo, type NativosDaCategoria } from "./campos-nativos";
 import { podeCriarEvento, type CampoCadastrado, type CampoDaCategoria } from "./catalogo";
 import { dataLocal, horaLocal, meiaNoite, somarDias } from "./fuso";
 import { eCampoDeAula } from "./professores";
@@ -61,7 +62,8 @@ export type Evento = {
  */
 export type ValorDeCampo = string | number | string[] | ItemDoChecklist[];
 
-export type CategoriaDoEvento = { nome: string; campos: CampoCadastrado[] };
+/** `nativos` diz quais campos comuns (local, fim, observações, link) a Categoria oculta, mostra ou exige; sem ele, todos ficam visíveis. */
+export type CategoriaDoEvento = { nome: string; campos: CampoCadastrado[]; nativos?: Partial<NativosDaCategoria> };
 
 /** Os campos específicos do formulário: todos, menos o checklist, que quem edita o Evento mexe na página dele (`checklist.ts`). */
 export function camposDaCriacao(categoria: CategoriaDoEvento): CampoCadastrado[] {
@@ -150,11 +152,19 @@ function lerFormulario(
     return { erro: "O Responsável precisa ser da Liderança." };
   }
 
-  const periodo = lerPeriodo(entrada);
+  const nativos = nativosDe(categoria);
+  // O que a Categoria oculta o formulário nem mostra: o que veio é ignorado, e o que já estava gravado fica.
+  const periodo = lerPeriodo(nativos.fim === "oculto" ? { ...entrada, dataFim: "", horaFim: "" } : entrada);
   if ("erro" in periodo) return periodo;
+  if (nativos.fim === "oculto") periodo.fim = fimGravadoQueAindaServe(periodo, anterior);
 
-  const link = entrada.link.trim() || null;
+  const link = nativos.link === "oculto" ? (anterior?.link ?? null) : entrada.link.trim() || null;
   if (link && !eLink(link)) return { erro: "O link precisa começar com http:// ou https://." };
+
+  const local = nativos.local === "oculto" ? (anterior?.local ?? "") : entrada.local.trim();
+  const observacoes = nativos.observacoes === "oculto" ? (anterior?.observacoes ?? "") : entrada.observacoes.trim();
+  const faltando = nativoObrigatorioVazio(nativos, { local, observacoes, link, fim: periodo.fim });
+  if (faltando) return { erro: `Preencha “${NOMES_DOS_NATIVOS[faltando]}”.` };
 
   const campos = lerCampos(entrada.campos, categoria, lideranca, professores, anterior?.campos ?? {});
   if ("erro" in campos) return campos;
@@ -163,14 +173,33 @@ function lerFormulario(
     evento: {
       titulo,
       ...periodo,
-      local: entrada.local.trim(),
+      local,
       responsavel,
       status,
-      observacoes: entrada.observacoes.trim(),
+      observacoes,
       link,
       campos: campos.valores,
     },
   };
+}
+
+/** O primeiro campo comum obrigatório que ficou vazio, ou `null`. */
+function nativoObrigatorioVazio(
+  nativos: NativosDaCategoria,
+  valores: { local: string; observacoes: string; link: string | null; fim: Date | null },
+): CampoNativo | null {
+  const vazio = (campo: CampoNativo) => !valores[campo];
+  return (Object.keys(nativos) as CampoNativo[]).find((campo) => nativos[campo] === "obrigatorio" && vazio(campo)) ?? null;
+}
+
+/**
+ * Com o fim oculto, o fim já gravado fica, a menos que a nova data o deixe inválido: antes do início, ou num Evento
+ * que passou a ser (ou deixou de ser) de dia inteiro.
+ */
+function fimGravadoQueAindaServe(periodo: Pick<Evento, "inicio" | "diaInteiro">, anterior: Evento | null): Date | null {
+  const fim = anterior?.fim ?? null;
+  if (!fim || !anterior) return null;
+  return anterior.diaInteiro === periodo.diaInteiro && fim >= periodo.inicio ? fim : null;
 }
 
 function lerCampos(
@@ -302,7 +331,7 @@ function lerPeriodo(entrada: EntradaDeEvento): Pick<Evento, "inicio" | "fim" | "
 
 /** A data de uma Postagem é a de publicação: ela não tem um campo extra de data. */
 export function rotuloDaData(categoria: { nome: string }): string {
-  return categoria.nome === "Postagem" ? "Data de publicação" : "Data";
+  return categoria.nome === "Postagem" ? "Publicação" : "Data";
 }
 
 /**

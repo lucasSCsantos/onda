@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { NativosDaCategoria } from "@/dominio/campos-nativos";
 import { NOMES_DOS_TIPOS, type TipoDeCampo } from "@/dominio/catalogo";
 import { removerCampo } from "@/lib/catalogo/acoes";
 import { OPCOES_DE_TIPO, opcoesDeArea } from "@/lib/catalogo/consultas";
+import { nativosDoBanco } from "@/lib/eventos/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
 import { FormularioCampo, FormularioCategoria } from "../formularios";
@@ -11,7 +13,18 @@ import { FormularioCampo, FormularioCategoria } from "../formularios";
 export const metadata: Metadata = { title: "Categoria" };
 
 type CampoListado = { id: string; nome: string; tipo: TipoDeCampo; obrigatorio: boolean; opcoes: string[]; ordem: number };
-type CategoriaEditada = { id: string; nome: string; area_id: string; cor: string; tem_chamada: boolean; campos_das_categorias: CampoListado[] };
+type CategoriaEditada = {
+  id: string;
+  nome: string;
+  area_id: string;
+  cor: string;
+  tem_chamada: boolean;
+  nativo_local: NativosDaCategoria["local"];
+  nativo_fim: NativosDaCategoria["fim"];
+  nativo_observacoes: NativosDaCategoria["observacoes"];
+  nativo_link: NativosDaCategoria["link"];
+  campos_das_categorias: CampoListado[];
+};
 
 export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/[id]">) {
   await exigirAdmin();
@@ -20,7 +33,9 @@ export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/
   const [{ data: categoria }, areas] = await Promise.all([
     supabase
       .from("categorias")
-      .select("id, nome, area_id, cor, tem_chamada, campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)")
+      .select(
+        "id, nome, area_id, cor, tem_chamada, nativo_local, nativo_fim, nativo_observacoes, nativo_link, campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)",
+      )
       .eq("id", id)
       .order("ordem", { referencedTable: "campos_das_categorias" })
       .maybeSingle()
@@ -40,7 +55,7 @@ export default async function PaginaCategoria(props: PageProps<"/admin/catalogo/
           <p className="text-sm text-texto-suave">
             A Área decide quem cria Eventos desta Categoria; a cor aparece no calendário.
           </p>
-          <FormularioCategoria categoria={categoria} areas={areas} />
+          <FormularioCategoria categoria={{ ...categoria, nativos: nativosDoBanco(categoria) }} areas={areas} />
         </section>
 
         <section className="flex flex-col gap-4">
