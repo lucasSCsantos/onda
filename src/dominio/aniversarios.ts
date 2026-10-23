@@ -1,6 +1,8 @@
 import type { Pessoa } from "./acesso";
 import { diaDoAniversario } from "./adolescentes";
-import { podeVerTodosOsEventos } from "./eventos";
+import { diaDe, podeVerTodosOsEventos } from "./eventos";
+import { somarDias } from "./fuso";
+import { semanaDe } from "./semana";
 
 /** Quem faz anos: o nome e a data de nascimento `AAAA-MM-DD`. */
 export type Aniversariavel = { nome: string; nascimento: string };
@@ -27,6 +29,14 @@ export function aniversariantesDoMes(pessoas: Aniversariavel[], dia: string): An
     .map(({ nome, nascimento }) => ({ nome, dia: diaDoAniversario(nascimento, ano) }))
     .filter((festa) => festa.dia.slice(0, 7) === dia.slice(0, 7))
     .sort(porDiaENome);
+}
+
+/** Os aniversariantes da semana (segunda a domingo) de um instante, por dia e depois por nome. */
+export function aniversariantesDaSemana(pessoas: Aniversariavel[], agora: Date): Aniversario[] {
+  const { inicio } = semanaDe(agora);
+  const dias = Array.from({ length: 7 }, (_, i) => diaDe(somarDias(inicio, i)));
+  const porDia = aniversariosPorDia(pessoas, dias);
+  return dias.flatMap((dia) => porDia[dia]);
 }
 
 /** Quem entra nos aniversários: Adolescentes e líderes ativos, e só quem tem data de nascimento. */

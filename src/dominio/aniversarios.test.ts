@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aniversariantesDaSemana,
   aniversariantesDoMes,
   aniversariosPorDia,
   aniversariosVisiveis,
@@ -110,5 +111,30 @@ describe("aniversariosVisiveis", () => {
     expect(aniversariosVisiveis({ id: "1", nivel: "professor", ativo: true }, todos)).toEqual([]);
     expect(aniversariosVisiveis({ id: "1", nivel: "pendente", ativo: true }, todos)).toEqual([]);
     expect(aniversariosVisiveis({ id: "1", nivel: "lider", ativo: false }, todos)).toEqual([]);
+  });
+});
+
+describe("aniversariantesDaSemana", () => {
+  // quarta-feira, 21/10/2026: a semana vai de 19/10 a 25/10
+  const agora = new Date("2026-10-21T15:00:00Z");
+
+  it("traz só quem faz anos de segunda a domingo, por dia e depois por nome", () => {
+    const pessoas = [
+      { nome: "Caio", nascimento: "2010-10-25" },
+      { nome: "Bia", nascimento: "2009-10-19" },
+      { nome: "Ana", nascimento: "2011-10-19" },
+      { nome: "Dani", nascimento: "2010-10-26" },
+      { nome: "Edu", nascimento: "2010-10-18" },
+    ];
+    expect(aniversariantesDaSemana(pessoas, agora)).toEqual([
+      { nome: "Ana", dia: "2026-10-19" },
+      { nome: "Bia", dia: "2026-10-19" },
+      { nome: "Caio", dia: "2026-10-25" },
+    ]);
+  });
+
+  it("uma semana que cruza a virada do ano usa o ano de cada dia", () => {
+    const natal = new Date("2026-12-30T15:00:00Z");
+    expect(aniversariantesDaSemana([{ nome: "Fabi", nascimento: "2010-01-02" }], natal)).toEqual([{ nome: "Fabi", dia: "2027-01-02" }]);
   });
 });

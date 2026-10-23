@@ -229,6 +229,43 @@ test("o formulário de Evento mostra só os campos da Categoria", async ({ page 
   expect(larguraExcedida).toBeLessThanOrEqual(0);
 });
 
+test("tela principal: semana, 'só os meus', estado vazio e Próximos só com o grupo Depois", async ({ page }) => {
+  const nome = `Semana ${crypto.randomUUID().slice(0, 6)}`;
+  await cadastrar(page, nome, await novoConviteDeAdmin());
+  await expect(page.getByRole("heading", { name: "Meus eventos desta semana" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Esta semana no ONDA" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await expect(page.getByText("Você não tem eventos nesta semana.")).toBeVisible();
+
+  // Um Evento da semana em que a pessoa é Responsável aparece nas duas listas, com Categoria, horário, local e Status.
+  // Fica na segunda às 00:00: o primeiro horário da semana, para não cair fora do teto de linhas de um banco local cheio.
+  const segunda = new Date(`${hoje()}T12:00:00Z`);
+  segunda.setUTCDate(segunda.getUTCDate() - ((segunda.getUTCDay() + 6) % 7));
+  const diaDaSegunda = segunda.toISOString().slice(0, 10);
+  const { data: eu } = await admin.from("perfis").select("id").eq("nome", nome).single();
+  const { data: culto } = await admin.from("categorias").select("id").eq("nome", "Culto").single();
+  const titulo = `Culto da semana ${crypto.randomUUID().slice(0, 6)}`;
+  await admin
+    .from("eventos")
+    .insert({ titulo, categoria_id: culto!.id, inicio: `${diaDaSegunda}T00:00:00-03:00`, local: "Templo", responsavel_id: eu!.id, status: "planejado", criado_por: eu!.id })
+    .throwOnError();
+  await page.reload();
+  const meus = page.getByRole("region", { name: "Meus eventos desta semana" });
+  const cartao = meus.getByRole("listitem").filter({ hasText: titulo }).last();
+  await expect(cartao).toContainText("00:00");
+  await expect(cartao).toContainText("Culto");
+  await expect(cartao).toContainText("Templo");
+  await expect(cartao).toContainText("Planejado");
+  await expect(page.getByRole("region", { name: "Esta semana no ONDA" }).getByText(titulo)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Próximos eventos" }).getByText(titulo)).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Só os meus" }).click();
+  await expect(page).toHaveURL(/so-meus=1/);
+  await expect(page.getByRole("link", { name: "Ver todos" })).toBeVisible();
+  const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(larguraExcedida).toBeLessThanOrEqual(0);
+});
+
 test("Logs: o Admin vê a própria entrada em frase legível, abre os detalhes e filtra os alertas", async ({ page }) => {
   await cadastrar(page, "Logs de Fumaça", await novoConviteDeAdmin());
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();

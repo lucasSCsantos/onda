@@ -1,3 +1,4 @@
+import { CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { AniversarioNoDia } from "@/components/aniversarios";
 import { SeloDoStatus, visualDoStatus } from "@/components/status-do-evento";
@@ -92,7 +93,8 @@ export function CartaoDeEvento({
           {evento.titulo}
         </Link>
         <p className="text-sm text-texto-suave">
-          <span className="font-semibold text-texto">{quando(evento)}</span> · {evento.categoria.nome}
+          <span className="font-semibold text-texto">{quando(evento)}</span> ·{" "}
+          <CalendarDays aria-hidden style={{ color: evento.categoria.cor }} className="inline size-4 align-text-bottom" /> {evento.categoria.nome}
           {evento.local && ` · ${evento.local}`}
         </p>
         {mostraResponsavel && (
