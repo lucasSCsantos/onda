@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { EnviadorDePush } from "@/dominio/push";
+import { rodarAgendador } from "@/lib/notificacoes/rodada";
 import { admin, comFuncoes, contaNova } from "./ambiente";
 
 const chaves = { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" };
@@ -97,5 +99,39 @@ describe("administração das Notificações: fila e dispositivos", () => {
     await admin.from("perfis").update({ ativo: false }).eq("id", pessoa.id).throwOnError();
     const { data: semAtiva } = await adm.cliente.rpc("pessoas_com_dispositivo").throwOnError();
     expect(semAtiva).toBe(antes);
+  });
+});
+
+describe("administração das Notificações: canal desligado", () => {
+  it("a rodada do agendador não gera, não reserva e não envia nada", async () => {
+    const pessoa = await comFuncoes("Pessoa com o canal desligado", "lider", ["Líder do louvor"]);
+    await pessoa.cliente
+      .rpc("registrar_inscricao_de_push", { endereco: `https://push.exemplo.test/${crypto.randomUUID()}`, chave_p256dh: chaves.p256dh, chave_auth: chaves.auth, apelido: "Celular" })
+      .throwOnError();
+    const criada = await admin
+      .from("notificacoes")
+      .insert({ pessoa_id: pessoa.id, tipo: "designacao_responsavel", janela: crypto.randomUUID(), titulo: "Aviso", texto: "Texto", tag: "t", url: "/" })
+      .select("id")
+      .single()
+      .throwOnError();
+
+    const antes = await configuracaoAtual();
+    const enviados: string[] = [];
+    const enviar: EnviadorDePush = async (d) => {
+      enviados.push(d.endpoint);
+      return { ok: true };
+    };
+    try {
+      await admin.from("configuracoes").update({ notificacoes_ligadas: false }).eq("id", true).throwOnError();
+      const resultado = await rodarAgendador(admin, { enviar });
+      expect(resultado).toMatchObject({ processado: false });
+      expect(enviados).toEqual([]);
+
+      const { data: linha } = await admin.from("notificacoes").select("estado, reservada_ate, tentativas").eq("id", criada.data.id).single().throwOnError();
+      expect(linha).toEqual({ estado: "pendente", reservada_ate: null, tentativas: 0 });
+    } finally {
+      await admin.from("configuracoes").update({ notificacoes_ligadas: antes.notificacoes_ligadas }).eq("id", true).throwOnError();
+      await admin.from("notificacoes").delete().eq("id", criada.data.id);
+    }
   });
 });

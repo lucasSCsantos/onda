@@ -1,6 +1,5 @@
 import { autorizadoPeloAgendador } from "@/dominio/drive";
-import { gerarNotificacoes } from "@/lib/notificacoes/gerar";
-import { processarFila } from "@/lib/notificacoes/processar";
+import { rodarAgendador } from "@/lib/notificacoes/rodada";
 import { criarEnviador, modoDeTeste, pushConfigurado } from "@/lib/push/enviador";
 import { supabaseDeServico } from "@/lib/supabase/servico";
 
@@ -22,16 +21,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = supabaseDeServico();
-    // O Admin pode desligar o canal: desligado, nada é gerado nem enviado.
-    const { data: config, error } = await db.from("configuracoes").select("notificacoes_ligadas").maybeSingle();
-    if (error) throw new Error(`não foi possível ler as configurações (${error.code ?? "sem código"})`);
-    if (config && !config.notificacoes_ligadas) return Response.json({ processado: false, motivo: "o canal de Notificações está desligado" });
-
-    // Primeiro o que ficou devido com o passar do tempo vira fila; em seguida a fila é enviada.
-    const geradas = await gerarNotificacoes(db);
-    const resumo = await processarFila(db, { enviar: criarEnviador(), simulado: modoDeTeste() });
-    return Response.json({ processado: true, geradas, ...resumo });
+    const resultado = await rodarAgendador(supabaseDeServico(), { enviar: criarEnviador(), simulado: modoDeTeste() });
+    return Response.json(resultado);
   } catch (erro) {
     // Só a mensagem: nada de endpoint ou chave nos logs da hospedagem.
     console.error("agendador de notificações:", erro instanceof Error ? erro.message : "erro desconhecido");

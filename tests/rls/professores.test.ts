@@ -101,8 +101,8 @@ describe("cadastro de Professor e convite", () => {
   it("a Liderança lê a tabela de Professores ativos para escolher", async () => {
     const ensino = await comFuncoes("Líder do ensino", "lider", ["Líder do ensino"]);
     const paulo = await contaNova("Paulo", "professor");
-    const lidos = await ensino.cliente.from("perfis").select("id").eq("nivel", "professor").eq("ativo", true);
-    expect(lidos.data?.map((p) => p.id)).toContain(paulo.id);
+    const lidos = await ensino.cliente.from("perfis").select("id").eq("nivel", "professor").eq("ativo", true).eq("id", paulo.id);
+    expect(lidos.data?.map((p) => p.id)).toEqual([paulo.id]);
   });
 });
 

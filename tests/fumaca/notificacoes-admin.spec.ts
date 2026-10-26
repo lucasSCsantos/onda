@@ -40,17 +40,37 @@ test("Notificações no Admin: a tela está no menu, mostra a fila e salva os ho
     for (const titulo of ["Pendentes", "Enviadas", "Falhas"]) {
       await expect(page.getByRole("heading", { name: new RegExp(`^${titulo}`) })).toBeVisible();
     }
-    await expect(page.getByRole("button", { name: "Enviar notificação de teste para mim" })).toBeVisible();
+
+    // Uma falha na fila aparece com o tipo e a pessoa, sem o texto da Notificação.
+    const pessoa = await admin.from("perfis").select("id, nome").eq("nivel", "admin").limit(1).single().throwOnError();
+    await admin
+      .from("notificacoes")
+      .insert({ pessoa_id: pessoa.data.id, tipo: "lembrete_2h", janela: crypto.randomUUID(), titulo: "Título secreto", texto: "Texto secreto", estado: "falha", tentativas: 5 })
+      .throwOnError();
+    await page.reload();
+    const falhas = page.locator("section", { has: page.getByRole("heading", { name: /^Falhas/ }) });
+    await expect(falhas.getByText("Segundo lembrete").first()).toBeVisible();
+    await expect(falhas.getByText("5 tentativas").first()).toBeVisible();
+    await expect(page.getByText("Título secreto")).toHaveCount(0);
+    await expect(page.getByText("Texto secreto")).toHaveCount(0);
+
+    // O teste de notificação responde na tela (este Admin não tem dispositivo ativado).
+    await page.getByRole("button", { name: "Enviar notificação de teste para mim" }).click();
+    await expect(page.getByText(/Ative as Notificações em pelo menos um dispositivo|ainda não foram configuradas/)).toBeVisible();
 
     await page.getByLabel("Primeiro lembrete, quantas horas antes do Evento").fill("36");
     await page.getByLabel("Segundo lembrete, quantas horas antes do Evento").fill("3");
     await page.getByLabel("Resumo da semana: hora de domingo (0 a 23)").fill("9");
+    await page.getByLabel("Mudança ou cancelamento é urgente se o Evento começa em menos de (horas)").fill("6");
+    await page.getByLabel("Guardar as Notificações na central por quantos dias").fill("45");
     await page.getByLabel("Canal de Notificações ligado").uncheck();
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Configurações salvas.")).toBeVisible();
 
     await page.reload();
     await expect(page.getByLabel("Primeiro lembrete, quantas horas antes do Evento")).toHaveValue("36");
+    await expect(page.getByLabel("Mudança ou cancelamento é urgente se o Evento começa em menos de (horas)")).toHaveValue("6");
+    await expect(page.getByLabel("Guardar as Notificações na central por quantos dias")).toHaveValue("45");
     await expect(page.getByLabel("Canal de Notificações ligado")).not.toBeChecked();
     await expect(situacao.getByText("Desligado")).toBeVisible();
 
@@ -69,6 +89,8 @@ test("Notificações no Admin: a tela está no menu, mostra a fila e salva os ho
         lembrete_longo_horas: antes.data.lembrete_longo_horas,
         lembrete_curto_horas: antes.data.lembrete_curto_horas,
         hora_do_resumo_semanal: antes.data.hora_do_resumo_semanal,
+        limite_de_urgencia_horas: antes.data.limite_de_urgencia_horas,
+        retencao_das_notificacoes_dias: antes.data.retencao_das_notificacoes_dias,
       })
       .eq("id", true);
   }
