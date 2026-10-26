@@ -44,6 +44,12 @@ describe("o que cada item permite", () => {
     expect((await itens(drive))["marca.svg"]).toMatchObject({ previa: false, baixavel: true });
   });
 
+  it("imagem acima do limite ainda tem miniatura, mas não baixa nem amplia", async () => {
+    const drive = driveFalso();
+    drive.arquivo("foto.jpg", RAIZ, { mime: "image/jpeg", tamanho: LIMITE + 1 });
+    expect((await itens(drive))["foto.jpg"]).toMatchObject({ previa: true, baixavel: false });
+  });
+
   it("acima do limite só abre no Drive, e o limite é do Admin", async () => {
     const drive = driveFalso();
     drive.arquivo("video.mp4", RAIZ, { mime: "video/mp4", tamanho: LIMITE + 1 });

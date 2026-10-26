@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { podeVerTodosOsEventos } from "@/dominio/eventos";
-import { cabecalhoDeAnexo, servirItem, type AcaoSobreItem } from "@/dominio/arquivos";
+import { cabecalhoDeAnexo, limiteEmBytes, servirItem, type AcaoSobreItem } from "@/dominio/arquivos";
 import { atalhoVisivel } from "@/lib/arquivos/consultas";
 import { configuracoes } from "@/lib/configuracoes/consultas";
 import { perfilAtual } from "@/lib/contas/perfil";
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/arqui
     atalho,
     itemId: id,
     acao,
-    limiteDeDownloadBytes: config.drive.limiteDeDownloadMb * 1024 * 1024,
+    limiteDeDownloadBytes: limiteEmBytes(config.drive.limiteDeDownloadMb),
   });
 
   switch (resultado.estado) {

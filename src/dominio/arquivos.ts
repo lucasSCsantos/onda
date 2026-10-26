@@ -79,6 +79,9 @@ export async function caminhoDentro({
 /** Imagens que o app mostra na tela. SVG fica de fora: pode carregar script, e quem quiser baixa ou abre no Drive. */
 const MIMES_DE_IMAGEM_COM_PREVIA = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"];
 
+/** O limite de download do Admin (em MB) em bytes: a conta fica num lugar só. */
+export const limiteEmBytes = (mb: number) => mb * 1024 * 1024;
+
 /** O limite de download que vale quando o Admin não mexeu: 4 MB, para não estourar a resposta da hospedagem. */
 export const LIMITE_DE_DOWNLOAD_PADRAO_MB = 4;
 export const LIMITE_DE_DOWNLOAD_MAXIMO_MB = 50;
@@ -102,7 +105,8 @@ const temPrevia = (i: { mime: string; pasta: boolean }) => !i.pasta && MIMES_DE_
 
 /**
  * Um item como a tela o mostra: nada do que o Drive sabe além disso (pais, tipo MIME cru) sai do servidor. `baixavel`
- * diz se o app baixa (dentro do limite do Admin); `previa`, se a imagem tem miniatura e ampliação no app; `link` abre no Drive.
+ * diz se o app baixa (dentro do limite do Admin); `previa`, se é imagem com miniatura no app (a miniatura vem pronta do Drive,
+ * então não depende do tamanho; ampliar exige também `baixavel`); `link` abre no Drive.
  */
 export type ItemDeListagem = {
   id: string;
@@ -124,7 +128,7 @@ const paraListagem = (i: ItemDoDrive, limiteDeDownloadBytes: number): ItemDeList
   tamanho: i.tamanho,
   modificadoEm: i.modificadoEm,
   baixavel: !i.pasta && cabeNoLimite(i.tamanho, limiteDeDownloadBytes),
-  previa: temPrevia(i) && cabeNoLimite(i.tamanho, limiteDeDownloadBytes),
+  previa: temPrevia(i),
   link: linkNoDrive(i),
 });
 
@@ -318,6 +322,8 @@ export async function construirIndice({
 }): Promise<Indice> {
   const entradas: EntradaDoIndice[] = [];
   const fila = [{ id: inicioId, nome: inicioNome }];
+  // Uma pasta com mais de um pai aparece mais de uma vez na descida; só se lê (e se indexa) uma.
+  const vistos = new Set<string>([inicioId]);
   let percorridas = 0;
   let completo = true;
 
@@ -332,6 +338,8 @@ export async function construirIndice({
     do {
       const lida = await cliente.listarFilhos(pasta.id, { ordem: "nome", pagina, tamanho: TAMANHO_DA_PAGINA_DO_INDICE });
       for (const i of lida.itens) {
+        if (vistos.has(i.id)) continue;
+        vistos.add(i.id);
         entradas.push({ id: i.id, nome: i.nome, pasta: i.pasta, mime: i.mime, tamanho: i.tamanho, modificadoEm: i.modificadoEm, paiId: pasta.id, paiNome: pasta.nome });
         if (i.pasta && recursivo) fila.push({ id: i.id, nome: i.nome });
       }

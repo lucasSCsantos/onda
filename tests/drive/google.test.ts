@@ -263,5 +263,13 @@ describe("cliente do Drive: miniaturas", () => {
     expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
     respostas.miniatura = [403, "image/png"];
     expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
+    respostas.miniatura = [200, "image/svg+xml"];
+    expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
+  });
+
+  it("não segue redirecionamento do endereço da miniatura", async () => {
+    respostas.buscar = () => [200, { thumbnailLink: `${base}/thumb/abc=s220` }];
+    respostas.miniatura = [302, "image/png"];
+    expect(await comMiniatura().miniatura("ARQ1")).toBeNull();
   });
 });

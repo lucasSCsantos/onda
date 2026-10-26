@@ -15,6 +15,8 @@ const MARGEM_DO_TOKEN_MS = 60_000;
 const TEMPO_LIMITE_MS = 20_000;
 
 const TAMANHO_DA_MINIATURA = 400;
+const TAMANHO_MAXIMO_DA_MINIATURA = 2 * 1024 * 1024;
+const MIMES_DE_MINIATURA = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"];
 const CAMPOS_DO_ITEM = "id,name,mimeType,size,modifiedTime,parents";
 const ORDEM_DO_GOOGLE: Record<OrdemDaListagem, string> = {
   nome: "folder,name_natural",
@@ -175,10 +177,12 @@ export function criarClienteDoGoogle({
       }
       // O endereço vem do Drive, mas só se busca o que é do Google: nada de pedir a um endereço qualquer.
       if (!aceitaMiniatura(url)) return null;
-      const resposta = await buscar(url, { signal: AbortSignal.timeout(TEMPO_LIMITE_MS) });
-      const mime = resposta.headers.get("content-type")?.split(";")[0].trim() ?? "";
-      if (!resposta.ok || !mime.startsWith("image/")) return null;
-      return { bytes: new Uint8Array(await resposta.arrayBuffer()), mime };
+      // Sem seguir redirecionamento: um endereço do Google que manda para outro lugar não vale.
+      const resposta = await buscar(url, { redirect: "manual", signal: AbortSignal.timeout(TEMPO_LIMITE_MS) });
+      const mime = resposta.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
+      if (!resposta.ok || !MIMES_DE_MINIATURA.includes(mime)) return null;
+      const bytes = new Uint8Array(await resposta.arrayBuffer());
+      return bytes.byteLength > TAMANHO_MAXIMO_DA_MINIATURA ? null : { bytes, mime };
     },
     async baixar(id) {
       return new Uint8Array(await (await pedirBruto(`/files/${encodeURIComponent(id)}`, { alt: "media" })).arrayBuffer());

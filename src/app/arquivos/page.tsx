@@ -9,12 +9,14 @@ import {
   buscarArquivos,
   enderecoDeArquivos,
   formatarTamanho,
+  limiteEmBytes,
   lerModo,
   lerOrdem,
   lerPagina,
   NOMES_DAS_ORDENS,
   ORDENS,
   situacaoDeArquivos,
+  type AcaoSobreItem,
   type ItemDeBusca,
   type ItemDeListagem,
   type ModoDeVista,
@@ -62,7 +64,7 @@ export default async function PaginaDeArquivos(props: PageProps<"/arquivos">) {
   const cliente = clienteDeArquivos();
   const obterIndice = indiceDeArquivos();
   const raizId = config.drive.pastaRaizId;
-  const limiteDeDownloadBytes = config.drive.limiteDeDownloadMb * 1024 * 1024;
+  const limiteDeDownloadBytes = limiteEmBytes(config.drive.limiteDeDownloadMb);
   const atalho: AtalhoDeArquivos | null = atalhoPedido ? await atalhoVisivel(supabase, atalhoPedido) : null;
   const situacao = situacaoDeArquivos({
     driveLigado: config.drive.ligado,
@@ -81,7 +83,7 @@ export default async function PaginaDeArquivos(props: PageProps<"/arquivos">) {
 
   const endereco = (mudancas: { atalho?: string | null; pasta?: string | null; ordem?: typeof ordem; modo?: ModoDeVista; pagina?: string | null; busca?: string | null }) =>
     enderecoDeArquivos({ atalho: atalho?.id ?? null, pasta: pastaPedida, ordem, modo, pagina: null, busca: null, ...mudancas });
-  const doItem = (item: ItemDeListagem, acao: "miniatura" | "ver" | "baixar") => {
+  const doItem = (item: ItemDeListagem, acao: AcaoSobreItem) => {
     const parametrosDoItem = new URLSearchParams({ acao });
     if (atalho) parametrosDoItem.set("atalho", atalho.id);
     return `/arquivos/item/${encodeURIComponent(item.id)}?${parametrosDoItem}`;
@@ -92,7 +94,7 @@ export default async function PaginaDeArquivos(props: PageProps<"/arquivos">) {
       modo={modo}
       abrirPasta={item.pasta ? endereco({ pasta: item.id }) : null}
       miniatura={item.previa ? doItem(item, "miniatura") : null}
-      ampliar={item.previa ? doItem(item, "ver") : null}
+      ampliar={item.previa && item.baixavel ? doItem(item, "ver") : null}
       baixar={item.baixavel ? doItem(item, "baixar") : null}
       onde={onde}
     />

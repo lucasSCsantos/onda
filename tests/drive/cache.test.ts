@@ -74,3 +74,23 @@ describe("cache de outras respostas caras (o índice da busca)", () => {
     expect(await lembrar("indice", buscar, 5000)).toBe(3);
   });
 });
+
+describe("pedidos iguais ao mesmo tempo", () => {
+  it("esperam a mesma resposta, em vez de perguntar duas vezes", async () => {
+    const { lembrar } = comCache(driveFalso().cliente);
+    let chamadas = 0;
+    const lento = async () => {
+      chamadas++;
+      await new Promise((ok) => setTimeout(ok, 20));
+      return "indice";
+    };
+    expect(await Promise.all([lembrar("i", lento), lembrar("i", lento), lembrar("i", lento)])).toEqual(["indice", "indice", "indice"]);
+    expect(chamadas).toBe(1);
+  });
+
+  it("um erro no pedido em andamento não fica preso", async () => {
+    const { lembrar } = comCache(driveFalso().cliente);
+    await expect(lembrar("i", async () => { throw new Error("falhou"); })).rejects.toThrow("falhou");
+    await expect(lembrar("i", async () => "ok")).resolves.toBe("ok");
+  });
+});

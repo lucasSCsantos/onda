@@ -11,15 +11,23 @@ const MAXIMO_DE_ENTRADAS = 500;
  */
 export function comCache(cliente: ClienteDoDrive, { validadeMs = VALIDADE_PADRAO_MS, agora = Date.now }: { validadeMs?: number; agora?: () => number } = {}) {
   const guardado = new Map<string, { valor: unknown; venceEm: number }>();
+  // Pedidos em andamento: dois pedidos iguais ao mesmo tempo esperam a mesma resposta, em vez de perguntar duas vezes ao Drive.
+  const emAndamento = new Map<string, Promise<unknown>>();
 
   async function lembrar<T>(chave: string, buscar: () => Promise<T>, validade = validadeMs): Promise<T> {
     const antigo = guardado.get(chave);
     if (antigo && antigo.venceEm > agora()) return antigo.valor as T;
-    const valor = await buscar();
-    guardado.delete(chave);
-    guardado.set(chave, { valor, venceEm: agora() + validade });
-    if (guardado.size > MAXIMO_DE_ENTRADAS) guardado.delete(guardado.keys().next().value!);
-    return valor;
+    const pendente = emAndamento.get(chave);
+    if (pendente) return pendente as Promise<T>;
+    const pedido = buscar().then((valor) => {
+      guardado.delete(chave);
+      guardado.set(chave, { valor, venceEm: agora() + validade });
+      if (guardado.size > MAXIMO_DE_ENTRADAS) guardado.delete(guardado.keys().next().value!);
+      return valor;
+    });
+    emAndamento.set(chave, pedido);
+    // Dá certo ou errado, o pedido sai da lista (um erro nunca fica preso).
+    return pedido.finally(() => emAndamento.delete(chave));
   }
 
   const comCacheDoDrive: ClienteDoDrive = {
