@@ -6,12 +6,12 @@
 
 **Blocked by:** 13 (Push: fila, envio e central)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Tela nova na administração (item na lista única de destinos do Admin), só para o Admin
-- [ ] Interruptor do canal de Notificações; desligado, nada é enviado
-- [ ] Fila com contagem e lista de pendentes, enviadas e falhas, sem endpoints, chaves nem dados de Adolescentes
-- [ ] Edição dos horários dos lembretes, do resumo semanal e do limite de urgência, e da retenção da central; cada mudança vira Log
-- [ ] Mostra quantas pessoas têm ao menos um dispositivo ativo
-- [ ] Botão de notificação de teste para si mesmo
-- [ ] Testes de domínio das configurações e fumaça da tela
+- [x] Tela nova na administração (item na lista única de destinos do Admin), só para o Admin
+- [x] Interruptor do canal de Notificações; desligado, nada é enviado
+- [x] Fila com contagem e lista de pendentes, enviadas e falhas, sem endpoints, chaves nem dados de Adolescentes
+- [x] Edição dos horários dos lembretes, do resumo semanal e do limite de urgência, e da retenção da central; cada mudança vira Log
+- [x] Mostra quantas pessoas têm ao menos um dispositivo ativo
+- [x] Botão de notificação de teste para si mesmo
+- [x] Testes de domínio das configurações e fumaça da tela

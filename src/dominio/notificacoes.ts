@@ -28,17 +28,33 @@ export type TipoDeEvento = Exclude<TipoDeNotificacao, "resumo_semanal">;
 export const NOMES_DOS_TIPOS: Record<TipoDeNotificacao, string> = {
   designacao_responsavel: "Quando me definirem como Responsável por um Evento",
   designacao_aula: "Quando me escalarem como Professor ou Auxiliar de uma aula",
-  lembrete_1d: "Lembrete, 1 dia antes dos Eventos de que sou Responsável",
-  lembrete_2h: "Lembrete, 2 horas antes dos Eventos de que sou Responsável",
+  lembrete_1d: "Primeiro lembrete dos Eventos de que sou Responsável (na véspera)",
+  lembrete_2h: "Segundo lembrete dos Eventos de que sou Responsável (perto do início)",
   evento_alterado: "Quando um Evento meu mudar de data, hora ou local",
   evento_cancelado: "Quando um Evento meu for cancelado",
-  resumo_semanal: "Resumo da semana, no domingo às 19h",
+  resumo_semanal: "Resumo da semana, no domingo à noite",
   chamada_pendente: "Quando a aula passar e a Chamada estiver pendente",
   sem_responsavel: "Eventos dos próximos 7 dias sem Responsável",
 };
 
+/** Os mesmos tipos em poucas palavras, para a fila da administração. */
+export const NOMES_CURTOS_DOS_TIPOS: Record<TipoDeNotificacao, string> = {
+  designacao_responsavel: "Designação de Responsável",
+  designacao_aula: "Escala em aula",
+  lembrete_1d: "Primeiro lembrete",
+  lembrete_2h: "Segundo lembrete",
+  evento_alterado: "Evento alterado",
+  evento_cancelado: "Evento cancelado",
+  resumo_semanal: "Resumo da semana",
+  chamada_pendente: "Chamada pendente",
+  sem_responsavel: "Evento sem Responsável",
+};
+
 export const eTipoDeNotificacao = (valor: unknown): valor is TipoDeNotificacao =>
   typeof valor === "string" && (TIPOS_DE_NOTIFICACAO as readonly string[]).includes(valor);
+
+/** O nome curto de um tipo vindo do banco; um tipo que este código não conhece aparece como está. */
+export const nomeCurtoDoTipo = (tipo: string) => (eTipoDeNotificacao(tipo) ? NOMES_CURTOS_DOS_TIPOS[tipo] : tipo);
 
 export const eTipoDeEvento = (valor: unknown): valor is TipoDeEvento => eTipoDeNotificacao(valor) && valor !== "resumo_semanal";
 
@@ -285,25 +301,69 @@ export const ehUrgente = (inicio: Date, agora: Date, limiteHoras: number) => {
   return falta > 0 && falta < limiteHoras * HORA;
 };
 
-/** A configuração das Notificações como o Admin a envia, pronta para gravar, ou o que impede. */
-export function lerConfiguracaoDasNotificacoes(entrada: {
+/** Quantas horas antes do início saem os lembretes. O banco confere os mesmos limites. */
+export const LEMBRETE_LONGO_MINIMO = 3;
+export const LEMBRETE_LONGO_MAXIMO = 72;
+export const LEMBRETE_LONGO_PADRAO = 24;
+export const LEMBRETE_CURTO_MINIMO = 1;
+export const LEMBRETE_CURTO_MAXIMO = 12;
+export const LEMBRETE_CURTO_PADRAO = 2;
+
+/** A hora do domingo em que sai o resumo da semana. */
+export const HORA_DO_RESUMO_MINIMA = 0;
+export const HORA_DO_RESUMO_MAXIMA = 23;
+export const HORA_DO_RESUMO_PADRAO = 19;
+
+/** O que o Admin configura no canal de Notificações, como o planejador o lê. */
+export type LembretesConfigurados = { longoHoras: number; curtoHoras: number };
+
+/** O que a tela de administração das Notificações envia, tudo como texto (a caixa de marcar vem como "on" ou vazia). */
+export type EntradaDaConfiguracaoDasNotificacoes = {
+  canalLigado: string;
   retencaoDias: string;
   limiteDeUrgenciaHoras: string;
-}): { retencao_das_notificacoes_dias: number; limite_de_urgencia_horas: number } | { erro: string } {
-  const dias = Number(entrada.retencaoDias);
-  if (entrada.retencaoDias.trim() === "" || !Number.isInteger(dias) || dias < RETENCAO_DA_CENTRAL_MINIMA || dias > RETENCAO_DA_CENTRAL_MAXIMA) {
-    return { erro: `A central guarda as Notificações por ${RETENCAO_DA_CENTRAL_MINIMA} a ${RETENCAO_DA_CENTRAL_MAXIMA} dias.` };
-  }
-  const horas = Number(entrada.limiteDeUrgenciaHoras);
-  if (
-    entrada.limiteDeUrgenciaHoras.trim() === "" ||
-    !Number.isInteger(horas) ||
-    horas < LIMITE_DE_URGENCIA_MINIMO ||
-    horas > LIMITE_DE_URGENCIA_MAXIMO
-  ) {
+  lembreteLongoHoras: string;
+  lembreteCurtoHoras: string;
+  horaDoResumo: string;
+};
+
+export type ConfiguracaoDasNotificacoes = {
+  notificacoes_ligadas: boolean;
+  retencao_das_notificacoes_dias: number;
+  limite_de_urgencia_horas: number;
+  lembrete_longo_horas: number;
+  lembrete_curto_horas: number;
+  hora_do_resumo_semanal: number;
+};
+
+function inteiroEntre(texto: string, minimo: number, maximo: number): number | null {
+  const n = Number(texto);
+  return texto.trim() === "" || !Number.isInteger(n) || n < minimo || n > maximo ? null : n;
+}
+
+/** A configuração das Notificações como o Admin a envia, pronta para gravar, ou o que impede. */
+export function lerConfiguracaoDasNotificacoes(entrada: EntradaDaConfiguracaoDasNotificacoes): ConfiguracaoDasNotificacoes | { erro: string } {
+  const dias = inteiroEntre(entrada.retencaoDias, RETENCAO_DA_CENTRAL_MINIMA, RETENCAO_DA_CENTRAL_MAXIMA);
+  if (dias === null) return { erro: `A central guarda as Notificações por ${RETENCAO_DA_CENTRAL_MINIMA} a ${RETENCAO_DA_CENTRAL_MAXIMA} dias.` };
+  const urgencia = inteiroEntre(entrada.limiteDeUrgenciaHoras, LIMITE_DE_URGENCIA_MINIMO, LIMITE_DE_URGENCIA_MAXIMO);
+  if (urgencia === null) {
     return { erro: `Uma mudança é urgente quando o Evento começa em ${LIMITE_DE_URGENCIA_MINIMO} a ${LIMITE_DE_URGENCIA_MAXIMO} horas.` };
   }
-  return { retencao_das_notificacoes_dias: dias, limite_de_urgencia_horas: horas };
+  const longo = inteiroEntre(entrada.lembreteLongoHoras, LEMBRETE_LONGO_MINIMO, LEMBRETE_LONGO_MAXIMO);
+  if (longo === null) return { erro: `O primeiro lembrete sai de ${LEMBRETE_LONGO_MINIMO} a ${LEMBRETE_LONGO_MAXIMO} horas antes do Evento.` };
+  const curto = inteiroEntre(entrada.lembreteCurtoHoras, LEMBRETE_CURTO_MINIMO, LEMBRETE_CURTO_MAXIMO);
+  if (curto === null) return { erro: `O segundo lembrete sai de ${LEMBRETE_CURTO_MINIMO} a ${LEMBRETE_CURTO_MAXIMO} horas antes do Evento.` };
+  if (curto >= longo) return { erro: "O segundo lembrete precisa sair depois do primeiro (menos horas antes do Evento)." };
+  const hora = inteiroEntre(entrada.horaDoResumo, HORA_DO_RESUMO_MINIMA, HORA_DO_RESUMO_MAXIMA);
+  if (hora === null) return { erro: `O resumo da semana sai de ${HORA_DO_RESUMO_MINIMA}h a ${HORA_DO_RESUMO_MAXIMA}h de domingo.` };
+  return {
+    notificacoes_ligadas: entrada.canalLigado === "on",
+    retencao_das_notificacoes_dias: dias,
+    limite_de_urgencia_horas: urgencia,
+    lembrete_longo_horas: longo,
+    lembrete_curto_horas: curto,
+    hora_do_resumo_semanal: hora,
+  };
 }
 
 // Preferências -----------------------------------------------------------------------------------------------------
@@ -350,14 +410,13 @@ export type NotificacaoDevida = {
   conteudo?: ConteudoDaNotificacao;
 };
 
-export const HORA_DO_RESUMO_SEMANAL = 19;
 const COM_LEMBRETE: readonly Status[] = ["planejado", "confirmado"];
 const SEM_ALERTA_DE_RESPONSAVEL: readonly Status[] = ["cancelado", "realizado", "adiado"];
 
-/** O último domingo às 19h (no fuso do Mural) que já passou: a hora do resumo da semana. */
-export function ultimoResumoSemanal(agora: Date): Date {
+/** O último domingo à `hora` (no fuso do Mural; às 19h por padrão) que já passou: a hora do resumo da semana. */
+export function ultimoResumoSemanal(agora: Date, hora = HORA_DO_RESUMO_PADRAO): Date {
   const { ano, mes, dia, diaDaSemana } = dataLocal(agora);
-  const domingo = somarDias(meiaNoite(ano, mes, dia), -diaDaSemana).getTime() + HORA_DO_RESUMO_SEMANAL * HORA;
+  const domingo = somarDias(meiaNoite(ano, mes, dia), -diaDaSemana).getTime() + hora * HORA;
   return new Date(domingo > agora.getTime() ? domingo - 7 * 24 * HORA : domingo);
 }
 
@@ -372,11 +431,15 @@ export function notificacoesDevidas({
   eventos,
   pessoas,
   janelaDaChamadaDias,
+  lembretes = { longoHoras: LEMBRETE_LONGO_PADRAO, curtoHoras: LEMBRETE_CURTO_PADRAO },
+  horaDoResumo = HORA_DO_RESUMO_PADRAO,
 }: {
   agora: Date;
   eventos: readonly EventoDoPlano[];
   pessoas: readonly PessoaDoPlano[];
   janelaDaChamadaDias: number;
+  lembretes?: LembretesConfigurados;
+  horaDoResumo?: number;
 }): NotificacaoDevida[] {
   const porId = new Map(pessoas.map((p) => [p.id, p]));
   const devidas: NotificacaoDevida[] = [];
@@ -400,14 +463,14 @@ export function notificacoesDevidas({
   for (const e of eventos) {
     const falta = e.inicio.getTime() - agoraMs;
 
-    // Lembretes, só de quem é Responsável. Um Evento de dia inteiro começa à meia-noite: "2 horas antes" seria às 22h.
+    // Lembretes, só de quem é Responsável. Um Evento de dia inteiro começa à meia-noite: o lembrete curto cairia na véspera à noite.
     if (COM_LEMBRETE.includes(e.status) && falta > 0) {
       const marca = String(Math.floor(e.inicio.getTime() / 60_000));
-      if (!e.diaInteiro && falta <= 2 * HORA) {
+      if (!e.diaInteiro && falta <= lembretes.curtoHoras * HORA) {
         avisar("lembrete_2h", e.responsavelId, e, marca, e.inicio);
-      } else if (falta <= 24 * HORA) {
-        // Depois de 2h antes, o lembrete de 1 dia seria atrasado e enganoso; o de 2 horas o substitui.
-        avisar("lembrete_1d", e.responsavelId, e, marca, e.diaInteiro ? e.inicio : new Date(e.inicio.getTime() - 2 * HORA));
+      } else if (falta <= lembretes.longoHoras * HORA) {
+        // Depois do lembrete curto, o longo seria atrasado e enganoso; o curto o substitui.
+        avisar("lembrete_1d", e.responsavelId, e, marca, e.diaInteiro ? e.inicio : new Date(e.inicio.getTime() - lembretes.curtoHoras * HORA));
       }
     }
 
@@ -430,7 +493,7 @@ export function notificacoesDevidas({
   }
 
   // Resumo semanal: do domingo às 19h até as 19h de segunda, com os Eventos da semana seguinte de cada pessoa.
-  const resumoDe = ultimoResumoSemanal(agora);
+  const resumoDe = ultimoResumoSemanal(agora, horaDoResumo);
   if (agoraMs - resumoDe.getTime() < 24 * HORA) {
     const { ano, mes, dia } = dataLocal(resumoDe);
     const segunda = somarDias(meiaNoite(ano, mes, dia), 1).getTime();

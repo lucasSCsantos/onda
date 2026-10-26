@@ -189,6 +189,10 @@ export const NOMES_DAS_CONFIGURACOES: Record<string, string> = {
   faltas_para_alerta: "Faltas seguidas para o alerta de ausência",
   retencao_das_notificacoes_dias: "Por quanto tempo guardar as Notificações",
   limite_de_urgencia_horas: "Limite de urgência das mudanças de Evento",
+  notificacoes_ligadas: "Canal de Notificações ligado",
+  lembrete_longo_horas: "Primeiro lembrete, antes do Evento",
+  lembrete_curto_horas: "Segundo lembrete, antes do Evento",
+  hora_do_resumo_semanal: "Hora do resumo da semana",
   drive_ligado: "Drive ligado",
   drive_pasta_raiz_id: "Pasta do ministério no Drive",
   drive_categorias: "Categorias com pasta no Drive",
@@ -200,6 +204,9 @@ const UNIDADES_DAS_CONFIGURACOES: Record<string, [string, string]> = {
   faltas_para_alerta: ["aula", "aulas"],
   retencao_das_notificacoes_dias: ["dia", "dias"],
   limite_de_urgencia_horas: ["hora", "horas"],
+  lembrete_longo_horas: ["hora", "horas"],
+  lembrete_curto_horas: ["hora", "horas"],
+  hora_do_resumo_semanal: ["h", "h"],
   drive_limite_de_download_mb: ["MB", "MB"],
 };
 

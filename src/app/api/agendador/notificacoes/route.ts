@@ -23,6 +23,11 @@ export async function POST(request: Request) {
 
   try {
     const db = supabaseDeServico();
+    // O Admin pode desligar o canal: desligado, nada é gerado nem enviado.
+    const { data: config, error } = await db.from("configuracoes").select("notificacoes_ligadas").maybeSingle();
+    if (error) throw new Error(`não foi possível ler as configurações (${error.code ?? "sem código"})`);
+    if (config && !config.notificacoes_ligadas) return Response.json({ processado: false, motivo: "o canal de Notificações está desligado" });
+
     // Primeiro o que ficou devido com o passar do tempo vira fila; em seguida a fila é enviada.
     const geradas = await gerarNotificacoes(db);
     const resumo = await processarFila(db, { enviar: criarEnviador(), simulado: modoDeTeste() });

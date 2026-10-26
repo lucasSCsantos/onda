@@ -198,16 +198,54 @@ describe("retentativas", () => {
   });
 });
 
-describe("retenção da central", () => {
-  it("aceita de 1 a 365 dias", () => {
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "30", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 30, limite_de_urgencia_horas: 12 });
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "1", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 1, limite_de_urgencia_horas: 12 });
-    expect(lerConfiguracaoDasNotificacoes({ retencaoDias: "365", limiteDeUrgenciaHoras: "12" })).toEqual({ retencao_das_notificacoes_dias: 365, limite_de_urgencia_horas: 12 });
+describe("configuração das Notificações", () => {
+  const entrada = { canalLigado: "on", retencaoDias: "30", limiteDeUrgenciaHoras: "12", lembreteLongoHoras: "24", lembreteCurtoHoras: "2", horaDoResumo: "19" };
+  const pronta = {
+    notificacoes_ligadas: true,
+    retencao_das_notificacoes_dias: 30,
+    limite_de_urgencia_horas: 12,
+    lembrete_longo_horas: 24,
+    lembrete_curto_horas: 2,
+    hora_do_resumo_semanal: 19,
+  };
+
+  it("lê o que o Admin envia, com a caixa do canal como \"on\" ou vazia", () => {
+    expect(lerConfiguracaoDasNotificacoes(entrada)).toEqual(pronta);
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, canalLigado: "" })).toEqual({ ...pronta, notificacoes_ligadas: false });
   });
 
-  it("recusa o resto", () => {
+  it("retenção da central: de 1 a 365 dias", () => {
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, retencaoDias: "1" })).toMatchObject({ retencao_das_notificacoes_dias: 1 });
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, retencaoDias: "365" })).toMatchObject({ retencao_das_notificacoes_dias: 365 });
     for (const retencaoDias of ["0", "366", "", "1.5", "um mês"]) {
-      expect(lerConfiguracaoDasNotificacoes({ retencaoDias, limiteDeUrgenciaHoras: "12" }), retencaoDias).toHaveProperty("erro");
+      expect(lerConfiguracaoDasNotificacoes({ ...entrada, retencaoDias }), retencaoDias).toHaveProperty("erro");
+    }
+  });
+
+  it("limite de urgência: de 1 a 72 horas", () => {
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, limiteDeUrgenciaHoras: "72" })).toMatchObject({ limite_de_urgencia_horas: 72 });
+    for (const limiteDeUrgenciaHoras of ["0", "73", "", "2.5"]) {
+      expect(lerConfiguracaoDasNotificacoes({ ...entrada, limiteDeUrgenciaHoras }), limiteDeUrgenciaHoras).toHaveProperty("erro");
+    }
+  });
+
+  it("lembretes: o primeiro de 3 a 72 horas, o segundo de 1 a 12, e o segundo sai depois do primeiro", () => {
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, lembreteLongoHoras: "3", lembreteCurtoHoras: "1" })).toMatchObject({ lembrete_longo_horas: 3, lembrete_curto_horas: 1 });
+    for (const lembreteLongoHoras of ["2", "73", "", "x"]) {
+      expect(lerConfiguracaoDasNotificacoes({ ...entrada, lembreteLongoHoras }), lembreteLongoHoras).toHaveProperty("erro");
+    }
+    for (const lembreteCurtoHoras of ["0", "13", "", "x"]) {
+      expect(lerConfiguracaoDasNotificacoes({ ...entrada, lembreteCurtoHoras }), lembreteCurtoHoras).toHaveProperty("erro");
+    }
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, lembreteLongoHoras: "4", lembreteCurtoHoras: "4" })).toHaveProperty("erro");
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, lembreteLongoHoras: "3", lembreteCurtoHoras: "5" })).toHaveProperty("erro");
+  });
+
+  it("hora do resumo semanal: de 0h a 23h", () => {
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, horaDoResumo: "0" })).toMatchObject({ hora_do_resumo_semanal: 0 });
+    expect(lerConfiguracaoDasNotificacoes({ ...entrada, horaDoResumo: "23" })).toMatchObject({ hora_do_resumo_semanal: 23 });
+    for (const horaDoResumo of ["24", "-1", "", "7h"]) {
+      expect(lerConfiguracaoDasNotificacoes({ ...entrada, horaDoResumo }), horaDoResumo).toHaveProperty("erro");
     }
   });
 });

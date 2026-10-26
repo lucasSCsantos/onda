@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { JANELA_PADRAO } from "@/dominio/cartao-de-chamada";
-import { notificacoesDevidas, type EventoDoPlano, type PessoaDoPlano } from "@/dominio/notificacoes";
+import {
+  HORA_DO_RESUMO_PADRAO,
+  LEMBRETE_CURTO_PADRAO,
+  LEMBRETE_LONGO_PADRAO,
+  notificacoesDevidas,
+  type EventoDoPlano,
+  type PessoaDoPlano,
+} from "@/dominio/notificacoes";
 import { professoresDaAula } from "@/dominio/professores";
 import { somarDias } from "@/dominio/fuso";
 
@@ -41,7 +48,7 @@ const falhou = (o: string, erro: { code?: string } | null) => new Error(`não fo
 /** Gera as Notificações devidas em `agora` e devolve quantas nasceram agora. */
 export async function gerarNotificacoes(db: SupabaseClient, agora = new Date()): Promise<number> {
   const [config, perfis, preferencias, linhas] = await Promise.all([
-    db.from("configuracoes").select("janela_da_chamada_dias").maybeSingle(),
+    db.from("configuracoes").select("janela_da_chamada_dias, lembrete_longo_horas, lembrete_curto_horas, hora_do_resumo_semanal").maybeSingle(),
     lerTudo((de, ate) => db.from("perfis").select("id, nivel, ativo").in("nivel", ["admin", "lider", "professor"]).order("id").range(de, ate), "ler as pessoas"),
     lerTudo((de, ate) => db.from("preferencias_de_notificacao").select("pessoa_id, tipos_desligados").order("pessoa_id").range(de, ate), "ler as preferências"),
     // De oito dias atrás (a Chamada pendente) a oito dias à frente (o resumo da semana seguinte).
@@ -102,6 +109,11 @@ export async function gerarNotificacoes(db: SupabaseClient, agora = new Date()):
     eventos,
     pessoas,
     janelaDaChamadaDias: (config.data?.janela_da_chamada_dias as number | undefined) ?? JANELA_PADRAO,
+    lembretes: {
+      longoHoras: (config.data?.lembrete_longo_horas as number | undefined) ?? LEMBRETE_LONGO_PADRAO,
+      curtoHoras: (config.data?.lembrete_curto_horas as number | undefined) ?? LEMBRETE_CURTO_PADRAO,
+    },
+    horaDoResumo: (config.data?.hora_do_resumo_semanal as number | undefined) ?? HORA_DO_RESUMO_PADRAO,
   });
   if (devidas.length === 0) return 0;
 

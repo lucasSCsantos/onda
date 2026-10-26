@@ -108,6 +108,15 @@ describe("lembretes", () => {
     expect(duas.validaAte).toEqual(salvador("2026-10-24T19:00:00"));
   });
 
+  it("os horários dos lembretes vêm da configuração do Admin", () => {
+    const lembretes = { longoHoras: 48, curtoHoras: 4 };
+    const dev = (agora: Date) => notificacoesDevidas({ agora, eventos: [evento()], pessoas, janelaDaChamadaDias: 1, lembretes });
+    expect(dev(salvador("2026-10-22T18:59:00"))).toEqual([]);
+    const [longo] = dev(salvador("2026-10-22T19:00:00"));
+    expect(longo).toMatchObject({ tipo: "lembrete_1d", validaAte: salvador("2026-10-24T15:00:00") });
+    expect(dev(salvador("2026-10-24T15:00:00")).map((d) => d.tipo)).toEqual(["lembrete_2h"]);
+  });
+
   it("os dois lembretes de um Evento compartilham a tag, para o novo substituir o anterior", () => {
     expect(tagDaNotificacao("lembrete_1d", "ev-1")).toBe(tagDaNotificacao("lembrete_2h", "ev-1"));
     expect(tagDaNotificacao("lembrete_1d", "ev-1")).not.toBe(tagDaNotificacao("lembrete_1d", "ev-2"));
@@ -211,6 +220,15 @@ describe("resumo semanal", () => {
     expect(ultimoResumoSemanal(salvador("2026-10-25T19:00:00"))).toEqual(salvador("2026-10-25T19:00:00"));
     expect(ultimoResumoSemanal(salvador("2026-10-25T18:59:00"))).toEqual(salvador("2026-10-18T19:00:00"));
     expect(ultimoResumoSemanal(salvador("2026-10-28T10:00:00"))).toEqual(salvador("2026-10-25T19:00:00"));
+  });
+
+  it("a hora do resumo vem da configuração do Admin", () => {
+    expect(ultimoResumoSemanal(salvador("2026-10-25T08:00:00"), 8)).toEqual(salvador("2026-10-25T08:00:00"));
+    expect(ultimoResumoSemanal(salvador("2026-10-25T07:59:00"), 8)).toEqual(salvador("2026-10-18T08:00:00"));
+    const eventos = [evento({ inicio: salvador("2026-10-27T19:00:00"), fim: null })];
+    const dev = (agora: Date) => notificacoesDevidas({ agora, eventos, pessoas, janelaDaChamadaDias: 1, horaDoResumo: 8 }).filter((d) => d.tipo === "resumo_semanal");
+    expect(dev(salvador("2026-10-25T07:59:00"))).toEqual([]);
+    expect(tipos(dev(salvador("2026-10-25T08:00:00")))).toEqual(["resumo_semanal:lider"]);
   });
 
   const semana = [

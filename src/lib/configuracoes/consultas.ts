@@ -3,7 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { JANELA_PADRAO } from "@/dominio/cartao-de-chamada";
 import { LIMITE_DE_DOWNLOAD_PADRAO_MB } from "@/dominio/arquivos";
 import { temCampoDaPasta } from "@/dominio/drive";
-import { LIMITE_DE_URGENCIA_PADRAO, RETENCAO_DA_CENTRAL_PADRAO } from "@/dominio/notificacoes";
+import {
+  HORA_DO_RESUMO_PADRAO,
+  LEMBRETE_CURTO_PADRAO,
+  LEMBRETE_LONGO_PADRAO,
+  LIMITE_DE_URGENCIA_PADRAO,
+  RETENCAO_DA_CENTRAL_PADRAO,
+} from "@/dominio/notificacoes";
 
 /** O que o Admin configura sem mexer em código. */
 export type Configuracoes = {
@@ -17,10 +23,19 @@ export type Configuracoes = {
   janelaDaChamadaDias: number;
   /** Quando os logs entraram no ar. */
   logsDesde: Date;
-  /** Por quantos dias a central guarda as Notificações. */
-  retencaoDasNotificacoesDias: number;
-  /** Abaixo de quantas horas para o início uma mudança ou cancelamento fura a janela de horário. */
-  limiteDeUrgenciaHoras: number;
+  /** O canal de Notificações push e da central (a tela "Notificações" do Admin). */
+  notificacoes: {
+    ligado: boolean;
+    /** Por quantos dias a central guarda as Notificações. */
+    retencaoDias: number;
+    /** Abaixo de quantas horas para o início uma mudança ou cancelamento fura a janela de horário. */
+    limiteDeUrgenciaHoras: number;
+    /** Quantas horas antes do início saem os dois lembretes. */
+    lembreteLongoHoras: number;
+    lembreteCurtoHoras: number;
+    /** A hora de domingo em que sai o resumo da semana. */
+    horaDoResumo: number;
+  };
   /** O Drive do ministério (ADR 0006): ligado ou não, a pasta raiz e as Categorias que ganham pasta sozinhas. */
   drive: { ligado: boolean; pastaRaizId: string | null; categorias: string[]; limiteDeDownloadMb: number };
 };
@@ -38,6 +53,10 @@ type ConfiguracoesDoBanco = {
   drive_limite_de_download_mb: number;
   retencao_das_notificacoes_dias: number;
   limite_de_urgencia_horas: number;
+  notificacoes_ligadas: boolean;
+  lembrete_longo_horas: number;
+  lembrete_curto_horas: number;
+  hora_do_resumo_semanal: number;
 };
 
 /** Por quantos dias depois da aula o cartão de Chamada fica à vista; qualquer pessoa aprovada lê (o Professor não lê as configurações). */
@@ -51,7 +70,7 @@ export async function configuracoes(supabase: SupabaseClient): Promise<Configura
   const { data } = await supabase
     .from("configuracoes")
     .select(
-      "retencao_dos_logs_meses, lideres_veem_historico_do_evento, faltas_para_alerta, desempate_por, janela_da_chamada_dias, logs_desde, drive_ligado, drive_pasta_raiz_id, drive_categorias, drive_limite_de_download_mb, retencao_das_notificacoes_dias, limite_de_urgencia_horas",
+      "retencao_dos_logs_meses, lideres_veem_historico_do_evento, faltas_para_alerta, desempate_por, janela_da_chamada_dias, logs_desde, drive_ligado, drive_pasta_raiz_id, drive_categorias, drive_limite_de_download_mb, retencao_das_notificacoes_dias, limite_de_urgencia_horas, notificacoes_ligadas, lembrete_longo_horas, lembrete_curto_horas, hora_do_resumo_semanal",
     )
     .maybeSingle()
     .overrideTypes<ConfiguracoesDoBanco, { merge: false }>();
@@ -62,8 +81,14 @@ export async function configuracoes(supabase: SupabaseClient): Promise<Configura
     desempatePor: data?.desempate_por ?? null,
     janelaDaChamadaDias: data?.janela_da_chamada_dias ?? JANELA_PADRAO,
     logsDesde: data ? new Date(data.logs_desde) : new Date(),
-    retencaoDasNotificacoesDias: data?.retencao_das_notificacoes_dias ?? RETENCAO_DA_CENTRAL_PADRAO,
-    limiteDeUrgenciaHoras: data?.limite_de_urgencia_horas ?? LIMITE_DE_URGENCIA_PADRAO,
+    notificacoes: {
+      ligado: data?.notificacoes_ligadas ?? true,
+      retencaoDias: data?.retencao_das_notificacoes_dias ?? RETENCAO_DA_CENTRAL_PADRAO,
+      limiteDeUrgenciaHoras: data?.limite_de_urgencia_horas ?? LIMITE_DE_URGENCIA_PADRAO,
+      lembreteLongoHoras: data?.lembrete_longo_horas ?? LEMBRETE_LONGO_PADRAO,
+      lembreteCurtoHoras: data?.lembrete_curto_horas ?? LEMBRETE_CURTO_PADRAO,
+      horaDoResumo: data?.hora_do_resumo_semanal ?? HORA_DO_RESUMO_PADRAO,
+    },
     drive: {
       ligado: data?.drive_ligado ?? false,
       pastaRaizId: data?.drive_pasta_raiz_id ?? null,

@@ -11,6 +11,9 @@ export function pushConfigurado(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
 }
 
+/** O envio está pronto neste ambiente: chaves VAPID, chave de serviço e segredo do agendador. Só diz sim ou não, nunca o conteúdo. */
+export const envioPronto = () => pushConfigurado() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY) && Boolean(process.env.CRON_SECRET);
+
 export const modoDeTeste = () => process.env.PUSH_MODO_TESTE === "1";
 
 export function criarEnviador(): EnviadorDePush {

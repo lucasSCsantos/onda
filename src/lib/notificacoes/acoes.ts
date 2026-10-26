@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
-import { lerPreferencias } from "@/dominio/notificacoes";
+import { lerConfiguracaoDasNotificacoes, lerPreferencias } from "@/dominio/notificacoes";
+import { campoTexto } from "@/lib/campos";
 import { perfilAtual } from "@/lib/contas/perfil";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -52,4 +53,26 @@ export async function marcarTodasComoLidas(): Promise<void> {
   const supabase = await supabaseDoServidor();
   await supabase.from("notificacoes").update({ lida_em: new Date().toISOString() }).is("lida_em", null);
   revalidatePath("/", "layout");
+}
+
+/** Só o Admin altera (a política de `configuracoes` confere); cada mudança vira um log pelo gatilho do banco. */
+export async function salvarConfiguracaoDasNotificacoes(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
+  const lidas = lerConfiguracaoDasNotificacoes({
+    canalLigado: campoTexto(dados, "canal_ligado"),
+    retencaoDias: campoTexto(dados, "retencao_das_notificacoes"),
+    limiteDeUrgenciaHoras: campoTexto(dados, "limite_de_urgencia"),
+    lembreteLongoHoras: campoTexto(dados, "lembrete_longo"),
+    lembreteCurtoHoras: campoTexto(dados, "lembrete_curto"),
+    horaDoResumo: campoTexto(dados, "hora_do_resumo"),
+  });
+  if ("erro" in lidas) return lidas;
+
+  const supabase = await supabaseDoServidor();
+  const { data, error } = await supabase.from("configuracoes").update(lidas).eq("id", true).select("id");
+  if (error || !data?.length) {
+    registrarFalha(supabase, "configuracao.alterada", { tipo: "configuracao" }, error ?? { code: "42501", message: "nenhuma linha alterada" });
+    return { erro: "Não foi possível salvar as configurações das Notificações." };
+  }
+  revalidatePath("/admin", "layout");
+  return { aviso: "Configurações salvas." };
 }
