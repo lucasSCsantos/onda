@@ -264,7 +264,7 @@ describe("notificações: o agendador", () => {
     expect(primeira.enviados).toHaveLength(2);
     const [depois] = await notificacoesDe(a.id);
     expect(depois).toMatchObject({ estado: "pendente", tentativas: 1, entregue_a: [bom.id] });
-    expect(new Date(depois.proxima_tentativa).getTime()).toBeGreaterThan(Date.now() + 4 * 60_000);
+    expect(new Date(depois.proxima_tentativa).getTime()).toBeGreaterThan(meioDiaDeSalvador.getTime() + 4 * 60_000);
 
     // Chegada a hora da nova tentativa, só o dispositivo que falhou é tentado.
     await admin.from("notificacoes").update({ proxima_tentativa: new Date().toISOString() }).eq("id", depois.id);
@@ -341,7 +341,7 @@ describe("notificações: o agendador", () => {
     const vencida = await lider("Vencida");
     await dispositivo(vencida.cliente, vencida.id);
     await evento(vencida.id);
-    await admin.from("notificacoes").update({ valida_ate: new Date(Date.now() - 1000).toISOString() }).eq("pessoa_id", vencida.id).throwOnError();
+    await admin.from("notificacoes").update({ valida_ate: new Date(meioDiaDeSalvador.getTime() - 1000).toISOString() }).eq("pessoa_id", vencida.id).throwOnError();
     const falso = envioFalso();
 
     await rodada([sem.id, desligou.id, vencida.id], { enviar: falso.enviar, agora: meioDiaDeSalvador });
