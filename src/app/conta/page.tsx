@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Cabecalho } from "@/components/cabecalho";
+import { FormularioDeGenero } from "@/components/formulario-de-genero";
+import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incompleto";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeVerAniversarios } from "@/dominio/aniversarios";
 import { podeVerTodosOsEventos } from "@/dominio/eventos";
+import { lerGenero } from "@/dominio/genero";
 import { podeCadastrarProfessor } from "@/dominio/professores";
 import { COOKIE_DO_DISPOSITIVO } from "@/dominio/push";
 import { assinaturaDa } from "@/lib/calendario/consultas";
@@ -18,12 +21,12 @@ import { PreferenciasDeNotificacao } from "./preferencias-de-notificacao";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
-/** A página de cada pessoa aprovada: por ora, a Assinatura de calendário. Nenhum dado de cadastro novo. */
+/** A página de cada pessoa aprovada: o Gênero, as Notificações e a Assinatura de calendário. */
 export default async function PaginaMinhaConta() {
   const eu = await exigirMural();
   const supabase = await supabaseDoServidor();
   const professor = eu.nivel === "professor";
-  const [assinatura, todas, areas, dispositivos, preferencias, jar] = await Promise.all([
+  const [assinatura, todas, areas, dispositivos, preferencias, jar, perfil] = await Promise.all([
     assinaturaDa(supabase, eu.id),
     // O Professor não escolhe Categorias, e só lê as das aulas dele.
     professor ? [] : categorias(supabase),
@@ -31,7 +34,9 @@ export default async function PaginaMinhaConta() {
     dispositivosDa(supabase, eu.id),
     preferenciasDe(supabase, eu.id),
     cookies(),
+    supabase.from("perfis").select("genero").eq("id", eu.id).single(),
   ]);
+  const genero = lerGenero(perfil.data?.genero);
   const hashDeste = jar.get(COOKIE_DO_DISPOSITIVO)?.value;
 
   return (
@@ -39,6 +44,13 @@ export default async function PaginaMinhaConta() {
       <Cabecalho admin={podeGerenciarContas(eu)} lideranca={podeVerTodosOsEventos(eu)} calendario professores={podeCadastrarProfessor(eu, areas)} />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-8">
         <h1 className="text-2xl font-semibold">Minha conta</h1>
+        <section aria-labelledby="cadastro" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
+          <h2 id="cadastro" className="flex flex-wrap items-center gap-2 text-xl font-semibold">
+            Cadastro {!genero && <SeloDeCadastroIncompleto />}
+          </h2>
+          <p className="text-sm text-texto-suave">Só a Liderança aprovada vê o Gênero. Ele nunca aparece em avisos nem no calendário.</p>
+          <FormularioDeGenero pessoa={eu.id} genero={genero} />
+        </section>
         <section aria-labelledby="notificacoes" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <h2 id="notificacoes" className="text-xl font-semibold">
             Notificações

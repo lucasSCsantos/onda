@@ -48,13 +48,13 @@ export async function contaNova(nome: string, nivel: NivelDeAcesso = "pendente")
 }
 
 /** Cadastro pelo app, como faria quem abre a tela de cadastro (com ou sem convite). */
-export async function cadastrar(nome: string, convite?: string) {
+export async function cadastrar(nome: string, convite?: string, genero?: string) {
   const cliente = anonimo();
   const email = emailNovo();
   const { data, error } = await cliente.auth.signUp({
     email,
     password: SENHA,
-    options: { data: { nome, data_nascimento: "2000-05-10", ...(convite ? { convite } : {}) } },
+    options: { data: { nome, data_nascimento: "2000-05-10", ...(genero ? { genero } : {}), ...(convite ? { convite } : {}) } },
   });
   return { cliente, email, id: data.user?.id, error };
 }

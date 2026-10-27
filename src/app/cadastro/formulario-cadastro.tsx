@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { BotaoEnviar, Campo, CampoDeData, Mensagens } from "@/components/formulario";
+import { BotaoEnviar, Campo, CampoDeData, GrupoDeRadio, Mensagens } from "@/components/formulario";
+import { GENEROS, NOMES_DOS_GENEROS } from "@/dominio/genero";
 import { SENHA_MINIMA } from "@/lib/auth/senha";
 import { cadastrar } from "@/lib/contas/acoes";
 
@@ -14,6 +15,13 @@ export function FormularioCadastro({ convite }: { convite?: string }) {
       <Campo rotulo="Nome" name="nome" autoComplete="name" required />
       <Campo rotulo="E-mail" name="email" type="email" autoComplete="email" required />
       <CampoDeData rotulo="Data de nascimento" name="data_nascimento" autoComplete="bday" required />
+      <GrupoDeRadio
+        legenda="Gênero"
+        name="genero"
+        variante="segmentado"
+        required
+        opcoes={GENEROS.map((g) => ({ valor: g, texto: NOMES_DOS_GENEROS[g] }))}
+      />
       <Campo
         rotulo="Senha"
         name="senha"

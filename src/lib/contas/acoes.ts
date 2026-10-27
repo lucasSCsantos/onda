@@ -6,6 +6,7 @@ import type { EstadoFormulario } from "@/components/formulario";
 import { erroNaConcessao, NIVEIS_CONCEDIVEIS } from "@/dominio/acesso";
 import { dataDeNascimentoValida } from "@/dominio/cadastro";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
+import { erroNoGenero, lerGenero } from "@/dominio/genero";
 import { erroDeSenha } from "@/lib/auth/senha";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
@@ -31,10 +32,13 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
   const senha = String(dados.get("senha") ?? "");
   const dataNascimento = campoTexto(dados, "data_nascimento");
   const convite = campoTexto(dados, "convite");
+  const genero = campoTexto(dados, "genero");
 
   if (!nome) return { erro: "Informe seu nome." };
   if (!email) return { erro: "Informe seu e-mail." };
   if (!dataDeNascimentoValida(dataNascimento, new Date())) return { erro: "Informe uma data de nascimento válida." };
+  const erroNoCampo = erroNoGenero(genero);
+  if (erroNoCampo) return { erro: erroNoCampo };
   const erroNaSenha = erroDeSenha(senha);
   if (erroNaSenha) return { erro: erroNaSenha };
 
@@ -43,7 +47,7 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
     email,
     password: senha,
     options: {
-      data: { nome, data_nascimento: dataNascimento, ...(convite ? { convite } : {}) },
+      data: { nome, data_nascimento: dataNascimento, genero, ...(convite ? { convite } : {}) },
       emailRedirectTo: `${await origemDoApp()}/auth/confirmar`,
     },
   });
@@ -129,4 +133,21 @@ export async function promoverAAdmin(pessoa: string) {
   const { error } = await supabase.rpc("promover_a_admin", { pessoa });
   if (error) registrarFalha(supabase, "conta.nivel_alterado", { tipo: "conta", id: pessoa }, error);
   revalidatePath("/admin/usuarios");
+}
+
+/** Minha conta e a tela de usuários: a própria pessoa ou o Admin completa o Gênero (a função do banco confere quem pode). */
+export async function definirGenero(pessoa: string, _: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
+  const genero = lerGenero(campoTexto(dados, "genero"));
+  if (!genero) return { erro: "Escolha o Gênero." };
+
+  const supabase = await supabaseDoServidor();
+  const { error } = await supabase.rpc("definir_genero", { pessoa, novo_genero: genero });
+  if (error) {
+    registrarFalha(supabase, "conta.editada", { tipo: "conta", id: pessoa }, error);
+    return { erro: "Não foi possível salvar o Gênero." };
+  }
+
+  revalidatePath("/conta");
+  revalidatePath("/admin/usuarios");
+  return { aviso: "Gênero salvo." };
 }

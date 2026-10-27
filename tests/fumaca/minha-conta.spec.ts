@@ -20,6 +20,7 @@ test("Minha conta: o endereço do calendário aparece uma vez, o feed responde, 
   await page.getByLabel("Nome").fill(nome);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
@@ -75,6 +76,7 @@ test("Minha conta: a seção Notificações aparece sem pedir permissão antes d
   await page.getByLabel("Nome").fill(`Push ${crypto.randomUUID().slice(0, 8)}`);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
 
@@ -97,6 +99,7 @@ test("a central de Notificações mostra o aviso não lido no menu e o marca com
   await page.getByLabel("Nome").fill(nome);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();

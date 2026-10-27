@@ -20,6 +20,7 @@ async function entrarComo(page: Page, nivel: "admin" | "lider") {
   await page.getByLabel("Nome").fill(nome);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
