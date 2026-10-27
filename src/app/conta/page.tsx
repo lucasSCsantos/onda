@@ -6,7 +6,7 @@ import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incomple
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { podeVerAniversarios } from "@/dominio/aniversarios";
 import { podeVerTodosOsEventos } from "@/dominio/eventos";
-import { lerGenero } from "@/dominio/genero";
+import { cadastroIncompleto, lerGenero } from "@/dominio/genero";
 import { podeCadastrarProfessor } from "@/dominio/professores";
 import { COOKIE_DO_DISPOSITIVO } from "@/dominio/push";
 import { assinaturaDa } from "@/lib/calendario/consultas";
@@ -46,7 +46,7 @@ export default async function PaginaMinhaConta() {
         <h1 className="text-2xl font-semibold">Minha conta</h1>
         <section aria-labelledby="cadastro" className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-6">
           <h2 id="cadastro" className="flex flex-wrap items-center gap-2 text-xl font-semibold">
-            Cadastro {!genero && <SeloDeCadastroIncompleto />}
+            Cadastro {cadastroIncompleto(genero) && <SeloDeCadastroIncompleto />}
           </h2>
           <p className="text-sm text-texto-suave">Só a Liderança aprovada vê o Gênero. Ele nunca aparece em avisos nem no calendário.</p>
           <FormularioDeGenero pessoa={eu.id} genero={genero} />

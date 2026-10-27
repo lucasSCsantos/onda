@@ -6,7 +6,7 @@ import type { EstadoFormulario } from "@/components/formulario";
 import { erroNaConcessao, NIVEIS_CONCEDIVEIS } from "@/dominio/acesso";
 import { dataDeNascimentoValida } from "@/dominio/cadastro";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
-import { erroNoGenero, lerGenero } from "@/dominio/genero";
+import { erroNoGenero } from "@/dominio/genero";
 import { erroDeSenha } from "@/lib/auth/senha";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
@@ -137,8 +137,9 @@ export async function promoverAAdmin(pessoa: string) {
 
 /** Minha conta e a tela de usuários: a própria pessoa ou o Admin completa o Gênero (a função do banco confere quem pode). */
 export async function definirGenero(pessoa: string, _: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
-  const genero = lerGenero(campoTexto(dados, "genero"));
-  if (!genero) return { erro: "Escolha o Gênero." };
+  const genero = campoTexto(dados, "genero");
+  const erroNoCampo = erroNoGenero(genero);
+  if (erroNoCampo) return { erro: erroNoCampo };
 
   const supabase = await supabaseDoServidor();
   const { error } = await supabase.rpc("definir_genero", { pessoa, novo_genero: genero });

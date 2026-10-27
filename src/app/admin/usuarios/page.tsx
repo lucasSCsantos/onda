@@ -3,7 +3,7 @@ import { FormularioDeGenero } from "@/components/formulario-de-genero";
 import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incompleto";
 import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
 import { temFuncoes } from "@/dominio/catalogo";
-import { lerGenero } from "@/dominio/genero";
+import { cadastroIncompleto, lerGenero } from "@/dominio/genero";
 import { mudarAtivo, promoverAAdmin, recusarPendente } from "@/lib/contas/acoes";
 import { OPCOES_DE_NIVEL, opcoesDeFuncao } from "@/lib/contas/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
@@ -79,7 +79,7 @@ export default async function PaginaUsuarios() {
                 <div>
                   <p className="font-semibold">
                     {u.nome || "(sem nome)"} <span className="text-sm font-normal text-texto-suave">· {NOMES_DOS_NIVEIS[u.nivel]}</span>{" "}
-                    {!lerGenero(u.genero) && <SeloDeCadastroIncompleto />}
+                    {cadastroIncompleto(lerGenero(u.genero)) && <SeloDeCadastroIncompleto />}
                   </p>
                   <p className="text-sm text-texto-suave">
                     {u.funcoes_das_pessoas.map((f) => f.funcoes?.nome).filter(Boolean).join(", ") || "Sem Função"}
