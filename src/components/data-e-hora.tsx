@@ -18,8 +18,7 @@ import {
   montarGrade,
   mudarMes,
   paginaDeAnos,
-  somarDiasA,
-  somarMesesA,
+  destinoDoTeclado,
   arredondarHora,
   lerHora,
   formatarHora,
@@ -54,6 +53,86 @@ function useAoLimparFormulario(ref: React.RefObject<HTMLElement | null>, restaur
     formulario.addEventListener("reset", restaurar);
     return () => formulario.removeEventListener("reset", restaurar);
   }, [ref, restaurar]);
+}
+
+/**
+ * O estado dos campos digitáveis (data e hora): o valor, o que está escrito, o aviso de texto inválido e o vaivém com um
+ * `value` controlado e com o reset do formulário. `ler` devolve o valor do texto (ou `null` se não for válido) e `exibir`
+ * faz o caminho de volta.
+ */
+function useCampoDigitavel({
+  value,
+  defaultValue,
+  onChange,
+  ler,
+  exibir,
+  mensagemInvalida,
+  raiz,
+}: {
+  value?: string;
+  defaultValue: string;
+  onChange?: (valor: string) => void;
+  ler: (texto: string) => string | null;
+  exibir: (valor: string) => string;
+  mensagemInvalida: string;
+  raiz: React.RefObject<HTMLElement | null>;
+}) {
+  const [valor, setValor] = useState(value ?? defaultValue);
+  const [texto, setTexto] = useState(exibir(value ?? defaultValue));
+  const [invalida, setInvalida] = useState(false);
+  const entrada = useRef<HTMLInputElement>(null);
+  // Um `value` que muda por fora (a URL, por exemplo) vale; entre uma escolha e essa volta, o campo já mostra a escolha.
+  const [valorAnterior, setValorAnterior] = useState(value);
+  if (value !== valorAnterior) {
+    setValorAnterior(value);
+    if (value !== undefined && value !== valor) {
+      setValor(value);
+      setTexto(exibir(value));
+      setInvalida(false);
+    }
+  }
+  useAoLimparFormulario(raiz, () => {
+    const inicial = value ?? defaultValue;
+    setValor(inicial);
+    setTexto(exibir(inicial));
+    setInvalida(false);
+  });
+  // O aviso nativo de "preencha este campo" cobre o vazio; um texto errado ganha o próprio aviso.
+  useEffect(() => {
+    entrada.current?.setCustomValidity(invalida ? mensagemInvalida : "");
+  }, [invalida, mensagemInvalida]);
+
+  function mudar(proximo: string) {
+    setValor(proximo);
+    onChange?.(proximo);
+  }
+
+  return {
+    valor,
+    texto,
+    invalida,
+    entrada,
+    digitar(digitado: string) {
+      setTexto(digitado);
+      const lido = ler(digitado);
+      if (lido !== null) {
+        setInvalida(false);
+        mudar(lido);
+      } else if (valor) {
+        mudar("");
+      }
+    },
+    escolher(proximo: string) {
+      mudar(proximo);
+      setTexto(exibir(proximo));
+      setInvalida(false);
+    },
+    aoSair() {
+      const lido = ler(texto);
+      setInvalida(lido === null);
+      if (lido !== null) setTexto(exibir(lido));
+    },
+  };
 }
 
 /** A superfície do seletor: painel inferior no celular e painel flutuante no desktop. Esc fecha. */
@@ -131,14 +210,7 @@ function Calendario({
   }
 
   function aoTeclar(e: React.KeyboardEvent) {
-    const passos: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
-    const semana = grade.find((s) => s.some((c) => c.data === focavel)) ?? grade[0];
-    let destino: string | null = null;
-    if (e.key in passos) destino = somarDiasA(focavel, passos[e.key]);
-    else if (e.key === "Home") destino = semana[0].data;
-    else if (e.key === "End") destino = semana[6].data;
-    else if (e.key === "PageUp") destino = somarMesesA(focavel, e.shiftKey ? -12 : -1);
-    else if (e.key === "PageDown") destino = somarMesesA(focavel, e.shiftKey ? 12 : 1);
+    const destino = destinoDoTeclado(grade, focavel, e.key, e.shiftKey);
     if (!destino) return;
     e.preventDefault();
     irPara(destino);
@@ -321,62 +393,29 @@ export function CampoDeData({
   autoComplete?: string;
   aoFocar?: () => void;
 }) {
-  const [data, setData] = useState(value ?? defaultValue);
-  const [texto, setTexto] = useState(dataParaExibir(value ?? defaultValue));
-  const [invalida, setInvalida] = useState(false);
-  // Um `value` que muda por fora (a URL, por exemplo) vale; entre uma escolha e essa volta, o campo já mostra a escolha.
-  const [valorAnterior, setValorAnterior] = useState(value);
-  if (value !== valorAnterior) {
-    setValorAnterior(value);
-    if (value !== undefined && value !== data) {
-      setData(value);
-      setTexto(dataParaExibir(value));
-      setInvalida(false);
-    }
-  }
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
-  const entrada = useRef<HTMLInputElement>(null);
   const id = useId();
   const idDoErro = `${id}-erro`;
+  const mensagemInvalida = "Data inválida. Escreva dia/mês/ano, como 27/10/2026.";
+  const {
+    valor: data,
+    texto,
+    invalida,
+    entrada,
+    digitar,
+    escolher: gravar,
+    aoSair,
+  } = useCampoDigitavel({ value, defaultValue, onChange, ler: lerDataDigitada, exibir: dataParaExibir, mensagemInvalida, raiz });
 
   const fechar = useCallback(() => setAberto(false), []);
   useFecharAoTocarFora(aberto, raiz, fechar);
-  useAoLimparFormulario(raiz, () => {
-    const inicial = value ?? defaultValue;
-    setData(inicial);
-    setTexto(dataParaExibir(inicial));
-    setInvalida(false);
-  });
 
-  const mensagem = erro ?? (invalida ? "Data inválida. Escreva dia/mês/ano, como 27/10/2026." : undefined);
-
-  // O aviso nativo de "preencha este campo" cobre o vazio; uma data digitada errada ganha o próprio aviso.
-  useEffect(() => {
-    entrada.current?.setCustomValidity(invalida ? "Data inválida. Escreva dia/mês/ano, como 27/10/2026." : "");
-  }, [invalida]);
-
-  function mudar(proxima: string) {
-    setData(proxima);
-    onChange?.(proxima);
-  }
-
-  function digitar(digitado: string) {
-    setTexto(digitado);
-    const lida = lerDataDigitada(digitado);
-    if (lida !== null) {
-      setInvalida(false);
-      mudar(lida);
-    } else if (data) {
-      mudar("");
-    }
-  }
+  const mensagem = erro ?? (invalida ? mensagemInvalida : undefined);
 
   function escolher(proxima: string) {
-    mudar(proxima);
-    setTexto(dataParaExibir(proxima));
-    setInvalida(false);
+    gravar(proxima);
     setAberto(false);
     botao.current?.focus();
   }
@@ -399,11 +438,7 @@ export function CampoDeData({
           aria-describedby={mensagem ? idDoErro : undefined}
           onFocus={aoFocar}
           onChange={(e) => digitar(e.target.value)}
-          onBlur={() => {
-            const lida = lerDataDigitada(texto);
-            setInvalida(lida === null);
-            if (lida) setTexto(dataParaExibir(lida));
-          }}
+          onBlur={aoSair}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && !disabled) {
               e.preventDefault();
@@ -560,54 +595,26 @@ export function CampoDeHora({
   onChange?: (hora: string) => void;
   passo?: 5 | 15;
 }) {
-  const [hora, setHora] = useState(value ?? defaultValue);
-  const [texto, setTexto] = useState(value ?? defaultValue);
-  const [invalida, setInvalida] = useState(false);
-  const [valorAnterior, setValorAnterior] = useState(value);
-  if (value !== valorAnterior) {
-    setValorAnterior(value);
-    if (value !== undefined && value !== hora) {
-      setHora(value);
-      setTexto(value);
-      setInvalida(false);
-    }
-  }
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
-  const entrada = useRef<HTMLInputElement>(null);
   const id = useId();
   const idDoErro = `${id}-erro`;
+  const mensagemInvalida = "Hora inválida. Escreva como 09:30.";
+  const {
+    valor: hora,
+    texto,
+    invalida,
+    entrada,
+    digitar,
+    escolher: gravar,
+    aoSair,
+  } = useCampoDigitavel({ value, defaultValue, onChange, ler: lerHoraDigitada, exibir: (h) => h, mensagemInvalida, raiz });
 
   const fechar = useCallback(() => setAberto(false), []);
   useFecharAoTocarFora(aberto, raiz, fechar);
-  useAoLimparFormulario(raiz, () => {
-    const inicial = value ?? defaultValue;
-    setHora(inicial);
-    setTexto(inicial);
-    setInvalida(false);
-  });
 
-  const mensagem = erro ?? (invalida ? "Hora inválida. Escreva como 09:30." : undefined);
-  useEffect(() => {
-    entrada.current?.setCustomValidity(invalida ? "Hora inválida. Escreva como 09:30." : "");
-  }, [invalida]);
-
-  function mudar(proxima: string) {
-    setHora(proxima);
-    onChange?.(proxima);
-  }
-
-  function digitar(digitado: string) {
-    setTexto(digitado);
-    const lida = lerHoraDigitada(digitado);
-    if (lida !== null) {
-      setInvalida(false);
-      mudar(lida);
-    } else if (hora) {
-      mudar("");
-    }
-  }
+  const mensagem = erro ?? (invalida ? mensagemInvalida : undefined);
 
   const horas = horasDoDia(passo);
   const opcoes = [...(required ? [] : [{ valor: "", texto: "Sem horário" }]), ...horas.map((h) => ({ valor: h, texto: h }))];
@@ -631,11 +638,7 @@ export function CampoDeHora({
           aria-invalid={mensagem ? true : undefined}
           aria-describedby={mensagem ? idDoErro : undefined}
           onChange={(e) => digitar(e.target.value)}
-          onBlur={() => {
-            const lida = lerHoraDigitada(texto);
-            setInvalida(lida === null);
-            if (lida !== null) setTexto(lida);
-          }}
+          onBlur={aoSair}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && !disabled) {
               e.preventDefault();
@@ -665,9 +668,7 @@ export function CampoDeHora({
           selecionados={[hora]}
           inicial={proxima}
           aoEscolher={(escolhida) => {
-            mudar(escolhida);
-            setTexto(escolhida);
-            setInvalida(false);
+            gravar(escolhida);
             setAberto(false);
             botao.current?.focus();
           }}

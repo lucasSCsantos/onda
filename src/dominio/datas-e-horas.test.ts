@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   arredondarHora,
   dataParaExibir,
+  destinoDoTeclado,
   dividirDataEHora,
   escolherNoIntervalo,
   estaNoIntervalo,
@@ -179,5 +180,33 @@ describe("data e hora juntas", () => {
     expect(juntarDataEHora("2026-10-27", "09:30")).toBe("2026-10-27T09:30");
     expect(juntarDataEHora("2026-10-27", "")).toBe("2026-10-27T00:00");
     expect(juntarDataEHora("", "09:30")).toBe("");
+  });
+});
+
+describe("teclado no calendário", () => {
+  const grade = montarGrade(2026, 10);
+
+  it("setas andam um dia ou uma semana, atravessando o mês", () => {
+    expect(destinoDoTeclado(grade, "2026-10-15", "ArrowRight", false)).toBe("2026-10-16");
+    expect(destinoDoTeclado(grade, "2026-10-15", "ArrowLeft", false)).toBe("2026-10-14");
+    expect(destinoDoTeclado(grade, "2026-10-15", "ArrowDown", false)).toBe("2026-10-22");
+    expect(destinoDoTeclado(grade, "2026-10-01", "ArrowUp", false)).toBe("2026-09-24");
+    expect(destinoDoTeclado(grade, "2026-10-31", "ArrowRight", false)).toBe("2026-11-01");
+  });
+
+  it("Home e End vão às pontas da semana, de segunda a domingo", () => {
+    expect(destinoDoTeclado(grade, "2026-10-15", "Home", false)).toBe("2026-10-12");
+    expect(destinoDoTeclado(grade, "2026-10-15", "End", false)).toBe("2026-10-18");
+  });
+
+  it("PageUp e PageDown mudam o mês, e com Shift o ano", () => {
+    expect(destinoDoTeclado(grade, "2026-10-31", "PageDown", false)).toBe("2026-11-30");
+    expect(destinoDoTeclado(grade, "2026-10-15", "PageUp", false)).toBe("2026-09-15");
+    expect(destinoDoTeclado(grade, "2026-10-15", "PageDown", true)).toBe("2027-10-15");
+  });
+
+  it("outras teclas não movem nada", () => {
+    expect(destinoDoTeclado(grade, "2026-10-15", "a", false)).toBeNull();
+    expect(destinoDoTeclado(grade, "2026-10-15", "Enter", false)).toBeNull();
   });
 });

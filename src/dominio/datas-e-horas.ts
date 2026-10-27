@@ -98,6 +98,21 @@ export function somarMesesA(data: string, delta: number): string {
   return formatarData({ ano, mes, dia: Math.min(d.dia, diasDoMes(ano, mes)) });
 }
 
+/**
+ * Para onde vai o foco do calendário com uma tecla: setas andam um dia ou uma semana, Home e End vão às pontas da semana,
+ * PageUp e PageDown mudam o mês (com Shift, o ano). `null` para qualquer outra tecla.
+ */
+export function destinoDoTeclado(grade: CelulaDaGrade[][], atual: string, tecla: string, comShift: boolean): string | null {
+  const passos: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  if (tecla in passos) return somarDiasA(atual, passos[tecla]);
+  const semana = grade.find((s) => s.some((c) => c.data === atual)) ?? grade[0];
+  if (tecla === "Home") return semana[0].data;
+  if (tecla === "End") return semana[6].data;
+  if (tecla === "PageUp") return somarMesesA(atual, comShift ? -12 : -1);
+  if (tecla === "PageDown") return somarMesesA(atual, comShift ? 12 : 1);
+  return null;
+}
+
 /** Doze anos por página, para chegar a uma data de nascimento antiga sem rolar mês a mês. */
 export function paginaDeAnos(ano: number): number[] {
   const inicio = ano - (((ano % 12) + 12) % 12);
