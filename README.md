@@ -164,3 +164,19 @@ Em **Admin → Horários padrão** (`/admin/horarios`), o Admin define por Categ
 ## Gênero das contas
 
 Quem se cadastra (sozinho ou por convite, inclusive Professor) escolhe o **Gênero** (Masculino ou Feminino), obrigatório para contas novas: a ação do servidor e o domínio (`src/dominio/genero.ts`) recusam o envio sem ele; o gatilho de criação de perfil só grava o valor quando ele vem válido, para não arriscar o fluxo de contas. Perfis antigos ficam sem Gênero ("não informado") e ganham o selo "cadastro incompleto". A própria pessoa completa o dela em **Minha conta**, e o Admin o de qualquer pessoa em **Admin → Usuários → Editar Gênero**; a escrita passa pela função `definir_genero` (não há privilégio de coluna em `perfis`, que também liberaria o `ativo`). Só usuários aprovados leem, pelas políticas de `perfis`; o Gênero nunca vai para o `.ics`, Notificações ou exportações, e o Log registra só que o campo mudou, sem o valor.
+
+## Gênero dos Adolescentes
+
+A Liderança registra o **Gênero** (Masculino ou Feminino) de cada Adolescente no cadastro e na edição. É obrigatório em **Adolescente novo**: o formulário, a ação do servidor e o domínio (`src/dominio/adolescentes.ts`) recusam o envio sem ele, e o banco também, por um gatilho só de `INSERT` (`exigir_genero_ao_cadastrar`), que nunca bloqueia atualizar um registro antigo (inativar, reativar, renomear). Adolescentes antigos ficam sem Gênero ("não informado") e ganham o selo "cadastro incompleto"; editá-los com o Gênero em branco o mantém como está. A lista tem filtro por Masculino, Feminino e "sem gênero informado" e mostra os totais por Gênero dos Adolescentes **ativos**, que não mudam com o filtro nem com a busca. Leitura e escrita seguem as políticas de sempre (só a Liderança aprovada; Professor e Pendente não leem nem editam). O Gênero nunca vai para o `.ics`, Notificações ou exportações (as consultas desses canais escolhem colunas e não o incluem), e o Log registra só que o campo mudou, sem o valor.
+
+## Observações sobre os Adolescentes
+
+Na página de cada Adolescente, a Liderança registra **Observações**: entradas de texto simples (até 2.000 caracteres), em ordem cronológica, cada uma com autor, data de criação e data da última edição, sob um aviso permanente ("Visível apenas para a liderança. Registre só o que ajuda a cuidar do adolescente e evite dados de saúde ou informações sensíveis da família."). Nada é bloqueado pelo conteúdo; o tamanho e o texto não vazio são checados no domínio (`src/dominio/observacoes.ts`) e no banco (tabela `observacoes`).
+
+**Quem acessa** (garantido por política por linha, não só pela interface): Admin e Líder ativos leem e criam; **só o autor e o Admin** editam e apagam; Professor, Pendente, conta desativada e anônimo não veem nada. O autor é gravado pelo banco a partir da sessão (a coluna não aceita escrita pelo formulário) e a data da última edição é atualizada por gatilho.
+
+**Privacidade**: o Log registra apenas "observação adicionada, editada ou apagada para {adolescente} por {líder}", nunca o texto. O texto não entra em Notificações, central de notificações, feed `.ics`, exportações CSV, relatórios nem na busca (que olha só o nome), e nada é enviado a serviço externo.
+
+**Exclusão**: Adolescentes nunca são excluídos, só inativados; as Observações de um Adolescente inativo são preservadas e continuam visíveis. A chave estrangeira usa `on delete cascade` apenas por segurança (para não deixar linha órfã); se algum dia a remoção de um Adolescente for criada, ela leva as Observações junto, gera Log de cada uma e deve gerar também o Log da remoção.
+
+**LGPD**: recomenda-se que a autorização assinada pelos pais ou responsáveis cubra esse tipo de registro (anotações da Liderança sobre o adolescente), e que a igreja oriente os líderes a não anotar dados de saúde nem informações sensíveis da família.
