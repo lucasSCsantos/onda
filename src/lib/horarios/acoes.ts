@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
-import { lerHorarioPadrao } from "@/dominio/horarios-padrao";
+import { lerHorarioPadrao, mudouOHorarioPadrao } from "@/dominio/horarios-padrao";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -24,10 +24,9 @@ export async function salvarHorariosPadrao(_: EstadoFormulario, dados: FormData)
   const supabase = await supabaseDoServidor();
   const { data: atuais } = await supabase.from("categorias").select("id, horario_padrao, duracao_padrao_minutos");
   const atual = new Map((atuais ?? []).map((c) => [c.id as string, c]));
-  const mudadas = linhas.filter(({ id, horario_padrao, duracao_padrao_minutos }) => {
-    const antes = atual.get(id);
-    return !antes || (antes.horario_padrao as string | null)?.slice(0, 5) !== horario_padrao || antes.duracao_padrao_minutos !== duracao_padrao_minutos;
-  });
+  const mudadas = linhas.filter(({ id, horario_padrao, duracao_padrao_minutos }) =>
+    mudouOHorarioPadrao(atual.get(id), { inicio: horario_padrao, duracaoMinutos: duracao_padrao_minutos }),
+  );
   for (const { id, ...padrao } of mudadas) {
     const { data, error } = await supabase.from("categorias").update(padrao).eq("id", id).select("id");
     if (error || !data?.length) {

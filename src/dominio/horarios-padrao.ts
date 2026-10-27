@@ -33,6 +33,17 @@ export function lerHorarioPadrao(entrada: { inicio: string; duracao: string }): 
   return { inicio: inicio || null, duracaoMinutos };
 }
 
+/** A Postagem usa a data de publicação: não tem horário padrão, nem tela para ele. */
+export const categoriaTemHorario = (categoria: { nome: string }) => categoria.nome !== "Postagem";
+
+/** O horário como o banco devolve (`09:00:00`) em `HH:MM`; sem horário, `null`. */
+export const horarioDoBanco = (horario: string | null): string | null => horario?.slice(0, 5) ?? null;
+
+/** O padrão que a Categoria tem hoje difere do que o Admin mandou? Sem diferença, não há o que gravar nem registrar. */
+export function mudouOHorarioPadrao(atual: { horario_padrao: string | null; duracao_padrao_minutos: number | null } | undefined, novo: HorarioPadrao): boolean {
+  return !atual || horarioDoBanco(atual.horario_padrao) !== novo.inicio || atual.duracao_padrao_minutos !== novo.duracaoMinutos;
+}
+
 type CategoriaComHorario = { nome: string; horarioPadrao?: HorarioPadrao; nativos?: Partial<NativosDaCategoria> };
 
 /**
@@ -43,10 +54,10 @@ type CategoriaComHorario = { nome: string; horarioPadrao?: HorarioPadrao; nativo
 export function valoresIniciaisDoHorario(categoria: CategoriaComHorario): { hora?: string; hora_fim?: string } {
   const { inicio, duracaoMinutos } = categoria.horarioPadrao ?? SEM_HORARIO_PADRAO;
   const minutosDoInicio = inicio === null ? null : lerHora(inicio);
-  if (categoria.nome === "Postagem" || minutosDoInicio === null) return {};
+  if (!categoriaTemHorario(categoria) || minutosDoInicio === null) return {};
   const valores: { hora: string; hora_fim?: string } = { hora: inicio! };
   const mostraOFim = categoria.nativos?.fim !== "oculto";
-  if (duracaoMinutos && mostraOFim && minutosDoInicio + duracaoMinutos < 24 * 60) {
+  if (duracaoMinutos && mostraOFim && minutosDoInicio + duracaoMinutos <= DURACAO_MAXIMA_EM_MINUTOS) {
     valores.hora_fim = formatarHora(minutosDoInicio + duracaoMinutos);
   }
   return valores;

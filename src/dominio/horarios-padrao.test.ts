@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { HORARIOS_PADRAO_INICIAIS, lerHorarioPadrao, valoresIniciaisDoHorario, type HorarioPadrao } from "./horarios-padrao";
+import { lerEdicao, lerEvento, type EntradaDeEvento } from "./eventos";
+import {
+  HORARIOS_PADRAO_INICIAIS,
+  horarioDoBanco,
+  lerHorarioPadrao,
+  mudouOHorarioPadrao,
+  valoresIniciaisDoHorario,
+  type HorarioPadrao,
+} from "./horarios-padrao";
 
 const categoria = (nome: string, horarioPadrao?: HorarioPadrao, nativos: { fim?: "oculto" | "visivel" | "obrigatorio" } = {}) => ({
   nome,
@@ -64,5 +72,51 @@ describe("catálogo inicial", () => {
       EBD: { inicio: "09:00", duracaoMinutos: null },
       "Pequeno grupo": { inicio: "15:00", duracaoMinutos: null },
     });
+  });
+});
+
+describe("o padrão só vale para o formulário de Evento novo", () => {
+  const entrada: EntradaDeEvento = {
+    titulo: "Aula",
+    data: "2026-10-25",
+    hora: "",
+    dataFim: "",
+    horaFim: "",
+    local: "Sala 1",
+    responsavel: "lucas",
+    status: "planejado",
+    observacoes: "",
+    link: "",
+    campos: {},
+  };
+  const ebd = { nome: "EBD", campos: [], horarioPadrao: { inicio: "09:00", duracaoMinutos: 60 } };
+
+  it("salvar sem hora continua sendo dia inteiro: o padrão não entra na gravação", () => {
+    const lido = lerEvento(entrada, ebd, ["lucas"]);
+    expect("evento" in lido && lido.evento.diaInteiro).toBe(true);
+  });
+
+  it("a edição de um Evento antigo não ganha o padrão", () => {
+    const anterior = lerEvento(entrada, ebd, ["lucas"]);
+    if (!("evento" in anterior)) throw new Error("evento inválido");
+    const quem = { id: "lucas", nivel: "admin" as const, ativo: true };
+    const editado = lerEdicao({ ...entrada, titulo: "Aula 2" }, ebd, ["lucas"], { anterior: anterior.evento, quem, agora: new Date("2026-10-20T12:00:00Z") });
+    expect("evento" in editado && editado.evento.diaInteiro).toBe(true);
+  });
+});
+
+describe("conversão e comparação com o banco", () => {
+  it("o banco devolve segundos; o domínio fala HH:MM", () => {
+    expect(horarioDoBanco("09:00:00")).toBe("09:00");
+    expect(horarioDoBanco(null)).toBeNull();
+  });
+
+  it("só há o que gravar quando algo mudou", () => {
+    const atual = { horario_padrao: "09:00:00", duracao_padrao_minutos: null };
+    expect(mudouOHorarioPadrao(atual, { inicio: "09:00", duracaoMinutos: null })).toBe(false);
+    expect(mudouOHorarioPadrao(atual, { inicio: "09:30", duracaoMinutos: null })).toBe(true);
+    expect(mudouOHorarioPadrao(atual, { inicio: "09:00", duracaoMinutos: 60 })).toBe(true);
+    expect(mudouOHorarioPadrao(atual, { inicio: null, duracaoMinutos: null })).toBe(true);
+    expect(mudouOHorarioPadrao(undefined, { inicio: null, duracaoMinutos: null })).toBe(true);
   });
 });

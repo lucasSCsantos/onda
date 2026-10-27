@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { categoriaTemHorario } from "@/dominio/horarios-padrao";
 import { exigirAdmin } from "@/lib/contas/perfil";
 import { categorias } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -9,8 +10,7 @@ export const metadata: Metadata = { title: "Horários padrão" };
 export default async function PaginaDeHorariosPadrao() {
   await exigirAdmin();
   const todas = await categorias(await supabaseDoServidor());
-  // A Postagem usa a data de publicação e nunca ganha horário.
-  const linhas = todas.filter((c) => c.nome !== "Postagem").map((c) => ({ id: c.id, nome: c.nome, cor: c.cor, padrao: c.horarioPadrao }));
+  const linhas = todas.filter(categoriaTemHorario).map((c) => ({ id: c.id, nome: c.nome, cor: c.cor, padrao: c.horarioPadrao }));
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
       <div className="flex flex-col gap-1">

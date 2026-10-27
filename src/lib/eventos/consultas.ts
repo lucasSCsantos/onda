@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import type { NativosDaCategoria } from "@/dominio/campos-nativos";
 import type { EstadoDaPasta } from "@/dominio/drive";
-import type { HorarioPadrao } from "@/dominio/horarios-padrao";
+import { horarioDoBanco, type HorarioPadrao } from "@/dominio/horarios-padrao";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, tituloDeExibicao, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 import { professoresDaAula, semProfessor } from "@/dominio/professores";
@@ -71,7 +71,7 @@ const comArea = ({ areas, campos_das_categorias, tem_chamada, horario_padrao, du
   campos: campos_das_categorias,
   nativos: nativosDoBanco(categoria),
   // O banco devolve `09:00:00`; o domínio fala `HH:MM`.
-  horarioPadrao: { inicio: horario_padrao?.slice(0, 5) ?? null, duracaoMinutos: duracao_padrao_minutos },
+  horarioPadrao: { inicio: horarioDoBanco(horario_padrao), duracaoMinutos: duracao_padrao_minutos },
 });
 
 const SELECAO_DA_CATEGORIA = `id, nome, cor, tem_chamada, horario_padrao, duracao_padrao_minutos, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)`;
