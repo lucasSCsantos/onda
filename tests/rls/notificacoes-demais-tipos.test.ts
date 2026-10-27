@@ -239,7 +239,7 @@ describe("notificações: o gerador do agendador", () => {
     const sem = await evento((await lider("R")).id, new Date("2027-06-06T12:00:00Z"), { categoria_id: ebd.id, campos });
     const feita = await evento((await lider("R2")).id, new Date("2027-06-06T12:00:00Z"), { categoria_id: ebd.id, campos });
 
-    const { data: aluno } = await admin.from("adolescentes").insert({ nome: "Ana da Chamada", nascimento: "2011-05-10" }).select("id").single().throwOnError();
+    const { data: aluno } = await admin.from("adolescentes").insert({ nome: "Ana da Chamada", nascimento: "2011-05-10", genero: "feminino" }).select("id").single().throwOnError();
     await admin.from("presencas").insert({ evento_id: feita, adolescente_id: aluno.id, registrado_por: await criadorDosEventos() }).throwOnError();
 
     // Antes de a aula acabar (14h UTC), nada.

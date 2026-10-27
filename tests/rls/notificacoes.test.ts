@@ -369,7 +369,7 @@ describe("notificações: o agendador", () => {
   it("a Notificação nunca leva dados de Adolescentes, mesmo que as observações do Evento os citem", async () => {
     const a = await lider("A");
     await dispositivo(a.cliente, a.id);
-    await admin.from("adolescentes").insert({ nome: "Joãozinho Sigiloso", nascimento: "2011-03-04" }).throwOnError();
+    await admin.from("adolescentes").insert({ nome: "Joãozinho Sigiloso", nascimento: "2011-03-04", genero: "feminino" }).throwOnError();
     await evento(a.id, undefined, { observacoes: "Falar com a mãe do Joãozinho Sigiloso (04/03/2011)", titulo: "Reunião" });
     const falso = envioFalso();
 

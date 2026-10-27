@@ -37,7 +37,7 @@ async function aulaCom(inicio: string, presencas: { adolescente: string; marcaco
 }
 
 async function adolescente(nome: string) {
-  const { data } = await admin.from("adolescentes").insert({ nome, nascimento: "2011-05-10" }).select("id").single().throwOnError();
+  const { data } = await admin.from("adolescentes").insert({ nome, nascimento: "2011-05-10", genero: "feminino" }).select("id").single().throwOnError();
   return data.id as string;
 }
 
