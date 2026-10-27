@@ -156,3 +156,7 @@ Os controles de formulário são próprios, sem dependência nova, e ficam em `s
 Todos enviam o valor num campo com o mesmo `name` de antes (data como `AAAA-MM-DD`, hora como `HH:MM` ou vazio, data e hora como `AAAA-MM-DDTHH:MM`), então `<form action>`, Server Actions e a validação no domínio não mudaram. A lógica sem interface (grade do mês com a semana na segunda-feira, intervalo, leitura e arredondamento de hora) está em `src/dominio/datas-e-horas.ts`, com testes ao lado.
 
 Exceção mantida de propósito: `type="color"` da Cor da Categoria (Admin → Catálogo), que não faz parte da lista de controles a substituir.
+
+## Horários padrão
+
+Em **Admin → Horários padrão** (`/admin/horarios`), o Admin define por Categoria o horário de início e a duração padrão, ambos opcionais (em branco, a Categoria abre sem horário). O formulário de Evento **novo** já abre com o início preenchido e, só se a Categoria tem duração e mostra o campo de fim, com o fim também. A migração `horarios_padrao` define EBD às 09:00 e Pequeno grupo às 15:00, sem duração; a Postagem (data de publicação) não tem horário padrão. O padrão nunca altera Eventos já criados nem a edição, uma Série nova usa o horário do formulário, e cada mudança vira um Log (`categoria.editada`). A regra está em `src/dominio/horarios-padrao.ts`.
