@@ -133,7 +133,7 @@ export function GrupoDeRadio({
   const idDoErro = useId();
   const segmentado = variante === "segmentado";
   return (
-    <fieldset aria-describedby={erro ? idDoErro : undefined} aria-invalid={erro ? true : undefined} className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
+    <fieldset aria-describedby={erro ? idDoErro : undefined} className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
       <legend className="mb-1.5 p-0 text-sm font-medium">{legenda}</legend>
       <div className={segmentado ? "flex gap-1 rounded-xl border border-borda bg-fundo p-1" : "grid gap-2"}>
         {opcoes.map((opcao, i) => (

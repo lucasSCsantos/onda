@@ -225,10 +225,10 @@ export function Selecao({
   useEffect(() => {
     const formulario = campo.current?.form;
     if (!formulario) return;
-    const limpar = () => setInterno(inicial);
+    const limpar = () => setInterno(value ?? inicial);
     formulario.addEventListener("reset", limpar);
     return () => formulario.removeEventListener("reset", limpar);
-  }, [inicial]);
+  }, [inicial, value]);
 
   function escolher(valor: string) {
     setInterno(valor);
@@ -242,8 +242,11 @@ export function Selecao({
 
   return (
     <div ref={raiz} className="relative flex flex-col gap-1.5 text-sm font-medium">
-      <span id={idDoRotulo}>{rotulo}</span>
+      <label id={idDoRotulo} htmlFor={`${id}-botao`}>
+        {rotulo}
+      </label>
       <button
+        id={`${id}-botao`}
         ref={botao}
         type="button"
         role="combobox"
@@ -357,7 +360,9 @@ export function SelecaoMultipla({
 
   return (
     <div ref={raiz} className="relative flex flex-col gap-1.5 text-sm font-medium">
-      <span id={idDoRotulo}>{rotulo}</span>
+      <label id={idDoRotulo} htmlFor={`${id}-botao`}>
+        {rotulo}
+      </label>
       <div className={`flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-superficie p-1.5 ${erro ? "border-erro" : "border-borda"}`}>
         {escolhidas.map((opcao) => (
           <span key={opcao.valor} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-marca/10 pl-3 text-sm font-normal text-marca">
@@ -366,7 +371,10 @@ export function SelecaoMultipla({
               type="button"
               disabled={disabled}
               aria-label={`Remover ${opcao.texto}`}
-              onClick={() => mudar(atuais.filter((v) => v !== opcao.valor))}
+              onClick={() => {
+                mudar(atuais.filter((v) => v !== opcao.valor));
+                botao.current?.focus();
+              }}
               className="toque flex size-8 items-center justify-center rounded-full hover:bg-marca/15"
             >
               <X aria-hidden className="size-3.5" />
@@ -374,6 +382,7 @@ export function SelecaoMultipla({
           </span>
         ))}
         <button
+          id={`${id}-botao`}
           ref={botao}
           type="button"
           role="combobox"
