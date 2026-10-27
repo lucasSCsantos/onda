@@ -78,7 +78,7 @@ test("criar um Evento e vê-lo no calendário no celular", async ({ page }) => {
   await page.getByLabel("Título").fill(titulo);
   await page.getByLabel("Data", { exact: true }).fill(hoje());
   // Quem cria já vem como Responsável.
-  await expect(page.getByLabel("Responsável").locator("option:checked")).toHaveText("Abel Fumaça");
+  await expect(page.getByRole("combobox", { name: /Responsável/ })).toContainText("Abel Fumaça");
   await page.getByRole("button", { name: "Criar Evento" }).click();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
@@ -223,8 +223,8 @@ test("o formulário de Evento mostra só os campos da Categoria", async ({ page 
 
   // O Admin configura isso na tela da Categoria, e não há rolagem lateral no celular.
   await page.goto(`/admin/catalogo/${id("Postagem")}`);
-  await expect(page.getByLabel(/^Local/)).toHaveValue("oculto");
-  await expect(page.getByLabel(/^Fim/)).toHaveValue("oculto");
+  await expect(page.getByRole("combobox", { name: /^Local/ })).toContainText("Oculto");
+  await expect(page.getByRole("combobox", { name: /^Fim/ })).toContainText("Oculto");
   const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   expect(larguraExcedida).toBeLessThanOrEqual(0);
 });
@@ -466,9 +466,9 @@ test("filtros avançados: abrem com contador, aplicam na hora e abrem sozinhos p
   await expect(botao).toHaveAttribute("aria-expanded", "true");
   const painel = page.getByRole("group", { name: "Filtros avançados" });
   await expect(painel).toBeVisible();
-  expect((await painel.getByLabel("Status", { exact: true }).locator("option").allTextContents()).length).toBe(7);
-
-  await painel.getByLabel("Status", { exact: true }).selectOption("adiado");
+  await painel.getByRole("combobox", { name: /^Status/ }).click();
+  await expect(page.getByRole("listbox", { name: "Status" }).getByRole("option")).toHaveCount(7);
+  await page.getByRole("option", { name: "Adiado" }).click();
   await expect(page).toHaveURL(/status=adiado/);
   await expect(botao).toContainText("1");
   await painel.getByLabel("Dia", { exact: true }).fill("2026-10-21");

@@ -2,6 +2,7 @@ import { ChevronRight, FolderOpen, LayoutGrid, List, RefreshCw, Search } from "l
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
+import { Selecao } from "@/components/formulario";
 import { IconeDoAtalho } from "@/components/icone-do-atalho";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import {
@@ -229,24 +230,18 @@ export default async function PaginaDeArquivos(props: PageProps<"/arquivos">) {
             </nav>
 
             <div className="flex flex-wrap items-center gap-2">
-              <form className="flex items-center gap-2" action="/arquivos">
+              <form className="flex items-end gap-2" action="/arquivos">
                 {atalho && <input type="hidden" name="atalho" value={atalho.id} />}
                 {pastaPedida && <input type="hidden" name="pasta" value={pastaPedida} />}
                 {modo === "lista" && <input type="hidden" name="modo" value="lista" />}
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="sr-only sm:not-sr-only">Ordenar</span>
-                  <select
+                <div className="w-44">
+                  <Selecao
+                    rotulo="Ordenar"
                     name="ordem"
                     defaultValue={ordem}
-                    className="min-h-11 rounded-lg border border-borda bg-superficie px-3 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/30"
-                  >
-                    {ORDENS.map((o) => (
-                      <option key={o} value={o}>
-                        {NOMES_DAS_ORDENS[o]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    opcoes={ORDENS.map((o) => ({ valor: o, texto: NOMES_DAS_ORDENS[o] }))}
+                  />
+                </div>
                 <button type="submit" className="toque min-h-11 rounded-lg border border-borda px-3 text-sm">
                   Aplicar
                 </button>

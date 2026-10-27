@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
-import { Campo, Selecao } from "@/components/formulario";
+import { CaixaDeMarcar, Campo, Selecao } from "@/components/formulario";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { listarAdolescentes, prazoDoAniversario, proximoAniversario, type Adolescente } from "@/dominio/adolescentes";
 import { FUSO } from "@/dominio/fuso";
@@ -53,10 +53,7 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
               { valor: "nome", texto: "Nome" },
             ]}
           />
-          <label className="flex items-center gap-2 pb-3 text-sm">
-            <input type="checkbox" name="inativos" value="1" defaultChecked={comInativos} className="size-4 accent-marca" />
-            Mostrar inativos{quantosInativos ? ` (${quantosInativos})` : ""}
-          </label>
+          <CaixaDeMarcar rotulo={`Mostrar inativos${quantosInativos ? ` (${quantosInativos})` : ""}`} name="inativos" value="1" defaultChecked={comInativos} />
           <button type="submit" className="botao-primario">
             Aplicar
           </button>

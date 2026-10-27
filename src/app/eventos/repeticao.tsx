@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Campo, Selecao } from "@/components/formulario";
+import { Campo, Radio, Selecao } from "@/components/formulario";
 import { MAXIMO_DE_MESES, MAXIMO_DE_OCORRENCIAS } from "@/dominio/series";
 
 /** A repetição de um Evento novo: com ela, o Evento vira uma Série. `valor` devolve o que foi digitado, depois de um erro. */
@@ -16,7 +16,7 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
         rotulo="Repetir"
         name="repeticao"
         value={frequencia}
-        onChange={(e) => setFrequencia(e.target.value)}
+        onChange={setFrequencia}
         opcoes={[
           { valor: "", texto: "Não repete" },
           { valor: "semanal", texto: "Toda semana" },
@@ -33,15 +33,15 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1.5 text-sm text-texto-suave">Termina</legend>
             <div className="grid grid-cols-[auto_1fr] items-end gap-x-3 gap-y-2">
-              <input
-                type="radio"
-                name="termino_por"
-                value="contagem"
-                aria-label="Termina por número de Ocorrências"
-                checked={terminoPor === "contagem"}
-                onChange={() => setTerminoPor("contagem")}
-                className="mb-3.5 size-4 accent-marca"
-              />
+              <div className="-mb-0.5">
+                <Radio
+                  name="termino_por"
+                  value="contagem"
+                  aria-label="Termina por número de Ocorrências"
+                  checked={terminoPor === "contagem"}
+                  onChange={() => setTerminoPor("contagem")}
+                />
+              </div>
               <Campo
                 rotulo={`Depois de quantas Ocorrências (até ${MAXIMO_DE_OCORRENCIAS}, dentro de ${MAXIMO_DE_MESES} meses)`}
                 name="termino_ocorrencias"
@@ -51,15 +51,15 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
                 defaultValue={valor("termino_ocorrencias") || "8"}
                 onFocus={() => setTerminoPor("contagem")}
               />
-              <input
-                type="radio"
-                name="termino_por"
-                value="data"
-                aria-label="Termina numa data"
-                checked={terminoPor === "data"}
-                onChange={() => setTerminoPor("data")}
-                className="mb-3.5 size-4 accent-marca"
-              />
+              <div className="-mb-0.5">
+                <Radio
+                  name="termino_por"
+                  value="data"
+                  aria-label="Termina numa data"
+                  checked={terminoPor === "data"}
+                  onChange={() => setTerminoPor("data")}
+                />
+              </div>
               <Campo
                 rotulo="Ou até a data (inclusive)"
                 name="termino_data"
