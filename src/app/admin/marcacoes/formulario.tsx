@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens } from "@/components/formulario";
+import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens, RadioDeIcone } from "@/components/formulario";
 import { ICONES } from "@/components/icone-da-marcacao";
 import { ICONES_DAS_MARCACOES, NOMES_DOS_ICONES, PONTOS_MAXIMOS, type Marcacao } from "@/dominio/presenca";
 import { salvarMarcacao } from "@/lib/presenca/acoes";
@@ -21,14 +21,14 @@ export function FormularioDeMarcacao({ marcacao }: { marcacao?: Marcacao }) {
           {ICONES_DAS_MARCACOES.map((icone) => {
             const Icone = ICONES[icone];
             return (
-              <label
+              <RadioDeIcone
                 key={icone}
-                className="toque flex size-11 cursor-pointer items-center justify-center rounded-xl border border-borda has-checked:border-marca has-checked:bg-marca has-checked:text-marca-texto has-focus-visible:ring-2 has-focus-visible:ring-marca/40"
-              >
-                <input type="radio" name="icone" value={icone} defaultChecked={(marcacao?.icone ?? "check") === icone} className="sr-only" />
-                <Icone aria-hidden className="size-5" />
-                <span className="sr-only">{NOMES_DOS_ICONES[icone]}</span>
-              </label>
+                nome={NOMES_DOS_ICONES[icone]}
+                icone={<Icone className="size-5" />}
+                name="icone"
+                value={icone}
+                defaultChecked={(marcacao?.icone ?? "check") === icone}
+              />
             );
           })}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens } from "@/components/formulario";
+import { BotaoEnviar, CaixaDeMarcar, Campo, Mensagens, RadioDeIcone } from "@/components/formulario";
 import { ICONES_DE_ATALHO } from "@/components/icone-do-atalho";
 import { ICONES_DOS_ATALHOS, NOMES_DOS_ICONES_DOS_ATALHOS, TAMANHO_MAXIMO_DO_NOME_DO_ATALHO } from "@/dominio/arquivos";
 import { linkDaPasta } from "@/dominio/drive";
@@ -36,14 +36,14 @@ export function FormularioDeAtalho({
           {ICONES_DOS_ATALHOS.map((icone) => {
             const Icone = ICONES_DE_ATALHO[icone];
             return (
-              <label
+              <RadioDeIcone
                 key={icone}
-                className="toque flex size-11 cursor-pointer items-center justify-center rounded-xl border border-borda has-checked:border-marca has-checked:bg-marca has-checked:text-marca-texto has-focus-visible:ring-2 has-focus-visible:ring-marca/40"
-              >
-                <input type="radio" name="icone" value={icone} defaultChecked={(atalho?.icone ?? "folder") === icone} className="sr-only" />
-                <Icone aria-hidden className="size-5" />
-                <span className="sr-only">{NOMES_DOS_ICONES_DOS_ATALHOS[icone]}</span>
-              </label>
+                nome={NOMES_DOS_ICONES_DOS_ATALHOS[icone]}
+                icone={<Icone className="size-5" />}
+                name="icone"
+                value={icone}
+                defaultChecked={(atalho?.icone ?? "folder") === icone}
+              />
             );
           })}
         </div>
