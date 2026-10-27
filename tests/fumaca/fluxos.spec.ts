@@ -44,6 +44,7 @@ async function cadastrar(page: Page, nome: string, convite?: string) {
   await page.getByLabel("Nome").fill(nome);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
@@ -292,7 +293,7 @@ test("Chamada: um toque marca e salva na hora, e a marcação continua depois de
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const tema = (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === "Tema")!.id;
   const aluno = `Ana ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   const { data: aula } = await admin
     .from("eventos")
     .insert({
@@ -333,7 +334,7 @@ test("Chamada do Professor: faz a Chamada da própria aula, sem ver nascimento, 
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
   const aluno = `Bia ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   // O Responsável é da Liderança; a aula é do Professor pelo campo "Professor".
   const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável da Chamada" } });
   if (lider.error) throw lider.error;
@@ -378,7 +379,7 @@ test("Cartão de Chamada: o Professor vê a Chamada da aula dele na tela princip
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
   const aluno = `Caio ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável do Cartão" } });
   if (lider.error) throw lider.error;
   await admin.from("perfis").update({ nivel: "admin" }).eq("id", lider.data.user.id).throwOnError();

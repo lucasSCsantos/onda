@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoFormulario } from "@/components/formulario";
 import { erroNoAdolescente } from "@/dominio/adolescentes";
+import { lerGenero } from "@/dominio/genero";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -10,11 +11,16 @@ import { supabaseDoServidor } from "@/lib/supabase/servidor";
 /** Uma escrita que a política por linha barrou não dá erro: só não altera nada. Para o log, é falta de permissão. */
 const SEM_LINHA = { code: "42501", message: "nenhuma linha alterada" };
 
-/** Cria (sem `id`) ou edita um Adolescente; o banco só deixa a Liderança escrever. */
+/**
+ * Cria (sem `id`) ou edita um Adolescente; o banco só deixa a Liderança escrever. O Gênero é obrigatório no cadastro
+ * novo; ao editar um registro antigo, em branco, ele segue como está.
+ */
 export async function salvarAdolescente(id: string | null, _: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
-  const adolescente = { nome: campoTexto(dados, "nome"), nascimento: campoTexto(dados, "nascimento") };
-  const erro = erroNoAdolescente(adolescente, new Date());
+  const informado = { nome: campoTexto(dados, "nome"), nascimento: campoTexto(dados, "nascimento"), genero: campoTexto(dados, "genero") };
+  const erro = erroNoAdolescente(informado, new Date(), id === null);
   if (erro) return { erro };
+  const genero = lerGenero(informado.genero);
+  const adolescente = { nome: informado.nome, nascimento: informado.nascimento, ...(genero && { genero }) };
 
   const supabase = await supabaseDoServidor();
   const { data, error } = id

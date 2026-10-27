@@ -362,6 +362,10 @@ export const ACOES: Record<string, Definicao> = {
   "adolescente.editado": { nome: "Adolescente editado", visual: "edicao", feito: (log) => ["editou o cadastro de ", objeto(log)], tentativa: "editar o cadastro de" },
   "adolescente.inativado": { nome: "Adolescente inativado", visual: "exclusao", feito: (log) => ["inativou o Adolescente ", objeto(log)], tentativa: "inativar o Adolescente" },
   "adolescente.reativado": { nome: "Adolescente reativado", visual: "aprovacao", feito: (log) => ["reativou o Adolescente ", objeto(log)], tentativa: "reativar o Adolescente" },
+  // Observações: o objeto é o Adolescente e o texto nunca entra no log, nem aqui.
+  "observacao.adicionada": { nome: "Observação adicionada", visual: "criacao", feito: (log) => ["adicionou uma observação sobre ", objeto(log)], tentativa: "adicionar uma observação sobre" },
+  "observacao.editada": { nome: "Observação editada", visual: "edicao", feito: (log) => ["editou uma observação sobre ", objeto(log)], tentativa: "editar uma observação sobre" },
+  "observacao.apagada": { nome: "Observação apagada", visual: "exclusao", feito: (log) => ["apagou uma observação sobre ", objeto(log)], tentativa: "apagar uma observação sobre" },
 
   // Presença
   "presenca.chamada_registrada": {

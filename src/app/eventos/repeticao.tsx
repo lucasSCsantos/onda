@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Campo, Radio, Selecao } from "@/components/formulario";
+import { Campo, CampoDeData, Radio, Selecao } from "@/components/formulario";
 import { MAXIMO_DE_MESES, MAXIMO_DE_OCORRENCIAS } from "@/dominio/series";
 
 /** A repetição de um Evento novo: com ela, o Evento vira uma Série. `valor` devolve o que foi digitado, depois de um erro. */
@@ -60,12 +60,11 @@ export function Repeticao({ valor }: { valor: (nome: string) => string }) {
                   onChange={() => setTerminoPor("data")}
                 />
               </div>
-              <Campo
+              <CampoDeData
                 rotulo="Ou até a data (inclusive)"
                 name="termino_data"
-                type="date"
                 defaultValue={valor("termino_data")}
-                onFocus={() => setTerminoPor("data")}
+                aoFocar={() => setTerminoPor("data")}
               />
             </div>
           </fieldset>

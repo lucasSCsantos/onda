@@ -56,6 +56,15 @@ describe("fraseDoLog", () => {
     );
   });
 
+  it("a Observação diz quem fez o quê sobre qual Adolescente, e nunca mostra o texto", () => {
+    const obs = (acao: string) => log({ acao, modulo: "adolescentes", objetoTipo: "adolescente", objetoId: "a1", objetoRotulo: "Ana", detalhes: {} });
+    expect(frase(obs("observacao.adicionada"))).toBe("Carol Leal adicionou uma observação sobre Ana");
+    expect(frase(obs("observacao.editada"))).toBe("Carol Leal editou uma observação sobre Ana");
+    expect(frase(obs("observacao.apagada"))).toBe("Carol Leal apagou uma observação sobre Ana");
+    expect(detalhesDoLog(obs("observacao.editada"))).toEqual([]);
+    expect(linkDoObjeto(obs("observacao.adicionada"))).toBe("/adolescentes/a1");
+  });
+
   it("a aprovação diz o nível e a Função", () => {
     const aprovacao = log({
       usuarioNome: "Lucas",
