@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, Campo, Mensagens } from "@/components/formulario";
+import { BotaoEnviar, Campo, CampoDeData, Mensagens } from "@/components/formulario";
 import type { Adolescente } from "@/dominio/adolescentes";
 import { salvarAdolescente } from "@/lib/adolescentes/acoes";
 
@@ -11,7 +11,7 @@ export function FormularioAdolescente({ adolescente }: { adolescente?: Adolescen
   return (
     <form action={acao} className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
       <Campo rotulo="Nome" name="nome" defaultValue={adolescente?.nome} required />
-      <Campo rotulo="Data de nascimento" name="nascimento" type="date" defaultValue={adolescente?.nascimento} required />
+      <CampoDeData rotulo="Data de nascimento" name="nascimento" defaultValue={adolescente?.nascimento} required />
       <BotaoEnviar pendente="Salvando…">{adolescente ? "Salvar" : "Cadastrar"}</BotaoEnviar>
       <div className="sm:col-span-3">
         <Mensagens estado={estado} />

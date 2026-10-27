@@ -5,6 +5,7 @@ import { useEffect, useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import type { Opcao } from "@/dominio/opcoes";
 
+export { CampoDeData, CampoDeDataEHora, CampoDeHora, CampoDeIntervalo } from "./data-e-hora";
 export { Selecao, SelecaoMultipla } from "./selecao";
 
 export type EstadoFormulario = { erro?: string; aviso?: string };

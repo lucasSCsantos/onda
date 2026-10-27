@@ -5,10 +5,7 @@ import { useId, useRef, useState } from "react";
 import { NOMES_DOS_STATUS, STATUS, type Status } from "@/dominio/eventos";
 import { contarFiltrosAvancados, type Filtros } from "@/dominio/filtros";
 import { useAplicarFiltros } from "./aplicar-filtros";
-import { Selecao, SelecaoMultipla } from "./formulario";
-
-const campo =
-  "min-h-11 rounded-lg border border-borda bg-superficie px-3 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30";
+import { CampoDeData, Selecao, SelecaoMultipla } from "./formulario";
 
 /**
  * Os filtros de Eventos que não são atalhos: Área e Categoria expostos, e o resto num painel "Filtros avançados" que
@@ -82,15 +79,7 @@ export function FiltrosDeEventos({ filtros, categorias }: { filtros: Filtros; ca
         className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Dia
-            <input
-              type="date"
-              className={campo}
-              value={filtros.dia ?? ""}
-              onChange={(e) => aplicar({ ...filtros, dia: e.target.value || null })}
-            />
-          </label>
+          <CampoDeData rotulo="Dia" value={filtros.dia ?? ""} onChange={(dia) => aplicar({ ...filtros, dia: dia || null })} />
           <Selecao
             rotulo="Status"
             vazia="Todos"

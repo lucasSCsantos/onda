@@ -145,3 +145,14 @@ Em "Minha conta", cada pessoa liga e desliga só os tipos que o nível dela pode
 Sem `SUPABASE_SERVICE_ROLE_KEY` ou chaves VAPID (e fora do modo de teste), a rota responde 503 e a fila espera; a central funciona do mesmo jeito.
 
 Para reverter, veja o fim de `supabase/migrations/20261023140000_notificacoes.sql` e de `supabase/migrations/20261023150000_push_demais_tipos.sql`.
+
+## Componentes de formulário
+
+Os controles de formulário são próprios, sem dependência nova, e ficam em `src/components/` (`formulario.tsx` reexporta todos):
+
+- `Selecao`, `SelecaoMultipla` (chips), `CaixaDeMarcar`, `Radio`, `GrupoDeRadio` e `RadioDeIcone` substituem `select`, checkbox e radio nativos;
+- `CampoDeData` (campo digitável `dd/mm/aaaa` com calendário), `CampoDeIntervalo` (início e fim num calendário), `CampoDeHora` (digitável, lista em passos de 15 ou 5 minutos e "Sem horário") e `CampoDeDataEHora` substituem `date`, `time` e `datetime-local`.
+
+Todos enviam o valor num campo com o mesmo `name` de antes (data como `AAAA-MM-DD`, hora como `HH:MM` ou vazio, data e hora como `AAAA-MM-DDTHH:MM`), então `<form action>`, Server Actions e a validação no domínio não mudaram. A lógica sem interface (grade do mês com a semana na segunda-feira, intervalo, leitura e arredondamento de hora) está em `src/dominio/datas-e-horas.ts`, com testes ao lado.
+
+Exceção mantida de propósito: `type="color"` da Cor da Categoria (Admin → Catálogo), que não faz parte da lista de controles a substituir.

@@ -1,7 +1,7 @@
 import { Download, Search, SlidersHorizontal } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Campo, Selecao } from "@/components/formulario";
+import { Campo, CampoDeIntervalo, Selecao } from "@/components/formulario";
 import { LinhaDoTempo } from "@/components/linha-do-tempo";
 import { FUSO } from "@/dominio/fuso";
 import {
@@ -120,10 +120,7 @@ export default async function PaginaDeLogs(props: PageProps<"/admin/logs">) {
           <form className="grid gap-3 border-t border-borda p-4 sm:grid-cols-2">
             <Escondidos filtros={filtros} fora={["periodo", "de", "ate", "usuario", "acao", "modulo", "resultado", "severidade"]} />
             <Selecao rotulo="Período" name="periodo" defaultValue={filtros.periodo} opcoes={PERIODOS.map((p) => ({ valor: p, texto: NOMES_DOS_PERIODOS[p] }))} />
-            <div className="grid grid-cols-2 gap-3">
-              <Campo rotulo="De" name="de" type="date" defaultValue={filtros.de} />
-              <Campo rotulo="Até" name="ate" type="date" defaultValue={filtros.ate} />
-            </div>
+            <CampoDeIntervalo rotulo="Datas do período" nomeDoInicio="de" nomeDoFim="ate" defaultInicio={filtros.de} defaultFim={filtros.ate} />
             <Selecao
               rotulo="Quem fez"
               name="usuario"

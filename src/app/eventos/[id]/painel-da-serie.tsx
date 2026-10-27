@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, Campo, Mensagens, type EstadoFormulario } from "@/components/formulario";
+import { BotaoEnviar, CampoDeData, Mensagens, type EstadoFormulario } from "@/components/formulario";
 import { cancelarAsFuturas, encerrarASerie, excluirASerie } from "@/lib/series/acoes";
 
 /**
@@ -38,7 +38,7 @@ function Encerrar({ eventoId }: { eventoId: string }) {
       <summary className="cursor-pointer text-sm font-semibold text-marca">Encerrar a Série</summary>
       <form action={acao} className="mt-2 flex flex-col gap-2">
         <p className="text-sm text-texto-suave">As Ocorrências depois do último dia, que ainda estão abertas, viram Canceladas.</p>
-        <Campo rotulo="Último dia da Série" name="ate" type="date" required />
+        <CampoDeData rotulo="Último dia da Série" name="ate" required />
         <BotaoEnviar pendente="Encerrando…">Encerrar</BotaoEnviar>
         <Mensagens estado={estado} />
       </form>

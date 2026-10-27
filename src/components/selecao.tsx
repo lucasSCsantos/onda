@@ -20,7 +20,7 @@ type Comum = {
 };
 
 /** O painel de opções: busca (com mais de 8 opções), lista com teclado completo e, no celular, painel inferior. */
-function Painel({
+export function Painel({
   opcoes,
   multipla,
   selecionados,
@@ -29,7 +29,10 @@ function Painel({
   rotulo,
   carregando,
   idDaLista,
+  inicial,
 }: {
+  /** O valor em que o item ativo começa, quando não é o primeiro escolhido (a hora digitada, por exemplo). */
+  inicial?: string;
   opcoes: Opcao[];
   multipla: boolean;
   selecionados: string[];
@@ -42,7 +45,7 @@ function Painel({
   const [busca, setBusca] = useState("");
   const comBusca = temBusca(opcoes.length);
   const visiveis = filtrarOpcoes(opcoes, busca);
-  const [ativo, setAtivo] = useState(() => Math.max(0, indiceDoValor(opcoes, selecionados[0] ?? "")));
+  const [ativo, setAtivo] = useState(() => Math.max(0, indiceDoValor(opcoes, inicial ?? selecionados[0] ?? "")));
   const lista = useRef<HTMLUListElement>(null);
   const campoDeBusca = useRef<HTMLInputElement>(null);
   const digitado = useRef({ texto: "", ate: 0 });
@@ -156,7 +159,7 @@ function Painel({
 }
 
 /** Fecha o painel ao tocar fora dele. */
-function useFecharAoTocarFora(aberto: boolean, raiz: React.RefObject<HTMLElement | null>, fechar: () => void) {
+export function useFecharAoTocarFora(aberto: boolean, raiz: React.RefObject<HTMLElement | null>, fechar: () => void) {
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: PointerEvent) => {
@@ -167,7 +170,7 @@ function useFecharAoTocarFora(aberto: boolean, raiz: React.RefObject<HTMLElement
   }, [aberto, raiz, fechar]);
 }
 
-function Erro({ id, erro }: { id: string; erro?: string }) {
+export function Erro({ id, erro }: { id: string; erro?: string }) {
   if (!erro) return null;
   return (
     <p id={id} role="alert" className="text-sm font-normal text-erro">
