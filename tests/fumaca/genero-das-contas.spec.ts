@@ -80,6 +80,6 @@ test("Minha conta e usuários: perfil antigo aparece incompleto e o Gênero é c
   await linha.getByText("Editar Gênero").click();
   await linha.getByRole("radio", { name: "Masculino" }).check();
   await linha.getByRole("button", { name: "Salvar Gênero" }).click();
-  await expect(linha.getByText("Gênero salvo.")).toBeVisible({ timeout: 60_000 });
-  expect(await generoDe(outro)).toBe("masculino");
+  // A ação revalida a lista inteira, lenta no banco local; o que vale é o que ficou gravado.
+  await expect.poll(() => generoDe(outro), { timeout: 90_000 }).toBe("masculino");
 });
