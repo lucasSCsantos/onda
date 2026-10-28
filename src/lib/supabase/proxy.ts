@@ -4,9 +4,9 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./ambiente";
 
 /**
  * Rotas abertas a quem não entrou. O feed do calendário se autentica pelo token do endereço, e as do agendador pelo
- * segredo (Authorization: Bearer); nenhuma usa a sessão.
+ * segredo (Authorization: Bearer); nenhuma usa a sessão. A /sobre é a página de apresentação, sem dado algum.
  */
-const ROTAS_PUBLICAS = ["/entrar", "/cadastro", "/recuperar-senha", "/auth/confirmar", "/feed", "/api/agendador"];
+const ROTAS_PUBLICAS = ["/entrar", "/cadastro", "/recuperar-senha", "/auth/confirmar", "/feed", "/api/agendador", "/sobre"];
 
 /** Renova a sessão nos cookies e manda quem não entrou para a tela de entrada. */
 export async function atualizarSessao(request: NextRequest) {

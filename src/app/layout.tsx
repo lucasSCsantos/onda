@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { AvisoOffline } from "@/components/aviso-offline";
+import { EscondeNaApresentacao } from "@/components/esconde-na-apresentacao";
 import { Rodape } from "@/components/rodape";
 import { SCRIPT_TEMA } from "@/components/tema";
 import "./globals.css";
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col font-sans">
         <AvisoOffline />
         <div className="flex flex-1 flex-col">{children}</div>
-        <Rodape />
+        <EscondeNaApresentacao>
+          <Rodape />
+        </EscondeNaApresentacao>
       </body>
     </html>
   );
