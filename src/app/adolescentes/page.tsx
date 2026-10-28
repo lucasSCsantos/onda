@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Cabecalho } from "@/components/cabecalho";
-import { Campo, Selecao } from "@/components/formulario";
+import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incompleto";
+import { CaixaDeMarcar, Campo, Selecao } from "@/components/formulario";
 import { podeGerenciarContas } from "@/dominio/acesso";
-import { listarAdolescentes, prazoDoAniversario, proximoAniversario, type Adolescente } from "@/dominio/adolescentes";
+import { lerFiltroDeGenero, listarAdolescentes, prazoDoAniversario, proximoAniversario, type Adolescente } from "@/dominio/adolescentes";
+import { cadastroIncompleto, NOMES_DOS_GENEROS } from "@/dominio/genero";
 import { FUSO } from "@/dominio/fuso";
 import { definirAtivo } from "@/lib/adolescentes/acoes";
 import { exigirLideranca } from "@/lib/contas/perfil";
@@ -24,21 +26,27 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
   const busca = parametroTexto(parametros.q);
   const ordem = parametroTexto(parametros.ordem) === "nome" ? "nome" : "aniversario";
   const comInativos = parametroTexto(parametros.inativos) === "1";
+  const genero = lerFiltroDeGenero(parametroTexto(parametros.genero));
   const agora = new Date();
 
   const supabase = await supabaseDoServidor();
   const { data } = await supabase
     .from("adolescentes")
-    .select("id, nome, nascimento, ativo")
+    .select("id, nome, nascimento, ativo, genero")
     .order("nome")
     .overrideTypes<Adolescente[], { merge: false }>();
-  const { adolescentes: lista, inativos: quantosInativos } = listarAdolescentes(data ?? [], { busca, ordem, comInativos }, agora);
+  const { adolescentes: lista, inativos: quantosInativos, totais } = listarAdolescentes(data ?? [], { busca, ordem, comInativos, genero }, agora);
 
   return (
     <>
       <Cabecalho admin={podeGerenciarContas(eu)} lideranca />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <h1 className="text-2xl font-semibold">Adolescentes</h1>
+
+        <p className="text-sm text-texto-suave" data-testid="totais-por-genero">
+          Ativos: {totais.masculino} {NOMES_DOS_GENEROS.masculino.toLowerCase()}s · {totais.feminino} {NOMES_DOS_GENEROS.feminino.toLowerCase()}s ·{" "}
+          {totais.naoInformado} sem gênero informado
+        </p>
 
         <form className="flex flex-wrap items-end gap-3" role="search">
           <div className="min-w-48 flex-1">
@@ -53,10 +61,18 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
               { valor: "nome", texto: "Nome" },
             ]}
           />
-          <label className="flex items-center gap-2 pb-3 text-sm">
-            <input type="checkbox" name="inativos" value="1" defaultChecked={comInativos} className="size-4 accent-marca" />
-            Mostrar inativos{quantosInativos ? ` (${quantosInativos})` : ""}
-          </label>
+          <Selecao
+            rotulo="Gênero"
+            name="genero"
+            vazia="Todos"
+            defaultValue={genero ?? ""}
+            opcoes={[
+              { valor: "masculino", texto: NOMES_DOS_GENEROS.masculino },
+              { valor: "feminino", texto: NOMES_DOS_GENEROS.feminino },
+              { valor: "sem", texto: "Sem gênero informado" },
+            ]}
+          />
+          <CaixaDeMarcar rotulo={`Mostrar inativos${quantosInativos ? ` (${quantosInativos})` : ""}`} name="inativos" value="1" defaultChecked={comInativos} />
           <button type="submit" className="botao-primario">
             Aplicar
           </button>
@@ -77,6 +93,11 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
                           {a.nome}
                         </Link>
                         {!a.ativo && <span className="ml-2 text-sm font-normal text-texto-suave">(inativo)</span>}
+                        {cadastroIncompleto(a.genero) && (
+                          <span className="ml-2">
+                            <SeloDeCadastroIncompleto />
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-texto-suave">
                         Faz {proximo.idade} anos em {diaEMes(proximo.data)} · {prazoDoAniversario(proximo.dias)}
@@ -88,12 +109,9 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
                       </button>
                     </form>
                   </div>
-                  <details>
-                    <summary className="cursor-pointer text-sm text-texto-suave">Editar</summary>
-                    <div className="pt-3">
-                      <FormularioAdolescente adolescente={a} />
-                    </div>
-                  </details>
+                  <Link href={`/adolescentes/${a.id}`} className="w-fit text-sm text-texto-suave underline hover:text-texto">
+                    Editar adolescente
+                  </Link>
                 </li>
               );
             })}

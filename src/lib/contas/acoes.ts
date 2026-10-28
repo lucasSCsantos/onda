@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EstadoFormulario } from "@/components/formulario";
 import { erroNaConcessao, NIVEIS_CONCEDIVEIS } from "@/dominio/acesso";
-import { dataDeNascimentoValida } from "@/dominio/cadastro";
+import { dataDeNascimentoValida, erroNosDadosPessoais } from "@/dominio/cadastro";
 import { VALIDADE_PADRAO_DIAS, vencimentoDoConvite } from "@/dominio/convites";
+import { erroNoGenero } from "@/dominio/genero";
 import { erroDeSenha } from "@/lib/auth/senha";
 import { campoTexto } from "@/lib/campos";
 import { registrarFalha } from "@/lib/logs/registrar";
@@ -31,10 +32,13 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
   const senha = String(dados.get("senha") ?? "");
   const dataNascimento = campoTexto(dados, "data_nascimento");
   const convite = campoTexto(dados, "convite");
+  const genero = campoTexto(dados, "genero");
 
   if (!nome) return { erro: "Informe seu nome." };
   if (!email) return { erro: "Informe seu e-mail." };
   if (!dataDeNascimentoValida(dataNascimento, new Date())) return { erro: "Informe uma data de nascimento válida." };
+  const erroNoCampo = erroNoGenero(genero);
+  if (erroNoCampo) return { erro: erroNoCampo };
   const erroNaSenha = erroDeSenha(senha);
   if (erroNaSenha) return { erro: erroNaSenha };
 
@@ -43,7 +47,7 @@ export async function cadastrar(_: EstadoFormulario, dados: FormData): Promise<E
     email,
     password: senha,
     options: {
-      data: { nome, data_nascimento: dataNascimento, ...(convite ? { convite } : {}) },
+      data: { nome, data_nascimento: dataNascimento, genero, ...(convite ? { convite } : {}) },
       emailRedirectTo: `${await origemDoApp()}/auth/confirmar`,
     },
   });
@@ -129,4 +133,25 @@ export async function promoverAAdmin(pessoa: string) {
   const { error } = await supabase.rpc("promover_a_admin", { pessoa });
   if (error) registrarFalha(supabase, "conta.nivel_alterado", { tipo: "conta", id: pessoa }, error);
   revalidatePath("/admin/usuarios");
+}
+
+/** Minha conta: a própria pessoa edita nome, data de nascimento e Gênero (a função do banco só alcança quem está logado). */
+export async function editarMeusDados(_: EstadoFormulario, dados: FormData): Promise<EstadoFormulario> {
+  const informado = { nome: campoTexto(dados, "nome"), nascimento: campoTexto(dados, "nascimento"), genero: campoTexto(dados, "genero") };
+  const erro = erroNosDadosPessoais(informado, new Date());
+  if (erro) return { erro };
+
+  const supabase = await supabaseDoServidor();
+  const { error } = await supabase.rpc("editar_meus_dados", {
+    novo_nome: informado.nome,
+    novo_nascimento: informado.nascimento,
+    novo_genero: informado.genero,
+  });
+  if (error) {
+    registrarFalha(supabase, "conta.editada", { tipo: "conta" }, error);
+    return { erro: "Não foi possível salvar os dados." };
+  }
+
+  revalidatePath("/conta");
+  return { aviso: "Dados salvos." };
 }

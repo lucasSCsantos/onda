@@ -1,10 +1,12 @@
 import { dataDeNascimentoValida } from "./cadastro";
 import { dataLocal } from "./fuso";
+import { erroNoGenero, lerGenero, type Genero } from "./genero";
 
 /** O que se preenche para cadastrar um Adolescente. */
 export type DadosDoAdolescente = { nome: string; nascimento: string };
 
-export type Adolescente = DadosDoAdolescente & { id: string; ativo: boolean };
+/** `genero` nulo é "não informado": registros antigos, de antes do Gênero existir. */
+export type Adolescente = DadosDoAdolescente & { id: string; ativo: boolean; genero: Genero | null };
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
@@ -12,10 +14,18 @@ const ehBissexto = (ano: number) => (ano % 4 === 0 && ano % 100 !== 0) || ano % 
 /** Um dia civil como instante UTC: só para contar dias, sem fuso no meio. */
 const diaCivil = (ano: number, mes: number, dia: number) => Date.UTC(ano, mes - 1, dia);
 
-/** O que impede salvar um Adolescente; `null` se nada impede. */
-export function erroNoAdolescente({ nome, nascimento }: DadosDoAdolescente, agora: Date): string | null {
+/**
+ * O que impede salvar um Adolescente; `null` se nada impede. O Gênero é obrigatório só em cadastro novo: ao editar
+ * um registro antigo pode ficar em branco, mas, se vier, tem de ser válido.
+ */
+export function erroNoAdolescente(
+  { nome, nascimento, genero }: DadosDoAdolescente & { genero?: unknown },
+  agora: Date,
+  novo = false,
+): string | null {
   if (!nome.trim()) return "Informe o nome.";
   if (!dataDeNascimentoValida(nascimento, agora)) return "Informe uma data de nascimento válida, que não seja futura.";
+  if (novo || (genero !== undefined && genero !== "")) return erroNoGenero(genero);
   return null;
 }
 
@@ -72,19 +82,34 @@ export function prazoDoAniversario(dias: number): string {
   return dias === 1 ? "amanhã" : `em ${dias} dias`;
 }
 
-export type FiltroDeAdolescentes = { busca: string; ordem: "aniversario" | "nome"; comInativos: boolean };
+/** "sem" é "sem gênero informado"; `null`, sem filtro. */
+export type FiltroDeGenero = Genero | "sem" | null;
+
+export const lerFiltroDeGenero = (valor: unknown): FiltroDeGenero => (valor === "sem" ? "sem" : lerGenero(valor));
+
+export type TotaisPorGenero = Record<Genero | "naoInformado", number>;
+
+/** Quantos Adolescentes ativos há de cada Gênero (e sem informação). */
+export function totaisPorGenero(todos: Adolescente[]): TotaisPorGenero {
+  const totais: TotaisPorGenero = { masculino: 0, feminino: 0, naoInformado: 0 };
+  for (const a of todos) if (a.ativo) totais[a.genero ?? "naoInformado"] += 1;
+  return totais;
+}
+
+export type FiltroDeAdolescentes = { busca: string; ordem: "aniversario" | "nome"; comInativos: boolean; genero: FiltroDeGenero };
 
 /**
- * A lista que a tela mostra: inativos só se pedidos, depois a busca, na ordem escolhida. Devolve também quantos
- * inativos há no cadastro.
+ * A lista que a tela mostra: inativos só se pedidos, depois o Gênero e a busca, na ordem escolhida. Devolve também
+ * quantos inativos há no cadastro e os totais por Gênero, que contam todos os ativos, qualquer que seja o filtro.
  */
 export function listarAdolescentes(
   todos: Adolescente[],
-  { busca, ordem, comInativos }: FiltroDeAdolescentes,
+  { busca, ordem, comInativos, genero }: FiltroDeAdolescentes,
   agora: Date,
-): { adolescentes: Adolescente[]; inativos: number } {
+): { adolescentes: Adolescente[]; inativos: number; totais: TotaisPorGenero } {
+  const doGenero = (a: Adolescente) => genero === null || (genero === "sem" ? a.genero === null : a.genero === genero);
   const encontrados = buscarPorNome(
-    todos.filter((a) => a.ativo || comInativos),
+    todos.filter((a) => (a.ativo || comInativos) && doGenero(a)),
     busca,
   );
   return {
@@ -93,5 +118,6 @@ export function listarAdolescentes(
         ? [...encontrados].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
         : ordenarPorProximoAniversario(encontrados, agora),
     inativos: todos.filter((a) => !a.ativo).length,
+    totais: totaisPorGenero(todos),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { BotaoEnviar, Campo, CampoDeTextoLongo, Mensagens, Selecao, type Opcao } from "@/components/formulario";
+import { BotaoEnviar, Campo, CampoDeData, CampoDeDataEHora, CampoDeHora, CampoDeTextoLongo, GrupoDeRadio, Mensagens, Selecao, type Opcao } from "@/components/formulario";
 import { nativosDe } from "@/dominio/campos-nativos";
 import type { CampoCadastrado } from "@/dominio/catalogo";
 import { camposDaCriacao, NOMES_DOS_STATUS, type Status } from "@/dominio/eventos";
@@ -61,12 +61,12 @@ export function FormularioEvento({
             ? "Sem hora, o Evento é de dia inteiro."
             : `Sem hora, o Evento é de dia inteiro. O fim é ${exige("fim") ? "obrigatório" : "opcional"}.`}
         </legend>
-        <Campo rotulo={rotuloDaData} name="data" type="date" defaultValue={valor("data")} required />
-        <Campo rotulo="Hora" name="hora" type="time" defaultValue={valor("hora")} />
+        <CampoDeData rotulo={rotuloDaData} name="data" defaultValue={valor("data")} required />
+        <CampoDeHora rotulo="Hora" name="hora" defaultValue={valor("hora")} />
         {nativos.fim !== "oculto" && (
           <>
-            <Campo rotulo="Fim (data)" name="data_fim" type="date" defaultValue={valor("data_fim")} />
-            <Campo rotulo="Fim (hora)" name="hora_fim" type="time" defaultValue={valor("hora_fim")} />
+            <CampoDeData rotulo="Fim (data)" name="data_fim" defaultValue={valor("data_fim")} />
+            <CampoDeHora rotulo="Fim (hora)" name="hora_fim" defaultValue={valor("hora_fim")} />
           </>
         )}
       </fieldset>
@@ -117,21 +117,20 @@ export function FormularioEvento({
 function EscopoDaEdicao({ escopos, valor }: { escopos: EscopoDeEdicao[]; valor: string }) {
   const escolhido = escopos.find((e) => e === valor) ?? "esta";
   return (
-    <fieldset className="flex flex-col gap-2 rounded-lg border border-borda p-3">
-      <legend className="px-1 text-sm font-medium">Este Evento é uma Ocorrência de uma Série. Alterar</legend>
-      {escopos.map((escopo) => (
-        <label key={escopo} className="flex items-center gap-2 text-sm">
-          <input type="radio" name="escopo" value={escopo} defaultChecked={escopo === escolhido} className="size-4 accent-marca" />
-          {NOMES_DOS_ESCOPOS[escopo]}
-        </label>
-      ))}
+    <div className="flex flex-col gap-2 rounded-lg border border-borda p-3">
+      <GrupoDeRadio
+        legenda="Este Evento é uma Ocorrência de uma Série. Alterar"
+        name="escopo"
+        defaultValue={escolhido}
+        opcoes={escopos.map((escopo) => ({ valor: escopo, texto: NOMES_DOS_ESCOPOS[escopo] }))}
+      />
       {escopos.length > 1 && (
         <p className="text-sm text-texto-suave">
           Para as seguintes ou toda a série, valem o horário e os campos que você mudou, não a data nem o Status. Ocorrências editadas à
           parte, Realizadas e Canceladas não são tocadas.
         </p>
       )}
-    </fieldset>
+    </div>
   );
 }
 
@@ -157,9 +156,9 @@ function CampoEspecifico({
     case "valor":
       return <Campo rotulo={`${rotulo}, em reais`} inputMode="decimal" placeholder="35,00" {...comum} />;
     case "data":
-      return <Campo rotulo={rotulo} type="date" {...comum} />;
+      return <CampoDeData rotulo={rotulo} {...comum} />;
     case "data_hora":
-      return <Campo rotulo={rotulo} type="datetime-local" {...comum} />;
+      return <CampoDeDataEHora rotulo={rotulo} {...comum} />;
     case "escolha":
       return (
         <Selecao rotulo={rotulo} opcoes={campo.opcoes.map((o) => ({ valor: o, texto: o }))} vazia="Escolha" {...comum} />

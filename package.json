@@ -12,7 +12,8 @@
     "test:dominio": "vitest run --project dominio",
     "test:rls": "vitest run --project rls",
     "test:fumaca": "playwright test",
-    "gerar:marcas": "node scripts/gerar-marcas.mjs"
+    "gerar:marcas": "node scripts/gerar-marcas.mjs",
+    "gerar:capturas": "playwright test -c playwright.capturas.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

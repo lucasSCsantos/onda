@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incompleto";
 import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
 import { temFuncoes } from "@/dominio/catalogo";
+import { cadastroIncompleto, lerGenero } from "@/dominio/genero";
 import { mudarAtivo, promoverAAdmin, recusarPendente } from "@/lib/contas/acoes";
 import { OPCOES_DE_NIVEL, opcoesDeFuncao } from "@/lib/contas/consultas";
 import { exigirAdmin } from "@/lib/contas/perfil";
@@ -15,6 +17,7 @@ type Usuario = {
   nome: string;
   email: string;
   data_nascimento: string | null;
+  genero: string | null;
   nivel: NivelDeAcesso;
   ativo: boolean;
   criado_em: string;
@@ -31,7 +34,7 @@ export default async function PaginaUsuarios() {
   const [{ data }, funcoes] = await Promise.all([
     supabase
       .from("perfis")
-      .select("id, nome, email, data_nascimento, nivel, ativo, criado_em, funcoes_das_pessoas(funcao_id, funcoes(nome))")
+      .select("id, nome, email, data_nascimento, genero, nivel, ativo, criado_em, funcoes_das_pessoas(funcao_id, funcoes(nome))")
       .order("nome")
       .overrideTypes<Usuario[], { merge: false }>(),
     opcoesDeFuncao(supabase),
@@ -74,7 +77,8 @@ export default async function PaginaUsuarios() {
               <li key={u.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-semibold">
-                    {u.nome || "(sem nome)"} <span className="text-sm font-normal text-texto-suave">· {NOMES_DOS_NIVEIS[u.nivel]}</span>
+                    {u.nome || "(sem nome)"} <span className="text-sm font-normal text-texto-suave">· {NOMES_DOS_NIVEIS[u.nivel]}</span>{" "}
+                    {cadastroIncompleto(lerGenero(u.genero)) && <SeloDeCadastroIncompleto />}
                   </p>
                   <p className="text-sm text-texto-suave">
                     {u.funcoes_das_pessoas.map((f) => f.funcoes?.nome).filter(Boolean).join(", ") || "Sem Função"}

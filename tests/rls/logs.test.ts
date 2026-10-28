@@ -197,7 +197,7 @@ describe("logs de Séries", () => {
 describe("logs de Adolescentes", () => {
   it("cadastrar, editar, inativar e reativar; da data de nascimento fica só que mudou", async () => {
     const lider = await comFuncoes("Carol", "lider", ["Líder do louvor"]);
-    const { data } = await lider.cliente.from("adolescentes").insert({ nome: "Bia", nascimento: "2010-05-10" }).select("id").single().throwOnError();
+    const { data } = await lider.cliente.from("adolescentes").insert({ nome: "Bia", nascimento: "2010-05-10", genero: "feminino" }).select("id").single().throwOnError();
     await lider.cliente.from("adolescentes").update({ nome: "Beatriz", nascimento: "2010-06-11" }).eq("id", data.id).throwOnError();
     await lider.cliente.from("adolescentes").update({ ativo: false }).eq("id", data.id).throwOnError();
     await lider.cliente.from("adolescentes").update({ ativo: true }).eq("id", data.id).throwOnError();
@@ -455,7 +455,7 @@ describe("dados proibidos", () => {
     await anonimo().auth.signInWithPassword({ email: novo.email, password: "senha-digitada-errada" });
     await anonimo().rpc("registrar_log", { acao: "acesso.login_falhou", resultado: "falha", email: novo.email }).throwOnError();
     await anonimo().rpc("registrar_log", { acao: "acesso.senha_pedida", email: novo.email }).throwOnError();
-    const { data: adolescente } = await lucas.cliente.from("adolescentes").insert({ nome: "Lia", nascimento: "2011-03-04" }).select("id").single().throwOnError();
+    const { data: adolescente } = await lucas.cliente.from("adolescentes").insert({ nome: "Lia", nascimento: "2011-03-04", genero: "feminino" }).select("id").single().throwOnError();
     await lucas.cliente.from("adolescentes").update({ nascimento: "2011-04-03" }).eq("id", adolescente.id).throwOnError();
 
     const { data } = await admin.from("logs").select("*").gte("feito_em", inicio).throwOnError();

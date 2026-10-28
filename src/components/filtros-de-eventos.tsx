@@ -5,9 +5,7 @@ import { useId, useRef, useState } from "react";
 import { NOMES_DOS_STATUS, STATUS, type Status } from "@/dominio/eventos";
 import { contarFiltrosAvancados, type Filtros } from "@/dominio/filtros";
 import { useAplicarFiltros } from "./aplicar-filtros";
-
-const campo =
-  "min-h-11 rounded-lg border border-borda bg-superficie px-3 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30";
+import { CampoDeData, Selecao, SelecaoMultipla } from "./formulario";
 
 /**
  * Os filtros de Eventos que não são atalhos: Área e Categoria expostos, e o resto num painel "Filtros avançados" que
@@ -25,33 +23,27 @@ export function FiltrosDeEventos({ filtros, categorias }: { filtros: Filtros; ca
   return (
     <div aria-busy={pendente} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-36 flex-1 flex-col gap-1 text-sm font-medium">
-          Área
-          <select className={campo} value={filtros.area ?? ""} onChange={(e) => aplicar({ ...filtros, area: e.target.value || null })}>
-            <option value="">Todas</option>
-            {areas.map((area) => (
-              <option key={area} value={area}>
-                {area}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-36 flex-1 flex-col gap-1 text-sm font-medium">
-          Categoria
-          <select
-            className={campo}
+        <div className="min-w-36 flex-1">
+          <Selecao
+            rotulo="Área"
+            vazia="Todas"
+            value={filtros.area ?? ""}
+            opcoes={areas.map((area) => ({ valor: area, texto: area }))}
+            onChange={(valor) => aplicar({ ...filtros, area: valor || null })}
+          />
+        </div>
+        <div className="min-w-36 flex-1">
+          <Selecao
+            rotulo="Categoria"
+            vazia="Todas"
             value={varias ? "varias" : (filtros.categorias[0] ?? "")}
-            onChange={(e) => aplicar({ ...filtros, categorias: e.target.value ? [e.target.value] : [] })}
-          >
-            <option value="">Todas</option>
-            {varias && <option value="varias">Várias ({filtros.categorias.length})</option>}
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-        </label>
+            opcoes={[
+              ...(varias ? [{ valor: "varias", texto: `Várias (${filtros.categorias.length})` }] : []),
+              ...categorias.map((c) => ({ valor: c.id, texto: c.nome })),
+            ]}
+            onChange={(valor) => aplicar({ ...filtros, categorias: valor && valor !== "varias" ? [valor] : valor === "varias" ? filtros.categorias : [] })}
+          />
+        </div>
         <button
           ref={botaoDoPainel}
           type="button"
@@ -87,52 +79,22 @@ export function FiltrosDeEventos({ filtros, categorias }: { filtros: Filtros; ca
         className="flex flex-col gap-4 rounded-2xl border border-borda bg-superficie p-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Dia
-            <input
-              type="date"
-              className={campo}
-              value={filtros.dia ?? ""}
-              onChange={(e) => aplicar({ ...filtros, dia: e.target.value || null })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Status
-            <select
-              className={campo}
-              value={filtros.status ?? ""}
-              onChange={(e) => aplicar({ ...filtros, status: (e.target.value || null) as Status | null })}
-            >
-              <option value="">Todos</option>
-              {STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {NOMES_DOS_STATUS[s]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CampoDeData rotulo="Dia" value={filtros.dia ?? ""} onChange={(dia) => aplicar({ ...filtros, dia: dia || null })} />
+          <Selecao
+            rotulo="Status"
+            vazia="Todos"
+            value={filtros.status ?? ""}
+            opcoes={STATUS.map((st) => ({ valor: st, texto: NOMES_DOS_STATUS[st] }))}
+            onChange={(valor) => aplicar({ ...filtros, status: (valor || null) as Status | null })}
+          />
         </div>
-        <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 text-sm font-medium">Categorias</legend>
-          <div className="flex flex-wrap gap-2">
-            {categorias.map((c) => (
-              <label key={c.id} className="toque flex min-h-11 items-center gap-2 rounded-lg border border-borda px-3 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-marca"
-                  checked={filtros.categorias.includes(c.id)}
-                  onChange={(e) =>
-                    aplicar({
-                      ...filtros,
-                      categorias: e.target.checked ? [...filtros.categorias, c.id] : filtros.categorias.filter((id) => id !== c.id),
-                    })
-                  }
-                />
-                {c.nome}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <SelecaoMultipla
+          rotulo="Categorias"
+          vazia="Todas"
+          valores={filtros.categorias}
+          opcoes={categorias.map((c) => ({ valor: c.id, texto: c.nome }))}
+          onChange={(valores) => aplicar({ ...filtros, categorias: valores })}
+        />
       </div>
     </div>
   );

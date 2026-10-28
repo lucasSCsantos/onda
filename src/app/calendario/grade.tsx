@@ -93,7 +93,7 @@ export function GradeDoMes({
   const porDia = eventosPorDia(eventos, semanas.flat().map((d) => d.dia));
   return (
     <div className="overflow-hidden rounded-2xl border border-borda">
-      <div className="grid grid-cols-7 border-b border-borda bg-superficie text-center text-xs font-semibold text-texto-suave">
+      <div className="grid grid-cols-7 border-b border-borda bg-superficie text-center text-xs font-medium uppercase tracking-wide text-texto-suave">
         {DIAS_DA_SEMANA.map((nome) => (
           <div key={nome} className="py-2">
             {nome}
@@ -115,7 +115,7 @@ export function GradeDoMes({
                 <Link
                   href={painelDoDia}
                   scroll={false}
-                  className={`self-end rounded-full px-1.5 text-base after:absolute after:inset-0 md:text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
+                  className={`self-end rounded-lg px-1.5 text-base after:absolute after:inset-0 md:text-xs ${dia === hoje ? "bg-marca font-semibold text-marca-texto" : "text-texto-suave"}`}
                 >
                   {numeroDoDia(dia)}
                   <span className="sr-only">, abrir o dia ({diaPorExtenso(dia)})</span>

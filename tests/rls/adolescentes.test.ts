@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { admin, anonimo, cadastrar, comFuncoes, contaNova, type Cliente } from "./ambiente";
 
-const novo = (nome: string) => ({ nome, nascimento: "2010-05-10" });
+const novo = (nome: string) => ({ nome, nascimento: "2010-05-10", genero: "feminino" });
 
 async function cadastrarComo(cliente: Cliente, nome: string) {
   return cliente.from("adolescentes").insert(novo(nome)).select("id, nome, nascimento, ativo").single();
@@ -70,7 +70,7 @@ describe("Adolescentes: quem escreve", () => {
 
   it("recusa nome em branco e data de nascimento futura", async () => {
     const lider = await contaNova("Líder", "lider");
-    expect((await lider.cliente.from("adolescentes").insert({ nome: "  ", nascimento: "2010-05-10" })).error).not.toBeNull();
-    expect((await lider.cliente.from("adolescentes").insert({ nome: "Futuro", nascimento: "2999-01-01" })).error).not.toBeNull();
+    expect((await lider.cliente.from("adolescentes").insert({ nome: "  ", nascimento: "2010-05-10", genero: "feminino" })).error).not.toBeNull();
+    expect((await lider.cliente.from("adolescentes").insert({ nome: "Futuro", nascimento: "2999-01-01", genero: "feminino" })).error).not.toBeNull();
   });
 });

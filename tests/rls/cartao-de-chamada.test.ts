@@ -21,7 +21,7 @@ async function aula(dias: number, professor: string) {
 }
 
 async function marcarPresenca(evento: string) {
-  const { data: aluno } = await admin.from("adolescentes").insert({ nome: "Ana do Cartão", nascimento: "2011-05-10" }).select("id").single().throwOnError();
+  const { data: aluno } = await admin.from("adolescentes").insert({ nome: "Ana do Cartão", nascimento: "2011-05-10", genero: "feminino" }).select("id").single().throwOnError();
   const { data: marca } = await admin.from("marcacoes").select("id").eq("nome", "Presente").single().throwOnError();
   const { data: quem } = await admin.from("eventos").select("criado_por").eq("id", evento).single().throwOnError();
   const { data: presenca } = await admin

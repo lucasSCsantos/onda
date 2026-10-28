@@ -22,7 +22,7 @@ async function aula(dias = 0, mudancas: Record<string, unknown> = {}, nomeDaCate
 }
 
 async function adolescente(nome = "Ana", ativo = true) {
-  const { data } = await admin.from("adolescentes").insert({ nome, nascimento: "2011-05-10", ativo }).select("id").single().throwOnError();
+  const { data } = await admin.from("adolescentes").insert({ nome, nascimento: "2011-05-10", genero: "feminino", ativo }).select("id").single().throwOnError();
   return data.id as string;
 }
 

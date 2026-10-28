@@ -1,5 +1,5 @@
 import { CAMINHO_DOS_PROFESSORES_NO_ADMIN } from "@/dominio/professores";
-import { Bell, ClipboardCheck, Download, FolderOpen, GraduationCap, LayoutDashboard, ScrollText, Settings, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
+import { Bell, ClipboardCheck, Clock, Download, FolderOpen, GraduationCap, LayoutDashboard, ScrollText, Settings, Tags, Ticket, UserCog, type LucideIcon } from "lucide-react";
 
 export type DestinoDeAdmin = { href: string; rotulo: string; icone: LucideIcon };
 
@@ -9,6 +9,7 @@ export const SECOES_DE_ADMIN: DestinoDeAdmin[] = [
   { href: "/admin/usuarios", rotulo: "Usuários", icone: UserCog },
   { href: "/admin/convites", rotulo: "Convites", icone: Ticket },
   { href: "/admin/catalogo", rotulo: "Catálogo", icone: Tags },
+  { href: "/admin/horarios", rotulo: "Horários padrão", icone: Clock },
   { href: CAMINHO_DOS_PROFESSORES_NO_ADMIN, rotulo: "Professores", icone: GraduationCap },
   { href: "/admin/exportar", rotulo: "Exportar", icone: Download },
   { href: "/admin/arquivos", rotulo: "Arquivos", icone: FolderOpen },

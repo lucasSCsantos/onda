@@ -1,7 +1,7 @@
 import { Download, Search, SlidersHorizontal } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Campo, Selecao } from "@/components/formulario";
+import { Campo, CampoDeIntervalo, Selecao } from "@/components/formulario";
 import { LinhaDoTempo } from "@/components/linha-do-tempo";
 import { FUSO } from "@/dominio/fuso";
 import {
@@ -28,7 +28,6 @@ import { supabaseDoServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Logs" };
 
-const CAMPO = "rounded-lg border border-borda bg-superficie px-3 py-2.5 text-base font-normal outline-none focus:border-marca focus:ring-2 focus:ring-marca/30";
 
 const dataPorExtenso = (instante: Date) => instante.toLocaleDateString("pt-BR", { timeZone: FUSO, day: "numeric", month: "long", year: "numeric" });
 
@@ -121,10 +120,7 @@ export default async function PaginaDeLogs(props: PageProps<"/admin/logs">) {
           <form className="grid gap-3 border-t border-borda p-4 sm:grid-cols-2">
             <Escondidos filtros={filtros} fora={["periodo", "de", "ate", "usuario", "acao", "modulo", "resultado", "severidade"]} />
             <Selecao rotulo="Período" name="periodo" defaultValue={filtros.periodo} opcoes={PERIODOS.map((p) => ({ valor: p, texto: NOMES_DOS_PERIODOS[p] }))} />
-            <div className="grid grid-cols-2 gap-3">
-              <Campo rotulo="De" name="de" type="date" defaultValue={filtros.de} />
-              <Campo rotulo="Até" name="ate" type="date" defaultValue={filtros.ate} />
-            </div>
+            <CampoDeIntervalo rotulo="Datas do período" nomeDoInicio="de" nomeDoFim="ate" defaultInicio={filtros.de} defaultFim={filtros.ate} />
             <Selecao
               rotulo="Quem fez"
               name="usuario"
@@ -139,21 +135,15 @@ export default async function PaginaDeLogs(props: PageProps<"/admin/logs">) {
               vazia="Todos"
               opcoes={MODULOS.map((m) => ({ valor: m, texto: NOMES_DOS_MODULOS[m] }))}
             />
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Tipo de ação
-              <select name="acao" defaultValue={filtros.acao} className={CAMPO}>
-                <option value="">Todos</option>
-                {MODULOS.map((modulo) => (
-                  <optgroup key={modulo} label={NOMES_DOS_MODULOS[modulo]}>
-                    {acoesDoModulo(modulo).map((acao) => (
-                      <option key={acao} value={acao}>
-                        {definicaoDaAcao(acao).nome}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+            <Selecao
+              rotulo="Tipo de ação"
+              name="acao"
+              defaultValue={filtros.acao}
+              vazia="Todos"
+              opcoes={MODULOS.flatMap((modulo) =>
+                acoesDoModulo(modulo).map((acao) => ({ valor: acao, texto: `${NOMES_DOS_MODULOS[modulo]} · ${definicaoDaAcao(acao).nome}` })),
+              )}
+            />
             <div className="grid grid-cols-2 gap-3">
               <Selecao
                 rotulo="Resultado"

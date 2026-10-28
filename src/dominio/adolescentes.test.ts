@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   buscarPorNome,
   erroNoAdolescente,
+  lerFiltroDeGenero,
   listarAdolescentes,
   ordenarPorProximoAniversario,
   prazoDoAniversario,
   proximoAniversario,
+  totaisPorGenero,
   type Adolescente,
+  type FiltroDeGenero,
 } from "./adolescentes";
 
 // quarta-feira, 21/10/2026, 22h em Salvador (já é dia 22 em UTC)
@@ -104,25 +107,83 @@ describe("prazoDoAniversario", () => {
 
 describe("listarAdolescentes", () => {
   const lista: Adolescente[] = [
-    { id: "1", nome: "Bia", nascimento: "2010-03-02", ativo: true },
-    { id: "2", nome: "Caio", nascimento: "2011-10-21", ativo: true },
-    { id: "3", nome: "Ana", nascimento: "2012-12-25", ativo: false },
+    { id: "1", nome: "Bia", nascimento: "2010-03-02", ativo: true, genero: "feminino" },
+    { id: "2", nome: "Caio", nascimento: "2011-10-21", ativo: true, genero: null },
+    { id: "3", nome: "Ana", nascimento: "2012-12-25", ativo: false, genero: "feminino" },
   ];
   const nomes = (l: Adolescente[]) => l.map((a) => a.nome);
 
   it("esconde os inativos, ordena pelo próximo aniversário e conta os inativos", () => {
-    const { adolescentes, inativos } = listarAdolescentes(lista, { busca: "", ordem: "aniversario", comInativos: false }, agora);
+    const { adolescentes, inativos } = listarAdolescentes(lista, { busca: "", ordem: "aniversario", comInativos: false, genero: null }, agora);
     expect(nomes(adolescentes)).toEqual(["Caio", "Bia"]);
     expect(inativos).toBe(1);
   });
 
   it("mostra os inativos quando pedido, e ordena por nome", () => {
-    const { adolescentes } = listarAdolescentes(lista, { busca: "", ordem: "nome", comInativos: true }, agora);
+    const { adolescentes } = listarAdolescentes(lista, { busca: "", ordem: "nome", comInativos: true, genero: null }, agora);
     expect(nomes(adolescentes)).toEqual(["Ana", "Bia", "Caio"]);
   });
 
   it("a busca vale só entre os que aparecem", () => {
-    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: false }, agora).adolescentes)).toEqual([]);
-    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: true }, agora).adolescentes)).toEqual(["Ana"]);
+    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: false, genero: null }, agora).adolescentes)).toEqual([]);
+    expect(nomes(listarAdolescentes(lista, { busca: "ana", ordem: "nome", comInativos: true, genero: null }, agora).adolescentes)).toEqual(["Ana"]);
+  });
+});
+
+describe("listarAdolescentes: Gênero", () => {
+  const todos: Adolescente[] = [
+    { id: "1", nome: "Bia", nascimento: "2010-03-02", ativo: true, genero: "feminino" },
+    { id: "2", nome: "Caio", nascimento: "2011-10-21", ativo: true, genero: null },
+    { id: "3", nome: "Ana", nascimento: "2012-12-25", ativo: false, genero: "feminino" },
+    { id: "4", nome: "Davi", nascimento: "2010-01-01", ativo: true, genero: "masculino" },
+    { id: "5", nome: "Edu", nascimento: "2010-02-02", ativo: true, genero: "masculino" },
+  ];
+  const base = { busca: "", ordem: "nome", comInativos: false } as const;
+  const nomes = (genero: FiltroDeGenero, comInativos = false) =>
+    listarAdolescentes(todos, { ...base, comInativos, genero }, agora).adolescentes.map((a) => a.nome);
+
+  it("filtra por Masculino, Feminino e sem gênero informado", () => {
+    expect(nomes("masculino")).toEqual(["Davi", "Edu"]);
+    expect(nomes("feminino")).toEqual(["Bia"]);
+    expect(nomes("sem")).toEqual(["Caio"]);
+  });
+
+  it("os totais contam só os ativos e não mudam com o filtro de Gênero", () => {
+    const esperado = { masculino: 2, feminino: 1, naoInformado: 1 };
+    for (const genero of [null, "masculino", "sem"] as const) {
+      expect(listarAdolescentes(todos, { ...base, genero }, agora).totais).toEqual(esperado);
+    }
+    expect(listarAdolescentes(todos, { ...base, genero: "feminino", comInativos: true }, agora).totais).toEqual(esperado);
+  });
+});
+
+describe("totaisPorGenero", () => {
+  it("lista vazia zera tudo", () => {
+    expect(totaisPorGenero([])).toEqual({ masculino: 0, feminino: 0, naoInformado: 0 });
+  });
+});
+
+describe("lerFiltroDeGenero", () => {
+  it("aceita os dois Gêneros e 'sem'; o resto é sem filtro", () => {
+    expect(lerFiltroDeGenero("masculino")).toBe("masculino");
+    expect(lerFiltroDeGenero("feminino")).toBe("feminino");
+    expect(lerFiltroDeGenero("sem")).toBe("sem");
+    expect(lerFiltroDeGenero("")).toBeNull();
+    expect(lerFiltroDeGenero("x")).toBeNull();
+  });
+});
+
+describe("erroNoAdolescente: Gênero", () => {
+  const dados = { nome: "Ana", nascimento: "2010-05-10" };
+  it("cadastro novo exige o Gênero", () => {
+    expect(erroNoAdolescente({ ...dados, genero: "" }, agora, true)).toBe("Escolha o Gênero.");
+    expect(erroNoAdolescente(dados, agora, true)).toBe("Escolha o Gênero.");
+    expect(erroNoAdolescente({ ...dados, genero: "feminino" }, agora, true)).toBeNull();
+  });
+
+  it("registro antigo segue editável sem Gênero, mas um valor inválido é recusado", () => {
+    expect(erroNoAdolescente(dados, agora)).toBeNull();
+    expect(erroNoAdolescente({ ...dados, genero: "" }, agora)).toBeNull();
+    expect(erroNoAdolescente({ ...dados, genero: "x" }, agora)).toBe("Escolha o Gênero.");
   });
 });

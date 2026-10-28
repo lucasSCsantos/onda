@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Opcao } from "@/components/formulario";
 import type { NativosDaCategoria } from "@/dominio/campos-nativos";
 import type { EstadoDaPasta } from "@/dominio/drive";
+import { horarioDoBanco, type HorarioPadrao } from "@/dominio/horarios-padrao";
 import { envolvidosDoEvento } from "@/dominio/filtros";
 import { semResponsavel, statusNoMomento, tituloDeExibicao, type CategoriaDoEvento, type Evento, type Status } from "@/dominio/eventos";
 import { professoresDaAula, semProfessor } from "@/dominio/professores";
@@ -30,7 +31,7 @@ export async function opcoesDeProfessores(supabase: SupabaseClient): Promise<Opc
   return (data ?? []).map((p) => ({ valor: p.id as string, texto: `${(p.nome as string) || "(sem nome)"} (Professor)` }));
 }
 
-export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string; temChamada: boolean };
+export type CategoriaComArea = CategoriaDoEvento & { id: string; area: string; cor: string; temChamada: boolean; horarioPadrao: HorarioPadrao };
 
 /** As colunas da configuração dos campos comuns, como o banco as devolve. */
 type NativosDoBanco = {
@@ -51,6 +52,8 @@ export const nativosDoBanco = (c: NativosDoBanco): NativosDaCategoria => ({
 const COLUNAS_DOS_NATIVOS = "nativo_local, nativo_fim, nativo_observacoes, nativo_link";
 
 type CategoriaDoBanco = NativosDoBanco & {
+  horario_padrao: string | null;
+  duracao_padrao_minutos: number | null;
   id: string;
   nome: string;
   cor: string;
@@ -59,7 +62,7 @@ type CategoriaDoBanco = NativosDoBanco & {
   campos_das_categorias: CategoriaDoEvento["campos"];
 };
 
-const comArea = ({ areas, campos_das_categorias, tem_chamada, ...categoria }: CategoriaDoBanco): CategoriaComArea => ({
+const comArea = ({ areas, campos_das_categorias, tem_chamada, horario_padrao, duracao_padrao_minutos, ...categoria }: CategoriaDoBanco): CategoriaComArea => ({
   id: categoria.id,
   nome: categoria.nome,
   cor: categoria.cor,
@@ -67,9 +70,11 @@ const comArea = ({ areas, campos_das_categorias, tem_chamada, ...categoria }: Ca
   area: areas.nome,
   campos: campos_das_categorias,
   nativos: nativosDoBanco(categoria),
+  // O banco devolve `09:00:00`; o domínio fala `HH:MM`.
+  horarioPadrao: { inicio: horarioDoBanco(horario_padrao), duracaoMinutos: duracao_padrao_minutos },
 });
 
-const SELECAO_DA_CATEGORIA = `id, nome, cor, tem_chamada, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)`;
+const SELECAO_DA_CATEGORIA = `id, nome, cor, tem_chamada, horario_padrao, duracao_padrao_minutos, ${COLUNAS_DOS_NATIVOS}, areas(nome), campos_das_categorias(id, nome, tipo, obrigatorio, opcoes, ordem)`;
 
 export async function categorias(supabase: SupabaseClient): Promise<CategoriaComArea[]> {
   const { data } = await supabase

@@ -6,6 +6,7 @@ import { podeGerenciarContas } from "@/dominio/acesso";
 import { enderecoDoNovoEvento, lerDataDoNovoEvento } from "@/dominio/calendario";
 import { podeCriarEvento } from "@/dominio/catalogo";
 import { rotuloDaData, STATUS_INICIAIS } from "@/dominio/eventos";
+import { valoresIniciaisDoHorario } from "@/dominio/horarios-padrao";
 import { exigirLideranca } from "@/lib/contas/perfil";
 import { areasDaPessoa, categoria as buscarCategoria, opcoesDaLideranca, opcoesDeProfessores } from "@/lib/eventos/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
@@ -38,14 +39,14 @@ export default async function PaginaNovoEventoDaCategoria(props: PageProps<"/eve
           <span aria-hidden className="size-3 rounded-full" style={{ backgroundColor: categoria.cor }} />
           Novo Evento: {categoria.nome}
         </h1>
-        {/* Quem cria é o Responsável sugerido, e o Evento começa Planejado, no dia pedido se veio um. */}
+        {/* Quem cria é o Responsável sugerido, e o Evento começa Planejado, no dia pedido se veio um e no horário padrão da Categoria. */}
         <FormularioEvento
           acao={criarEvento.bind(null, categoria.id)}
           categoria={categoria}
           lideranca={lideranca}
           professores={professores}
           status={STATUS_INICIAIS}
-          iniciais={{ responsavel: eu.id, status: "planejado", ...(data ? { data } : {}) }}
+          iniciais={{ responsavel: eu.id, status: "planejado", ...valoresIniciaisDoHorario(categoria), ...(data ? { data } : {}) }}
           rotuloDaData={rotuloDaData(categoria)}
           repete
           botao={{ texto: "Criar Evento", pendente: "Criando…" }}

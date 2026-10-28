@@ -44,6 +44,7 @@ async function cadastrar(page: Page, nome: string, convite?: string) {
   await page.getByLabel("Nome").fill(nome);
   await page.getByLabel("E-mail").fill(`${crypto.randomUUID()}@teste.onda`);
   await page.getByLabel("Data de nascimento").fill("1995-05-10");
+  await page.getByRole("radio", { name: "Masculino" }).check();
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
@@ -78,7 +79,7 @@ test("criar um Evento e vê-lo no calendário no celular", async ({ page }) => {
   await page.getByLabel("Título").fill(titulo);
   await page.getByLabel("Data", { exact: true }).fill(hoje());
   // Quem cria já vem como Responsável.
-  await expect(page.getByLabel("Responsável").locator("option:checked")).toHaveText("Abel Fumaça");
+  await expect(page.getByRole("combobox", { name: /Responsável/ })).toContainText("Abel Fumaça");
   await page.getByRole("button", { name: "Criar Evento" }).click();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
@@ -223,8 +224,8 @@ test("o formulário de Evento mostra só os campos da Categoria", async ({ page 
 
   // O Admin configura isso na tela da Categoria, e não há rolagem lateral no celular.
   await page.goto(`/admin/catalogo/${id("Postagem")}`);
-  await expect(page.getByLabel(/^Local/)).toHaveValue("oculto");
-  await expect(page.getByLabel(/^Fim/)).toHaveValue("oculto");
+  await expect(page.getByRole("combobox", { name: /^Local/ })).toContainText("Oculto");
+  await expect(page.getByRole("combobox", { name: /^Fim/ })).toContainText("Oculto");
   const larguraExcedida = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   expect(larguraExcedida).toBeLessThanOrEqual(0);
 });
@@ -292,7 +293,7 @@ test("Chamada: um toque marca e salva na hora, e a marcação continua depois de
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const tema = (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === "Tema")!.id;
   const aluno = `Ana ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   const { data: aula } = await admin
     .from("eventos")
     .insert({
@@ -333,7 +334,7 @@ test("Chamada do Professor: faz a Chamada da própria aula, sem ver nascimento, 
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
   const aluno = `Bia ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   // O Responsável é da Liderança; a aula é do Professor pelo campo "Professor".
   const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável da Chamada" } });
   if (lider.error) throw lider.error;
@@ -378,7 +379,7 @@ test("Cartão de Chamada: o Professor vê a Chamada da aula dele na tela princip
   const ebd = await admin.from("categorias").select("id, campos_das_categorias(id, nome)").eq("nome", "EBD").single();
   const campo = (nomeDoCampo: string) => (ebd.data!.campos_das_categorias as { id: string; nome: string }[]).find((c) => c.nome === nomeDoCampo)!.id;
   const aluno = `Caio ${crypto.randomUUID().slice(0, 6)}`;
-  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10" }).throwOnError();
+  await admin.from("adolescentes").insert({ nome: aluno, nascimento: "2011-05-10", genero: "feminino" }).throwOnError();
   const lider = await admin.auth.admin.createUser({ email: `${crypto.randomUUID()}@teste.onda`, password: SENHA, email_confirm: true, user_metadata: { nome: "Responsável do Cartão" } });
   if (lider.error) throw lider.error;
   await admin.from("perfis").update({ nivel: "admin" }).eq("id", lider.data.user.id).throwOnError();
@@ -466,9 +467,9 @@ test("filtros avançados: abrem com contador, aplicam na hora e abrem sozinhos p
   await expect(botao).toHaveAttribute("aria-expanded", "true");
   const painel = page.getByRole("group", { name: "Filtros avançados" });
   await expect(painel).toBeVisible();
-  expect((await painel.getByLabel("Status", { exact: true }).locator("option").allTextContents()).length).toBe(7);
-
-  await painel.getByLabel("Status", { exact: true }).selectOption("adiado");
+  await painel.getByRole("combobox", { name: /^Status/ }).click();
+  await expect(page.getByRole("listbox", { name: "Status" }).getByRole("option")).toHaveCount(7);
+  await page.getByRole("option", { name: "Adiado" }).click();
   await expect(page).toHaveURL(/status=adiado/);
   await expect(botao).toContainText("1");
   await painel.getByLabel("Dia", { exact: true }).fill("2026-10-21");

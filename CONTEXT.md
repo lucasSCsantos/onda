@@ -41,6 +41,10 @@ _Avoid_: Filtro rápido, botão de filtro
 A lista dos Eventos de um dia (com os aniversariantes), aberta ao tocar nele no Calendário.
 _Avoid_: Modal do dia, detalhe do dia
 
+**Horário padrão**:
+O horário de início e a duração que uma Categoria sugere ao criar um Evento novo; o Admin ajusta, ambos são opcionais, e mudar o padrão nunca altera Eventos já criados.
+_Avoid_: Horário fixo
+
 **Postagem**:
 Categoria de Evento cuja data é a data de publicação.
 
@@ -76,8 +80,20 @@ O segundo Professor de uma aula, em apoio ao Professor principal.
 _Avoid_: Docente, instrutor
 
 **Adolescente**:
-Pessoa atendida pelo ministério, existente só como cadastro (nome, data de nascimento, ativo/inativo); sem login.
+Pessoa atendida pelo ministério, existente só como cadastro (nome, data de nascimento, Gênero, ativo/inativo); sem login. Nunca é excluída, só inativada.
 _Avoid_: Membro, jovem
+
+**Gênero**:
+Masculino ou Feminino, de cada Adolescente e de cada pessoa com conta; opcional nos cadastros antigos ("não informado") e obrigatório nos novos. Só usuários aprovados veem; nunca vai para Notificação, Assinatura de calendário ou exportação pública.
+_Avoid_: Sexo
+
+**Dados pessoais**:
+Nome, data de nascimento e Gênero de uma pessoa com conta. Só a própria pessoa edita os seus (em Minha conta); o Admin não edita dados pessoais de ninguém, só as Funções, o nível de acesso e a ativação das contas, e vê apenas o selo "cadastro incompleto" de quem está sem Gênero. Os dados de um Adolescente (mesmos campos) são editados pela Liderança, na página dele.
+_Avoid_: Perfil (para o que a pessoa edita)
+
+**Observação**:
+Uma anotação de texto da Liderança sobre um Adolescente, com autor, data de criação e data da última edição; só Admin e Líder leem e criam, e só o autor e o Admin editam ou apagam. Sobrevive à inativação do Adolescente. Nunca aparece em Log, Notificação, Assinatura de calendário, exportação ou busca; o Log diz só que houve a ação, quem fez e sobre qual Adolescente.
+_Avoid_: Nota, comentário, anotação
 
 ### Presença
 

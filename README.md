@@ -145,3 +145,38 @@ Em "Minha conta", cada pessoa liga e desliga só os tipos que o nível dela pode
 Sem `SUPABASE_SERVICE_ROLE_KEY` ou chaves VAPID (e fora do modo de teste), a rota responde 503 e a fila espera; a central funciona do mesmo jeito.
 
 Para reverter, veja o fim de `supabase/migrations/20261023140000_notificacoes.sql` e de `supabase/migrations/20261023150000_push_demais_tipos.sql`.
+
+## Componentes de formulário
+
+Os controles de formulário são próprios, sem dependência nova, e ficam em `src/components/` (`formulario.tsx` reexporta todos):
+
+- `Selecao`, `SelecaoMultipla` (chips), `CaixaDeMarcar`, `Radio`, `GrupoDeRadio` e `RadioDeIcone` substituem `select`, checkbox e radio nativos;
+- `CampoDeData` (campo digitável `dd/mm/aaaa` com calendário), `CampoDeIntervalo` (início e fim num calendário), `CampoDeHora` (digitável, lista em passos de 15 ou 5 minutos e "Sem horário") e `CampoDeDataEHora` substituem `date`, `time` e `datetime-local`.
+
+Todos enviam o valor num campo com o mesmo `name` de antes (data como `AAAA-MM-DD`, hora como `HH:MM` ou vazio, data e hora como `AAAA-MM-DDTHH:MM`), então `<form action>`, Server Actions e a validação no domínio não mudaram. A lógica sem interface (grade do mês com a semana na segunda-feira, intervalo, leitura e arredondamento de hora) está em `src/dominio/datas-e-horas.ts`, com testes ao lado.
+
+Exceção mantida de propósito: `type="color"` da Cor da Categoria (Admin → Catálogo), que não faz parte da lista de controles a substituir.
+
+## Horários padrão
+
+Em **Admin → Horários padrão** (`/admin/horarios`), o Admin define por Categoria o horário de início e a duração padrão, ambos opcionais (em branco, a Categoria abre sem horário). O formulário de Evento **novo** já abre com o início preenchido e, só se a Categoria tem duração e mostra o campo de fim, com o fim também. A migração `horarios_padrao` define EBD às 09:00 e Pequeno grupo às 15:00, sem duração; a Postagem (data de publicação) não tem horário padrão. O padrão nunca altera Eventos já criados nem a edição, uma Série nova usa o horário do formulário, e cada mudança vira um Log (`categoria.editada`). A regra está em `src/dominio/horarios-padrao.ts`.
+
+## Gênero das contas
+
+Quem se cadastra (sozinho ou por convite, inclusive Professor) escolhe o **Gênero** (Masculino ou Feminino), obrigatório para contas novas: a ação do servidor e o domínio (`src/dominio/genero.ts`) recusam o envio sem ele; o gatilho de criação de perfil só grava o valor quando ele vem válido, para não arriscar o fluxo de contas. Perfis antigos ficam sem Gênero ("não informado") e ganham o selo "cadastro incompleto". Os **Dados pessoais** (nome, data de nascimento e Gênero) só a própria pessoa edita, em **Minha conta → Cadastro**; o Admin não edita dados pessoais de ninguém (em **Admin → Usuários** ele só vê o selo "cadastro incompleto", e edita Funções, nível e ativação). A escrita passa pela função `editar_meus_dados`, que só alcança o perfil de quem está logado (não há privilégio de coluna em `perfis`, que também liberaria o `ativo`); o Log mostra o nome e só diz que a data de nascimento e o Gênero mudaram. Os dados de um Adolescente a Liderança edita na página dele (**Adolescentes → Editar adolescente**), junto das Observações. Só usuários aprovados leem, pelas políticas de `perfis`; o Gênero nunca vai para o `.ics`, Notificações ou exportações, e o Log registra só que o campo mudou, sem o valor.
+
+## Gênero dos Adolescentes
+
+A Liderança registra o **Gênero** (Masculino ou Feminino) de cada Adolescente no cadastro e na edição. É obrigatório em **Adolescente novo**: o formulário, a ação do servidor e o domínio (`src/dominio/adolescentes.ts`) recusam o envio sem ele, e o banco também, por um gatilho só de `INSERT` (`exigir_genero_ao_cadastrar`), que nunca bloqueia atualizar um registro antigo (inativar, reativar, renomear). Adolescentes antigos ficam sem Gênero ("não informado") e ganham o selo "cadastro incompleto"; editá-los com o Gênero em branco o mantém como está. A lista tem filtro por Masculino, Feminino e "sem gênero informado" e mostra os totais por Gênero dos Adolescentes **ativos**, que não mudam com o filtro nem com a busca. Leitura e escrita seguem as políticas de sempre (só a Liderança aprovada; Professor e Pendente não leem nem editam). O Gênero nunca vai para o `.ics`, Notificações ou exportações (as consultas desses canais escolhem colunas e não o incluem), e o Log registra só que o campo mudou, sem o valor.
+
+## Observações sobre os Adolescentes
+
+Na página de cada Adolescente, a Liderança registra **Observações**: entradas de texto simples (até 2.000 caracteres), em ordem cronológica, cada uma com autor, data de criação e data da última edição, sob um aviso permanente ("Visível apenas para a liderança. Registre só o que ajuda a cuidar do adolescente e evite dados de saúde ou informações sensíveis da família."). Nada é bloqueado pelo conteúdo; o tamanho e o texto não vazio são checados no domínio (`src/dominio/observacoes.ts`) e no banco (tabela `observacoes`).
+
+**Quem acessa** (garantido por política por linha, não só pela interface): Admin e Líder ativos leem e criam; **só o autor e o Admin** editam e apagam; Professor, Pendente, conta desativada e anônimo não veem nada. O autor é gravado pelo banco a partir da sessão (a coluna não aceita escrita pelo formulário) e a data da última edição é atualizada por gatilho.
+
+**Privacidade**: o Log registra apenas "observação adicionada, editada ou apagada para {adolescente} por {líder}", nunca o texto. O texto não entra em Notificações, central de notificações, feed `.ics`, exportações CSV, relatórios nem na busca (que olha só o nome), e nada é enviado a serviço externo.
+
+**Exclusão**: Adolescentes nunca são excluídos, só inativados; as Observações de um Adolescente inativo são preservadas e continuam visíveis. A chave estrangeira usa `on delete cascade` apenas por segurança (para não deixar linha órfã); se algum dia a remoção de um Adolescente for criada, ela leva as Observações junto, gera Log de cada uma e deve gerar também o Log da remoção.
+
+**LGPD**: recomenda-se que a autorização assinada pelos pais ou responsáveis cubra esse tipo de registro (anotações da Liderança sobre o adolescente), e que a igreja oriente os líderes a não anotar dados de saúde nem informações sensíveis da família.

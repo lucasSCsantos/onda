@@ -193,7 +193,7 @@ describe("o que o Professor vê", () => {
   it("não vê Adolescentes, aniversários, outras contas, séries nem o registro de alterações", async () => {
     const lucas = await contaNova("Lucas", "admin");
     const paulo = await contaNova("Paulo", "professor");
-    await admin.from("adolescentes").insert({ nome: "Davi", nascimento: "2010-03-04" }).throwOnError();
+    await admin.from("adolescentes").insert({ nome: "Davi", nascimento: "2010-03-04", genero: "feminino" }).throwOnError();
     await aula(lucas.id, paulo.id);
 
     expect(await ids(paulo.cliente, "adolescentes")).toEqual([]);
