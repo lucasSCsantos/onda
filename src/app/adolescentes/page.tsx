@@ -109,12 +109,9 @@ export default async function PaginaAdolescentes(props: PageProps<"/adolescentes
                       </button>
                     </form>
                   </div>
-                  <details>
-                    <summary className="cursor-pointer text-sm text-texto-suave">Editar</summary>
-                    <div className="pt-3">
-                      <FormularioAdolescente adolescente={a} />
-                    </div>
-                  </details>
+                  <Link href={`/adolescentes/${a.id}`} className="w-fit text-sm text-texto-suave underline hover:text-texto">
+                    Editar adolescente
+                  </Link>
                 </li>
               );
             })}

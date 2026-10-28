@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { FormularioDeGenero } from "@/components/formulario-de-genero";
 import { SeloDeCadastroIncompleto } from "@/components/selo-de-cadastro-incompleto";
 import { NOMES_DOS_NIVEIS, podeMudarAcesso, type NivelDeAcesso } from "@/dominio/acesso";
 import { temFuncoes } from "@/dominio/catalogo";
@@ -84,12 +83,6 @@ export default async function PaginaUsuarios() {
                   <p className="text-sm text-texto-suave">
                     {u.funcoes_das_pessoas.map((f) => f.funcoes?.nome).filter(Boolean).join(", ") || "Sem Função"}
                   </p>
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-sm text-texto-suave hover:text-texto">Editar Gênero</summary>
-                    <div className="mt-3">
-                      <FormularioDeGenero pessoa={u.id} genero={lerGenero(u.genero)} legenda={`Gênero de ${u.nome || "esta pessoa"}`} />
-                    </div>
-                  </details>
                   {temFuncoes(u.nivel) && (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-sm text-texto-suave hover:text-texto">Editar Funções</summary>
