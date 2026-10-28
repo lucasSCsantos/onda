@@ -21,7 +21,8 @@ test("quem não entrou abre a página /sobre, de marca neutra e com as imagens d
   await expect(page.locator("footer")).toHaveCount(0);
   await expect(page.locator('[aria-label="ONDA"], [aria-label="IBAM Ondina"]')).toHaveCount(0);
 
-  const imagens = page.locator("main img");
+  // As telas da vitrine existem em duas versões (fixa no computador, em linha no celular); só a visível carrega.
+  const imagens = page.locator("main img:visible");
   expect(await imagens.count()).toBeGreaterThanOrEqual(6);
   for (const imagem of await imagens.all()) {
     await imagem.scrollIntoViewIfNeeded();

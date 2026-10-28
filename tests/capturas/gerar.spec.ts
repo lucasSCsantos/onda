@@ -12,7 +12,7 @@ import { expect, test, type Page } from "@playwright/test";
  *   2. `pnpm exec supabase start --workdir <pasta>`;
  *   3. `CAPTURAS_SUPABASE_WORKDIR=<pasta> pnpm gerar:capturas`.
  * O gerador só semeia um banco vazio: para repetir, `pnpm exec supabase db reset --workdir <pasta>` antes.
- * A marca do ONDA é trocada por "Mural" no próprio navegador, só na hora da foto; o app não muda.
+ * A marca do ONDA é trocada por "Mural EBD" no próprio navegador, só na hora da foto; o app não muda.
  */
 
 const WORKDIR = process.env.CAPTURAS_SUPABASE_WORKDIR ?? "";
@@ -135,16 +135,18 @@ async function semear() {
   return { ultimaAula: ebds[3].id };
 }
 
-/** Troca a marca do ONDA pela do Mural no navegador, na hora da foto. */
+/** Troca a marca do ONDA pela do Mural EBD no navegador, na hora da foto. */
 async function neutralizar(page: Page) {
   await page.evaluate(() => {
     document.querySelectorAll('[role="img"][aria-label="ONDA"]').forEach((el) => {
       el.removeAttribute("aria-label");
-      el.innerHTML = '<span style="font-weight:700;font-size:1.25rem;letter-spacing:-0.02em">Mural</span>';
+      // A caixa da logo tem largura fixa; o nome por extenso precisa de uma linha só.
+      Object.assign((el as HTMLElement).style, { width: "auto", whiteSpace: "nowrap" });
+      el.innerHTML = '<span style="font-weight:700;font-size:1.25rem;letter-spacing:-0.02em">Mural EBD</span>';
     });
     document.querySelector("footer")?.remove();
     const passeio = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n = passeio.nextNode(); n; n = passeio.nextNode()) if (n.nodeValue?.includes("ONDA")) n.nodeValue = n.nodeValue.replaceAll("ONDA", "Mural");
+    for (let n = passeio.nextNode(); n; n = passeio.nextNode()) if (n.nodeValue?.includes("ONDA")) n.nodeValue = n.nodeValue.replace("Esta semana no ONDA", "Esta semana").replaceAll("ONDA", "Mural EBD");
   });
 }
 

@@ -1,0 +1,551 @@
+/* Página /sobre: tema escuro próprio (não segue o claro/escuro do app) e todos os efeitos. Classes e animações levam o prefixo s- porque este CSS é global (o next.s-config.s-ts manda todo *.css pelo Tailwind, o que desliga os CSS Modules); os scripts de efeitos.s-tsx ligam-se por atributos data-*. */
+
+.s-raiz {
+  --s-fundo: #050a18;
+  --s-superficie: rgba(14, 24, 52, 0.7);
+  --s-borda: rgba(255, 255, 255, 0.1);
+  --s-texto: #eaf1ff;
+  --s-suave: #9fb0cf;
+  --s-azul: #459ac8;
+  --s-claro: #8fd0f5;
+  --s-marca: #284995;
+  position: relative;
+  flex: 1;
+  overflow-x: clip;
+  isolation: isolate;
+  background: var(--s-fundo);
+  color: var(--s-texto);
+}
+
+/* Aurora: manchas de luz que derivam devagar, presas à janela. */
+.s-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 18% 18%, rgba(69, 154, 200, 0.38), transparent 70%),
+    radial-gradient(34% 38% at 85% 8%, rgba(54, 92, 196, 0.5), transparent 70%),
+    radial-gradient(42% 40% at 62% 95%, rgba(111, 179, 220, 0.24), transparent 70%),
+    radial-gradient(30% 30% at 5% 85%, rgba(40, 73, 149, 0.45), transparent 70%);
+  background-size: 140% 140%;
+  animation: s-derivar 26s ease-in-out infinite alternate;
+}
+
+/* Grade fina que some nas bordas. */
+.s-grade {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 20%, transparent 75%);
+}
+
+@keyframes s-derivar {
+  from {
+    background-position: 0% 0%;
+    transform: scale(1);
+  }
+  to {
+    background-position: 100% 60%;
+    transform: scale(1.08);
+  }
+}
+
+/* Barra de progresso da leitura (só onde há animação ligada à rolagem). */
+.s-progresso {
+  display: none;
+}
+@supports (animation-timeline: scroll()) {
+  .s-progresso {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 3px;
+    z-index: 60;
+    transform-origin: 0 50%;
+    background: linear-gradient(90deg, var(--s-azul), #a9b9ff, var(--s-claro));
+    box-shadow: 0 0 12px var(--s-azul);
+    animation: s-crescer linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes s-crescer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Cabeçalho de vidro. */
+.s-cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--s-borda);
+  background: rgba(5, 10, 24, 0.55);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+.s-marca {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(90deg, #fff, var(--s-claro));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.s-link {
+  color: var(--s-suave);
+  font-size: 0.9rem;
+  transition: color 150ms;
+}
+.s-link:hover {
+  color: #fff;
+}
+
+/* Botões. */
+.s-botao {
+  position: relative;
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0.65rem 1.4rem;
+  font-weight: 600;
+  transition:
+    transform 200ms,
+    box-shadow 200ms,
+    background-color 200ms;
+}
+.s-botao:active {
+  transform: scale(0.97);
+}
+.s-primario {
+  color: #04122b;
+  background: linear-gradient(135deg, #bfe6ff, var(--s-azul) 60%, #7f9bff);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+    0 10px 40px -8px rgba(69, 154, 200, 0.7);
+}
+.s-primario:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset,
+    0 16px 50px -8px rgba(69, 154, 200, 0.95);
+}
+/* Reflexo que atravessa o botão de tempos em tempos. */
+.s-primario::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: s-reflexo 4.5s ease-in-out infinite;
+}
+@keyframes s-reflexo {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+.s-vidro {
+  border: 1px solid var(--s-borda);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--s-texto);
+  backdrop-filter: blur(10px);
+}
+.s-vidro:hover {
+  background: rgba(255, 255, 255, 0.13);
+  transform: translateY(-2px);
+}
+
+/* Texto com brilho que corre. */
+.s-brilho-texto {
+  background: linear-gradient(90deg, #fff 0%, var(--s-claro) 25%, #a9b9ff 50%, var(--s-claro) 75%, #fff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: s-correr 7s linear infinite;
+}
+@keyframes s-correr {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.s-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--s-borda);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--s-claro);
+}
+.s-ponto {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 10px #4ade80;
+  animation: s-pulsar 2s ease-in-out infinite;
+}
+@keyframes s-pulsar {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+/* Revelar ao rolar: só some quando o script já está pronto, para quem não tem JS ver tudo. */
+.s-raiz[data-pronto] [data-revelar] {
+  opacity: 0;
+  transform: translateY(32px) scale(0.98);
+  filter: blur(8px);
+  transition:
+    opacity 900ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--atraso, 0ms);
+}
+.s-raiz[data-pronto] [data-revelar][data-visto] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Palco do herói: celulares em 3D que seguem o ponteiro. */
+.s-palco {
+  --px: 0;
+  --py: 0;
+  position: relative;
+  height: clamp(420px, 92vw, 600px);
+  perspective: 1500px;
+}
+.s-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(120%, 640px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(69, 154, 200, 0.55), rgba(127, 155, 255, 0.35), rgba(143, 208, 245, 0.55), rgba(69, 154, 200, 0.55));
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: s-girar 22s linear infinite;
+}
+@keyframes s-girar {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.s-celular {
+  position: relative;
+  aspect-ratio: 9 / 17.5;
+  overflow: hidden;
+  border-radius: 2.2rem;
+  border: 6px solid #0f1a38;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 50px 90px -25px rgba(0, 0, 0, 0.8),
+    0 0 90px -10px rgba(69, 154, 200, 0.45);
+}
+/* Reflexo de vidro na tela. */
+.s-celular::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, transparent 38%, transparent 72%, rgba(255, 255, 255, 0.03) 100%);
+}
+/* No herói os planos se cruzam em 3D e o reflexo vira uma mancha; ali ele não entra. */
+.s-palco .s-celular::after {
+  display: none;
+}
+.s-celular img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.s-heroi {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: clamp(170px, 46vw, 262px);
+  transform: translate(-50%, -50%) rotateY(calc(var(--px) * 10deg)) rotateX(calc(var(--py) * -8deg));
+  translate: calc(var(--px) * 14px) calc(var(--py) * 10px);
+  animation: s-flutuar 7s ease-in-out infinite;
+}
+.s-lado {
+  position: absolute;
+  top: 50%;
+  width: clamp(118px, 30vw, 196px);
+  opacity: 0.92;
+}
+.s-esquerda {
+  left: 50%;
+  z-index: 1;
+  transform: translate(-112%, -46%) rotateY(26deg) rotateZ(-5deg);
+  translate: calc(var(--px) * 26px) calc(var(--py) * 16px);
+  animation: s-flutuar 8s ease-in-out -2s infinite;
+}
+.s-direita {
+  left: 50%;
+  z-index: 1;
+  transform: translate(12%, -54%) rotateY(-26deg) rotateZ(5deg);
+  translate: calc(var(--px) * 26px) calc(var(--py) * 16px);
+  animation: s-flutuar 9s ease-in-out -4s infinite;
+}
+@keyframes s-flutuar {
+  50% {
+    margin-top: -14px;
+  }
+}
+
+/* Faixa de números. */
+.s-numeros {
+  border-block: 1px solid var(--s-borda);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+}
+.s-numero {
+  font-size: clamp(2.3rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faixa de tecnologias que corre sem parar. */
+.s-faixa {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.s-trilho {
+  display: flex;
+  width: max-content;
+  gap: 0.75rem;
+  animation: s-trilho 38s linear infinite;
+}
+.s-faixa:hover .s-trilho {
+  animation-play-state: paused;
+}
+@keyframes s-trilho {
+  to {
+    transform: translateX(calc(-50% - 0.375rem));
+  }
+}
+.s-selo {
+  white-space: nowrap;
+  border: 1px solid var(--s-borda);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  color: var(--s-suave);
+}
+
+/* Vitrine: a tela do celular troca conforme o passo que está no meio da janela. */
+.s-passo {
+  opacity: 0.35;
+  transition: opacity 400ms;
+}
+.s-passo[data-ativo="true"] {
+  opacity: 1;
+}
+@media (max-width: 1023px) {
+  .s-passo {
+    opacity: 1;
+  }
+}
+.s-icone {
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.9rem;
+  color: #04122b;
+  background: linear-gradient(135deg, #bfe6ff, var(--s-azul));
+  box-shadow: 0 10px 30px -8px rgba(69, 154, 200, 0.8);
+}
+.s-tela {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  scale: 1.06;
+  transition:
+    opacity 600ms,
+    scale 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.s-tela[data-ativa="true"] {
+  opacity: 1;
+  scale: 1;
+}
+.s-indicador {
+  height: 0.4rem;
+  width: 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  transition:
+    width 300ms,
+    background-color 300ms;
+}
+.s-indicador[data-ativo="true"] {
+  width: 1.6rem;
+  background: var(--s-azul);
+}
+
+/* Cartões de vidro com um foco de luz que segue o ponteiro. */
+.s-cartao {
+  --mx: 50%;
+  --my: 0%;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--s-borda);
+  border-radius: 1.4rem;
+  background: var(--s-superficie);
+  padding: 1.6rem;
+  backdrop-filter: blur(12px);
+  transition:
+    transform 300ms,
+    border-color 300ms;
+}
+.s-cartao::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(360px circle at var(--mx) var(--my), rgba(69, 154, 200, 0.28), transparent 60%);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+.s-cartao:hover {
+  transform: translateY(-4px);
+  border-color: rgba(143, 208, 245, 0.45);
+}
+.s-cartao:hover::before {
+  opacity: 1;
+}
+.s-cartao > * {
+  position: relative;
+}
+
+/* Terminal dos bastidores: as linhas "digitam" uma a uma. */
+.s-terminal {
+  overflow: hidden;
+  border: 1px solid var(--s-borda);
+  border-radius: 1.2rem;
+  background: rgba(3, 7, 18, 0.85);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  box-shadow: 0 30px 80px -30px rgba(69, 154, 200, 0.5);
+}
+.s-barra {
+  display: flex;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--s-borda);
+  padding: 0.75rem 1rem;
+}
+.s-barra i {
+  height: 0.7rem;
+  width: 0.7rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+.s-barra i:nth-child(1) {
+  background: #ff5f57;
+}
+.s-barra i:nth-child(2) {
+  background: #febc2e;
+}
+.s-barra i:nth-child(3) {
+  background: #28c840;
+}
+.s-linha {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: s-digitar 1.6s steps(46, end) forwards;
+  animation-delay: var(--quando);
+  animation-play-state: paused;
+}
+.s-terminal[data-visto] .s-linha {
+  animation-play-state: running;
+}
+@keyframes s-digitar {
+  to {
+    width: 100%;
+  }
+}
+.s-cursor {
+  display: inline-block;
+  width: 0.55rem;
+  height: 1rem;
+  vertical-align: text-bottom;
+  background: var(--s-claro);
+  animation: s-piscar 1s steps(1) infinite;
+}
+@keyframes s-piscar {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Chamada final. */
+.s-final {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(143, 208, 245, 0.25);
+  border-radius: 2rem;
+  background:
+    radial-gradient(60% 90% at 50% 120%, rgba(69, 154, 200, 0.55), transparent 70%),
+    linear-gradient(180deg, rgba(40, 73, 149, 0.55), rgba(10, 18, 42, 0.8));
+}
+
+/* Quem prefere menos movimento recebe a página parada. */
+@media (prefers-reduced-motion: reduce) {
+  .s-aurora,
+  .s-halo,
+  .s-heroi,
+  .s-esquerda,
+  .s-direita,
+  .s-trilho,
+  .s-brilho-texto,
+  .s-primario::after,
+  .s-ponto {
+    animation: none;
+  }
+  .s-linha {
+    animation: none;
+    width: 100%;
+  }
+  .s-raiz[data-pronto] [data-revelar] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
