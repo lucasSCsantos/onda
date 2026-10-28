@@ -5,6 +5,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { IconeDaMarcacao } from "@/components/icone-da-marcacao";
 import { podeGerenciarContas } from "@/dominio/acesso";
 import { FUSO } from "@/dominio/fuso";
+import type { Genero } from "@/dominio/genero";
 import { AVISO_DAS_OBSERVACOES, foiEditada, podeMudarObservacao } from "@/dominio/observacoes";
 import { historicoDoAdolescente } from "@/dominio/presenca";
 import { classificar, lerAno } from "@/dominio/ranking";
@@ -14,6 +15,7 @@ import { observacoesDoAdolescente } from "@/lib/observacoes/consultas";
 import { marcacoes, presencasDoPeriodo } from "@/lib/presenca/consultas";
 import { pontosDoAno } from "@/lib/ranking/consultas";
 import { supabaseDoServidor } from "@/lib/supabase/servidor";
+import { FormularioAdolescente } from "../formularios";
 import { ItemDaObservacao, NovaObservacao } from "./observacoes-cliente";
 
 // Dados de menores: fora de buscadores (o layout já diz o mesmo; aqui fica explícito).
@@ -30,10 +32,10 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
   const [{ data: adolescente }, todas, periodo, pontos, config, observacoes] = await Promise.all([
     supabase
       .from("adolescentes")
-      .select("id, nome, ativo, criado_em")
+      .select("id, nome, nascimento, genero, ativo, criado_em")
       .eq("id", id)
       .maybeSingle()
-      .overrideTypes<{ id: string; nome: string; ativo: boolean; criado_em: string }, { merge: false }>(),
+      .overrideTypes<{ id: string; nome: string; nascimento: string; genero: Genero | null; ativo: boolean; criado_em: string }, { merge: false }>(),
     marcacoes(supabase),
     presencasDoPeriodo(supabase),
     pontosDoAno(supabase, ano),
@@ -82,6 +84,13 @@ export default async function PaginaDoAdolescente(props: PageProps<"/adolescente
             : {noRanking ? `${noRanking.pontos} ${noRanking.pontos === 1 ? "ponto" : "pontos"}, ${noRanking.posicao}º lugar` : "ainda sem pontos"}
           </p>
         </div>
+
+        <section aria-labelledby="titulo-cadastro" className="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4">
+          <h2 id="titulo-cadastro" className="text-lg font-semibold">
+            Cadastro
+          </h2>
+          <FormularioAdolescente adolescente={adolescente} />
+        </section>
 
         {totais.length > 0 && (
           <section aria-label="Totais" className="flex flex-wrap gap-2">

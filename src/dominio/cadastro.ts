@@ -1,4 +1,5 @@
 import { dataLocal } from "./fuso";
+import { erroNoGenero } from "./genero";
 
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
@@ -12,4 +13,14 @@ export function dataDeNascimentoValida(valor: string, agora: Date): boolean {
 
   const hoje = dataLocal(agora);
   return existe && valor <= `${hoje.ano}-${doisDigitos(hoje.mes)}-${doisDigitos(hoje.dia)}`;
+}
+
+/** O que impede salvar os Dados pessoais de uma conta (nome, data de nascimento e Gênero); `null` se nada impede. */
+export function erroNosDadosPessoais(
+  { nome, nascimento, genero }: { nome: string; nascimento: string; genero: unknown },
+  agora: Date,
+): string | null {
+  if (!nome.trim()) return "Informe seu nome.";
+  if (!dataDeNascimentoValida(nascimento, agora)) return "Informe uma data de nascimento válida, que não seja futura.";
+  return erroNoGenero(genero);
 }

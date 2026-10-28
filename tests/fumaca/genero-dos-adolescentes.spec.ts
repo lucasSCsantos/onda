@@ -66,10 +66,13 @@ test("cadastro novo exige o Gênero; o antigo aparece incompleto e é completado
   await admin.from("adolescentes").update({ ativo: true }).eq("id", data.id).throwOnError();
 
   await page.goto(`/adolescentes?q=${encodeURIComponent(antigo)}`);
-  await linha.getByText("Editar", { exact: true }).click();
-  await linha.getByRole("radio", { name: "Masculino" }).check();
-  await linha.getByRole("button", { name: "Salvar", exact: true }).click();
-  await expect(linha.getByText("Adolescente salvo.")).toBeVisible();
+  // A edição fica na página do Adolescente, junto das Observações.
+  await linha.getByRole("link", { name: "Editar adolescente" }).click();
+  await expect(page).toHaveURL(new RegExp(`/adolescentes/${data.id}`));
+  const cadastro = page.locator("section[aria-labelledby=titulo-cadastro]");
+  await cadastro.getByRole("radio", { name: "Masculino" }).check();
+  await cadastro.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(cadastro.getByText("Adolescente salvo.")).toBeVisible();
   expect(await generoDe(antigo)).toBe("masculino");
 });
 

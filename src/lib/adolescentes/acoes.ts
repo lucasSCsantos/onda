@@ -32,6 +32,7 @@ export async function salvarAdolescente(id: string | null, _: EstadoFormulario, 
   }
 
   revalidatePath("/adolescentes");
+  if (id) revalidatePath(`/adolescentes/${id}`);
   return { aviso: id ? "Adolescente salvo." : "Adolescente cadastrado." };
 }
 

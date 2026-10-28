@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 
-/** Fumaça do Gênero das contas: cadastro, Minha conta e tela de usuários, no tamanho de tela de um celular. */
+/** Fumaça do Gênero das contas: cadastro, Minha conta (edição dos dados pessoais) e tela de usuários (sem edição), no tamanho de tela de um celular. */
 
 const saida = execSync("pnpm exec supabase status -o env", { encoding: "utf8" });
 const lerAmbiente = (nome: string) => saida.match(new RegExp(`^${nome}="?([^"\r\n]*)"?`, "m"))?.[1] ?? "";
@@ -40,10 +40,7 @@ test("cadastro: o Gênero é obrigatório e vai para o perfil", async ({ page })
   expect(await generoDe(nome)).toBe("feminino");
 });
 
-test("Minha conta e usuários: perfil antigo aparece incompleto e o Gênero é completado", async ({ page }) => {
-  // A tela de usuários é lenta no banco local, que acumula contas de teste.
-  test.setTimeout(120_000);
-  test.slow();
+test("Minha conta: perfil antigo aparece incompleto e a própria pessoa edita nome, nascimento e Gênero", async ({ page }) => {
   const convite = await admin.from("convites").insert({ nivel: "admin" }).select("codigo").single().throwOnError();
   const nome = `Antigo ${crypto.randomUUID().slice(0, 8)}`;
   await preencherCadastro(page, nome, convite.data.codigo);
@@ -57,13 +54,26 @@ test("Minha conta e usuários: perfil antigo aparece incompleto e o Gênero é c
   await page.goto("/conta");
   const cadastro = page.locator("section[aria-labelledby=cadastro]");
   await expect(cadastro.getByText("cadastro incompleto")).toBeVisible();
+  const novoNome = `${nome} Editado`;
+  await cadastro.getByLabel("Nome").fill(novoNome);
   await cadastro.getByRole("radio", { name: "Feminino" }).check();
-  await cadastro.getByRole("button", { name: "Salvar Gênero" }).click();
-  await expect(cadastro.getByText("Gênero salvo.")).toBeVisible();
+  await cadastro.getByRole("button", { name: "Salvar dados" }).click();
+  await expect(cadastro.getByText("Dados salvos.")).toBeVisible();
   await expect(cadastro.getByText("cadastro incompleto")).toHaveCount(0);
-  expect(await generoDe(nome)).toBe("feminino");
+  expect(await generoDe(novoNome)).toBe("feminino");
+});
 
-  // O Admin completa o de outra pessoa.
+test("Admin → Usuários: não há edição de Gênero nem de dados pessoais, só o selo de cadastro incompleto", async ({ page }) => {
+  // A tela de usuários é lenta no banco local, que acumula contas de teste.
+  test.setTimeout(120_000);
+  test.slow();
+  const convite = await admin.from("convites").insert({ nivel: "admin" }).select("codigo").single().throwOnError();
+  const nome = `Admin ${crypto.randomUUID().slice(0, 8)}`;
+  await preencherCadastro(page, nome, convite.data.codigo);
+  await page.getByRole("radio", { name: "Masculino" }).check();
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page).not.toHaveURL(/\/cadastro/);
+
   // Começa com "Aa" para ficar entre os primeiros (o banco local acumula contas e a lista é ordenada por nome).
   const outro = `Aaa Sem gênero ${crypto.randomUUID().slice(0, 8)}`;
   const criado = await admin.auth.admin.createUser({
@@ -77,9 +87,6 @@ test("Minha conta e usuários: perfil antigo aparece incompleto e o Gênero é c
   await page.goto("/admin/usuarios");
   const linha = page.locator("li", { hasText: outro });
   await expect(linha.getByText("cadastro incompleto")).toBeVisible({ timeout: 60_000 });
-  await linha.getByText("Editar Gênero").click();
-  await linha.getByRole("radio", { name: "Masculino" }).check();
-  await linha.getByRole("button", { name: "Salvar Gênero" }).click();
-  // A ação revalida a lista inteira, lenta no banco local; o que vale é o que ficou gravado.
-  await expect.poll(() => generoDe(outro), { timeout: 90_000 }).toBe("masculino");
+  await expect(page.getByText("Editar Gênero")).toHaveCount(0);
+  await expect(linha.getByRole("radio")).toHaveCount(0);
 });
