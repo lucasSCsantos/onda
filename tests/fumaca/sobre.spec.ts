@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-/** Fumaça da página /sobre: pública, de marca neutra, com as imagens do produto, sem rolagem lateral no celular. */
+/** Fumaça da página /sobre: pública, com a logo do ONDA no cabeçalho e as imagens do produto, sem rolagem lateral no celular. */
 
-test("quem não entrou abre a página /sobre, de marca neutra e com as imagens do produto", async ({ page }) => {
+test("quem não entrou abre a página /sobre, com a logo no cabeçalho e as imagens do produto", async ({ page }) => {
   await page.goto("/sobre");
   await expect(page).toHaveURL(/\/sobre$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -15,11 +15,11 @@ test("quem não entrou abre a página /sobre, de marca neutra e com as imagens d
     await expect(page.getByRole("heading", { level: 3, name: new RegExp(titulo) })).toBeVisible();
   }
 
-  // Marca neutra: nem o nome do ministério nem o da igreja, nem o rodapé com as logos, nem nas imagens (que têm o texto alternativo).
-  const texto = await page.locator("body").innerText();
-  expect(texto).not.toMatch(/ONDA|IBAM/i);
+  // Marca: a logo do ONDA só no cabeçalho; a da igreja e o rodapé do app (que traz as duas) não aparecem.
+  await expect(page.locator('header [aria-label="ONDA"]')).toHaveCount(1);
+  await expect(page.locator('[aria-label="IBAM Ondina"]')).toHaveCount(0);
   await expect(page.locator("footer")).toHaveCount(0);
-  await expect(page.locator('[aria-label="ONDA"], [aria-label="IBAM Ondina"]')).toHaveCount(0);
+  expect(await page.locator("body").innerText()).not.toMatch(/IBAM/i);
 
   // As telas da vitrine existem em duas versões (fixa no computador, em linha no celular); só a visível carrega.
   const imagens = page.locator("main img:visible");

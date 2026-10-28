@@ -2,6 +2,7 @@ import { ArrowRight, Bell, CalendarDays, ClipboardCheck, ShieldCheck, Trophy } f
 import type { Metadata } from "next";
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import { Marca } from "@/components/marca";
 import { Efeitos } from "./efeitos";
 import "./sobre.css";
 import { Vitrine, type Passo } from "./vitrine";
@@ -132,7 +133,7 @@ const atraso = (ms: number) => ({ "--atraso": `${ms}ms` }) as CSSProperties;
 
 export default function Sobre() {
   return (
-    <div className="s-raiz" data-sobre>
+    <div className="s-raiz" id="inicio" data-sobre>
       <Efeitos />
       <div className="s-aurora" aria-hidden />
       <div className="s-grade" aria-hidden />
@@ -140,7 +141,9 @@ export default function Sobre() {
 
       <header className="s-cabecalho">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <span className="s-marca">Mural EBD</span>
+          <a href="#inicio" aria-label="Início">
+              <Marca qual="logotipo" rotulo="ONDA" className="s-logo h-10 w-16 text-[var(--s-texto)]" />
+            </a>
           <nav aria-label="Seções" className="flex items-center gap-6">
             <a href="#funcionalidades" className={`s-link hidden sm:inline`}>
               Funcionalidades

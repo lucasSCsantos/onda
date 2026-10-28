@@ -92,14 +92,9 @@
   background: rgba(5, 10, 24, 0.55);
   backdrop-filter: blur(16px) saturate(1.4);
 }
-.s-marca {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(90deg, #fff, var(--s-claro));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* O azul escuro fixo da logo some no fundo escuro; usa o mesmo azul claro que o app usa na marca em modo escuro. */
+.s-logo svg [fill="#284995"] {
+  fill: #6fb3dc;
 }
 .s-link {
   color: var(--s-suave);
